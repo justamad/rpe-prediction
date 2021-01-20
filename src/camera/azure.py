@@ -1,5 +1,7 @@
 import pandas as pd
+import numpy as np
 import os
+import json
 
 
 class AzureKinect(object):
@@ -17,11 +19,33 @@ class AzureKinect(object):
         # Remove the confidence values and body idx from data frame
         self.data = self.data.loc[:, ~self.data.columns.str.contains('(c)')].copy()
         self.data = self.data.loc[:, ~self.data.columns.str.contains('body_idx')]
+
+        self.data = self.fill_missing_data(self.data)
         # Convert timestamp to seconds and upsample data
-        self.data.loc[:, self.data.columns == 'timestamp'] *= 1e-6
+        # self.data.loc[:, self.data.columns == 'timestamp'] *= 1e-6
 
         # Remove timestamp column from data frame
-        self.data = self.data.loc[:, ~self.data.columns.str.contains('timestamp')]
+        # self.data = self.data.loc[:, ~self.data.columns.str.contains('timestamp')]
+
+    def fill_missing_data(self, data):
+        _, cols = data.shape
+        data_body = data.to_numpy()
+        epsilon = np.diff(data["timestamp"])
+        num_of_missing = (epsilon / 33333 - 1).astype(np.uint8)  # Possible Bug in here!
+        print(f'Number of missing data points: {np.sum(num_of_missing)}')
+
+        inc = 0
+        for idx, missing_frames in enumerate(num_of_missing):
+            if missing_frames <= 0:
+                continue
+
+            for j in range(missing_frames):
+                data_body = np.insert(data_body, idx + inc + j + 1, np.full(cols, np.nan), axis=0)
+
+            inc += missing_frames
+
+        data = pd.DataFrame(data_body, columns=data.columns).interpolate(method='quadratic')
+        return data
 
     def get_data(self, with_timestamps=False):
         """
@@ -36,6 +60,31 @@ class AzureKinect(object):
         if 'timestamp' not in self.data:
             return self.data.to_numpy()
         return self.data.to_numpy()[:, 1:]
+
+    def get_joints_as_list(self):
+        """
+        Return all joints in a list by removing the duplicate (x,y,z) axes
+        :return: list of joint names
+        """
+        columns = list(self.data.columns)
+        if 'timestamp' in self.data:
+            columns = columns[1:]
+
+        joints = []
+        excluded_chars = ['(x)', '(y)', '(z)', ':x', ':y', ':z']
+        for joint in map(lambda x: x.lower(), columns[::3]):
+            for ex_char in excluded_chars:
+                joint = joint.replace(ex_char, '')
+            joints.append(joint.strip().lower())
+
+        return joints
+
+    def get_skeleton_connections(self, json_file):
+        joints = self.get_joints_as_list()
+        with open(json_file) as f:
+            connections = json.load(f)
+
+        return [(joints.index(j1.lower()), joints.index(j2.lower())) for j1, j2 in connections]
 
     def __repr__(self):
         return "azure"

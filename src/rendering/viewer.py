@@ -71,7 +71,7 @@ class SkeletonViewer(object):
     def show_window(self, scale=0.5):
         # Initialize a timer for the animation
         self.render_window_interactor.AddObserver('TimerEvent', self.update)
-        self.timer_id = self.render_window_interactor.CreateRepeatingTimer(10)
+        self.timer_id = self.render_window_interactor.CreateRepeatingTimer(33)
 
         # create coordinate actor
         axes = vtk.vtkAxesActor()
