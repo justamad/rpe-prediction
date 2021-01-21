@@ -17,19 +17,22 @@ class SkeletonViewer(object):
         self.render_window_interactor = vtk.vtkRenderWindowInteractor()
         self.render_window_interactor.SetRenderWindow(self.render_window)
         self.render_window_interactor.Initialize()
+        self.timer_id = self.render_window_interactor.CreateRepeatingTimer(33)
+        self.render_window_interactor.AddObserver('KeyPressEvent', self.keypress_callback, 1.0)
 
         # Data objects
         self.skeleton_objects = []
-        self.max_iterations = 1e10
-        self.iterations = 0
+        self.max_frames = 1e10
+        self.__cur_frame = 0
+        self.__break = False
 
     def add_skeleton(self, data, connections=None, radius=0.02):
         actors_markers = []  # each marker has an own actor
         actors_bones = []  # actors for each line segment between two markers
         lines = []
         rows, cols = data.shape
-        if rows < self.max_iterations:
-            self.max_iterations = rows  # set max size to smallest video length
+        if rows < self.max_frames:
+            self.max_frames = rows  # set max size to smallest video length
 
         # Create all instances for all markers
         for marker in range(cols // 3):
@@ -71,7 +74,6 @@ class SkeletonViewer(object):
     def show_window(self, scale=0.5):
         # Initialize a timer for the animation
         self.render_window_interactor.AddObserver('TimerEvent', self.update)
-        self.timer_id = self.render_window_interactor.CreateRepeatingTimer(33)
 
         # create coordinate actor
         axes = vtk.vtkAxesActor()
@@ -87,16 +89,15 @@ class SkeletonViewer(object):
         self.render_window_interactor.Start()
 
     def update(self, obj, event):
-        if self.iterations >= self.max_iterations:
-            # obj.DestroyTimer(self.timer_id)
-            self.iterations = 0
+        if self.__cur_frame >= self.max_frames:
+            self.__cur_frame = 0
 
         # Draw individual skeleton
         for skeleton_data in self.skeleton_objects:
             # Update marker position for current frame
             data = skeleton_data['data']
             actors_markers = skeleton_data['actors_markers']
-            points = data[self.iterations].reshape(-1, 3)
+            points = data[self.__cur_frame].reshape(-1, 3)
 
             for c_points, actor in enumerate(actors_markers):
                 x, y, z = points[c_points]
@@ -113,4 +114,17 @@ class SkeletonViewer(object):
                 line.SetPoint2(points[j2])
 
         obj.GetRenderWindow().Render()
-        self.iterations += 1
+        if not self.__break:
+            self.__cur_frame += 1
+
+    def keypress_callback(self, obj, ev):
+        key = obj.GetKeySym()
+        print(key, 'was pressed')
+        if key == 'space':
+            self.__break = not self.__break
+        elif key == 'Left':
+            new_frame = self.__cur_frame - 1
+            self.__cur_frame = new_frame if new_frame > 0 else self.__cur_frame
+        elif key == 'Right':
+            new_frame = self.__cur_frame + 1
+            self.__cur_frame = new_frame if new_frame < self.max_frames else self.__cur_frame

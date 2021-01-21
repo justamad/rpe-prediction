@@ -1,1 +1,0 @@
-from .synchronize_azure import synchronize_azures
