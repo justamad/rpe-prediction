@@ -1,0 +1,1 @@
+from .azure import plot_trajectories_for_all_joints

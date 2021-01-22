@@ -1,17 +1,8 @@
-from src.azure import AzureKinect
-from src.rendering import SkeletonViewer
+from src.azure import AzureKinect, synchronize_azures
+from src.plot import plot_trajectories_for_all_joints
 
-import pandas as pd
-import numpy as np
 
-azure = AzureKinect("data/camera_0.csv")
-azure.process_raw_data()
+master_azure = AzureKinect("data/bjarne.csv")
+master_azure.process_raw_data()
 
-connection = azure.get_skeleton_connections("src/azure/azure.json")
-data = azure.get_data()
-print(data.shape)
-
-viewer = SkeletonViewer()
-viewer.add_skeleton(data / 1000, connection)
-viewer.show_window()
-
+plot_trajectories_for_all_joints(master_azure, "bjarne.png")

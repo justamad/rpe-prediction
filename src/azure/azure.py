@@ -11,7 +11,6 @@ class AzureKinect(object):
             self.data = data_path
         elif os.path.exists(data_path):
             self.data = pd.read_csv(data_path, delimiter=';')
-            print(self.data)
         else:
             raise Exception(f"Path {data_path} does not exists!")
 
@@ -46,6 +45,21 @@ class AzureKinect(object):
 
         data = pd.DataFrame(data_body, columns=data.columns).interpolate(method='quadratic')
         return data
+
+    def __getitem__(self, item):
+        """
+        Get columns that contains the sub-string provided in item
+        :param item: given joint name as string
+        :return: pandas data frame most likely as nx3 (x,y,z) data frame
+        """
+        if type(item) is not str:
+            raise ValueError(f"Wrong Type for Index. Expected: str, Given: {type(item)}")
+
+        columns = [col for col in self.data.columns if item.lower() in col.lower()]
+        if not columns:
+            raise Exception(f"Cannot find joint: {item} in {self}")
+
+        return self.data[columns]
 
     def get_data(self, with_timestamps=False):
         """
