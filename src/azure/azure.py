@@ -1,3 +1,6 @@
+from scipy import interpolate
+from scipy import signal
+
 import pandas as pd
 import numpy as np
 import os
@@ -20,11 +23,42 @@ class AzureKinect(object):
         self.data = self.data.loc[:, ~self.data.columns.str.contains('body_idx')]
 
         self.data = self.fill_missing_data(self.data)
+
         # Convert timestamp to seconds and upsample data
-        # self.data.loc[:, self.data.columns == 'timestamp'] *= 1e-6
+        self.data.loc[:, self.data.columns == 'timestamp'] *= 1e-6
+
+        if sampling_rate != 30:
+            self.data = self.sample_data_uniformly(self.data, sampling_rate)
+
 
         # Remove timestamp column from data frame
         # self.data = self.data.loc[:, ~self.data.columns.str.contains('timestamp')]
+
+    def sample_data_uniformly(self, data_frame, sampling_rate):
+        """
+        Applies a uniform sampling to given data frame
+        :param data_frame: data frame consisting the data
+        :param sampling_rate: desired sampling frequency
+        :return: data frame with filtered data
+        """
+        timestamps = data_frame['timestamp'].to_numpy()
+        x = timestamps - timestamps[0]  # shift to zero
+
+        # Define new constant sampling points
+        num = int(x[-1] * sampling_rate)  # 30 fps
+        xx = np.linspace(x[0], x[-1], num)
+
+        frames, features = data_frame.shape
+        data = data_frame.to_numpy()
+
+        uniform_sampled_data = []
+        for feature in range(features):
+            y = data[:, feature]
+            f = interpolate.interp1d(x, y, kind="cubic")
+            yy = f(xx)
+            uniform_sampled_data.append(yy)
+
+        return pd.DataFrame(data=np.array(uniform_sampled_data).T, columns=data_frame.columns)
 
     def fill_missing_data(self, data):
         _, cols = data.shape
