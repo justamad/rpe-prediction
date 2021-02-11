@@ -6,3 +6,5 @@ vtk
 scipy
 fastdtw
 pyEDFlib
+open3d==0.8.0
+panda3d_viewer
