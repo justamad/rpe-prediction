@@ -1,5 +1,4 @@
 from scipy import interpolate
-from scipy import signal
 
 import pandas as pd
 import numpy as np
@@ -60,15 +59,15 @@ class AzureKinect(object):
 
         return pd.DataFrame(data=np.array(uniform_sampled_data).T, columns=data_frame.columns)
 
-    def fill_missing_data(self, data):
+    def fill_missing_data(self, data, delta=33333):
         _, cols = data.shape
         data_body = data.to_numpy()
-        epsilon = np.diff(data["timestamp"])
-        num_of_missing = (epsilon / 33333 - 1).astype(np.uint8)  # Possible Bug in here!
-        print(f'Number of missing data points: {np.sum(num_of_missing)}')
+        diffs = np.diff(data["timestamp"]) / delta
+        diffs = (np.round(diffs) - 1).astype(np.uint8)
+        print(f'Number of missing data points: {np.sum(diffs)}')
 
         inc = 0
-        for idx, missing_frames in enumerate(num_of_missing):
+        for idx, missing_frames in enumerate(diffs):
             if missing_frames <= 0:
                 continue
 
