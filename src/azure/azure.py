@@ -22,16 +22,11 @@ class AzureKinect(object):
         self.data = self.data.loc[:, ~self.data.columns.str.contains('body_idx')]
 
         self.data = self.fill_missing_data(self.data)
-
         # Convert timestamp to seconds and upsample data
         self.data.loc[:, self.data.columns == 'timestamp'] *= 1e-6
 
         if sampling_rate != 30:
             self.data = self.sample_data_uniformly(self.data, sampling_rate)
-
-
-        # Remove timestamp column from data frame
-        # self.data = self.data.loc[:, ~self.data.columns.str.contains('timestamp')]
 
     def sample_data_uniformly(self, data_frame, sampling_rate):
         """
@@ -63,7 +58,7 @@ class AzureKinect(object):
         _, cols = data.shape
         data_body = data.to_numpy()
         diffs = np.diff(data["timestamp"]) / delta
-        diffs = (np.round(diffs) - 1).astype(np.uint8)
+        diffs = (np.round(diffs) - 1).astype(np.uint32)
         print(f'Number of missing data points: {np.sum(diffs)}')
 
         inc = 0

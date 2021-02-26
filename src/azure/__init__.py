@@ -1,2 +1,2 @@
 from .azure import AzureKinect
-from .synchronization import synchronize_azures
+from .multi_azure import MultiAzure
