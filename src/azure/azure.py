@@ -74,6 +74,37 @@ class AzureKinect(object):
         data = pd.DataFrame(data_body, columns=data.columns).interpolate(method='quadratic')
         return data
 
+    def multiply_matrix(self, matrix, translation=np.array([0, 0, 0])):
+        """
+        Multiply all data points with a matrix and add a translation vector
+        :param matrix: rotation or coordinate system transformation matrix
+        :param translation: translation vector
+        :return: None
+        """
+        data = self.get_data(with_timestamps=False)
+        samples, features = data.shape
+        result = matrix * data.reshape(-1, 3).T + translation.reshape(3, 1)
+        final_result = result.T.reshape(samples, features)
+
+        # check if timestamps in data are present
+        if 'timestamp' in self.data:
+            timestamps = self.data['timestamp'].to_numpy()
+            final_result = np.insert(final_result, 0, timestamps, axis=1)
+
+        self.update_data_body(final_result)
+
+    def update_data_body(self, data):
+        """
+        Updates a new data body to joints
+        :param data: nd-array that contains new data
+        :return None
+        """
+        samples, features = data.shape  # the new data format
+        current_columns = self.data.columns  # current columns in data frame
+
+        assert features == len(current_columns), f"Tries to assign data with wrong shape to {self}"
+        self.data = pd.DataFrame(data=data, columns=current_columns)
+
     def __getitem__(self, item):
         """
         Get columns that contains the sub-string provided in item
