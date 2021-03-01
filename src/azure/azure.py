@@ -1,4 +1,6 @@
 from scipy import interpolate
+from src.processing import apply_butterworth_filter, normalize_signal, find_peaks
+
 
 import pandas as pd
 import numpy as np
@@ -16,6 +18,11 @@ class AzureKinect(object):
         else:
             raise Exception(f"Path {data_path} does not exists!")
 
+        self.height = 0.5
+        self.prominence = 1.5
+        self.distance = 40
+        self._sampling_frequency = 30
+
     def process_raw_data(self, sampling_rate=30):
         # Remove the confidence values and body idx from data frame
         self.data = self.data.loc[:, ~self.data.columns.str.contains('(c)')].copy()
@@ -23,10 +30,10 @@ class AzureKinect(object):
 
         self.data = self.fill_missing_data(self.data)
         # Convert timestamp to seconds and upsample data
-        self.data.loc[:, self.data.columns == 'timestamp'] *= 1e-6
+        # self.data.loc[:, self.data.columns == 'timestamp'] *= 1e-6
 
-        if sampling_rate != 30:
-            self.data = self.sample_data_uniformly(self.data, sampling_rate)
+        # if sampling_rate != 30:
+            # self.data = self.sample_data_uniformly(self.data, sampling_rate)
 
     def sample_data_uniformly(self, data_frame, sampling_rate):
         """
@@ -158,6 +165,25 @@ class AzureKinect(object):
             connections = json.load(f)
 
         return [(joints.index(j1.lower()), joints.index(j2.lower())) for j1, j2 in connections]
+
+    def get_synchronization_signal(self) -> np.ndarray:
+        spine_navel = self['spine_navel'].to_numpy()
+        return spine_navel[:, 1]  # Only return y-axis
+
+    def get_timestamps(self) -> np.ndarray:
+        timestamps = self.data['timestamp'].to_numpy() / 1e6  # convert to seconds
+        return timestamps
+
+    def get_synchronization_data(self):
+        clock = self.get_timestamps()
+        raw_data = normalize_signal(apply_butterworth_filter(self.get_synchronization_signal()))
+        acc_data = normalize_signal(np.gradient(np.gradient(raw_data)))  # Calculate 2nd derivative
+        peaks = find_peaks(-acc_data, height=self.height, prominence=self.prominence, distance=self.distance)
+        return clock, raw_data, acc_data, peaks
+
+    @property
+    def sampling_frequency(self):
+        return self._sampling_frequency
 
     def __repr__(self):
         return "azure"
