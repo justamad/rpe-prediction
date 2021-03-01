@@ -8,6 +8,12 @@
         "end_idx": 201856,
         "start_time": "00:25:44",
         "end_time": "00:26:17"
+      },
+      "faros": {
+        "start_idx": 153256,
+        "end_idx": 156592,
+        "start_time": "00:25:32",
+        "end_time": "00:26:05"
       }
     },
     {
@@ -16,6 +22,12 @@
         "end_idx": 215040,
         "start_time": "00:27:16",
         "end_time": "00:28:00"
+      },
+      "faros": {
+        "start_idx": 162614,
+        "end_idx": 166380,
+        "start_time": "00:27:06",
+        "end_time": "00:27:43"
       }
     },
     {
@@ -24,6 +36,12 @@
         "end_idx": 224128,
         "start_time": "00:28:32",
         "end_time": "00:29:11"
+      },
+      "faros": {
+        "start_idx": 170208,
+        "end_idx": 173816,
+        "start_time": "00:28:22",
+        "end_time": "00:28:58"
       }
     },
     {
@@ -32,6 +50,12 @@
         "end_idx": 245504,
         "start_time": "00:31:23",
         "end_time": "00:31:58"
+      },
+      "faros": {
+        "start_idx": 187187,
+        "end_idx": 190620,
+        "start_time": "00:31:11",
+        "end_time": "00:31:46"
       }
     },
     {
@@ -40,6 +64,12 @@
         "end_idx": 255360,
         "start_time": "00:32:39",
         "end_time": "00:33:15"
+      },
+      "faros": {
+        "start_idx": 194889,
+        "end_idx": 198318,
+        "start_time": "00:32:28",
+        "end_time": "00:33:03"
       }
     },
     {
@@ -48,6 +78,12 @@
         "end_idx": 264064,
         "start_time": "00:33:47",
         "end_time": "00:34:23"
+      },
+      "faros": {
+        "start_idx": 201254,
+        "end_idx": 205072,
+        "start_time": "00:33:32",
+        "end_time": "00:34:10"
       }
     },
     {
@@ -56,6 +92,12 @@
         "end_idx": 284032,
         "start_time": "00:36:28",
         "end_time": "00:36:59"
+      },
+      "faros": {
+        "start_idx": 217725,
+        "end_idx": 221672,
+        "start_time": "00:36:17",
+        "end_time": "00:36:56"
       }
     },
     {
@@ -64,6 +106,12 @@
         "end_idx": 293248,
         "start_time": "00:37:41",
         "end_time": "00:38:11"
+      },
+      "faros": {
+        "start_idx": 225085,
+        "end_idx": 228472,
+        "start_time": "00:37:30",
+        "end_time": "00:38:04"
       }
     },
     {
@@ -72,6 +120,12 @@
         "end_idx": 302336,
         "start_time": "00:38:52",
         "end_time": "00:39:22"
+      },
+      "faros": {
+        "start_idx": 232126,
+        "end_idx": 235642,
+        "start_time": "00:38:41",
+        "end_time": "00:39:16"
       }
     },
     {
@@ -80,6 +134,12 @@
         "end_idx": 322816,
         "start_time": "00:41:32",
         "end_time": "00:42:02"
+      },
+      "faros": {
+        "start_idx": 248162,
+        "end_idx": 251426,
+        "start_time": "00:41:21",
+        "end_time": "00:41:54"
       }
     },
     {
@@ -88,6 +148,12 @@
         "end_idx": 331648,
         "start_time": "00:42:40",
         "end_time": "00:43:11"
+      },
+      "faros": {
+        "start_idx": 255039,
+        "end_idx": 258257,
+        "start_time": "00:42:30",
+        "end_time": "00:43:02"
       }
     },
     {
@@ -96,6 +162,12 @@
         "end_idx": 340352,
         "start_time": "00:43:50",
         "end_time": "00:44:19"
+      },
+      "faros": {
+        "start_idx": 261860,
+        "end_idx": 264986,
+        "start_time": "00:43:38",
+        "end_time": "00:44:09"
       }
     },
     {
@@ -104,6 +176,12 @@
         "end_idx": 361088,
         "start_time": "00:46:31",
         "end_time": "00:47:01"
+      },
+      "faros": {
+        "start_idx": 277947,
+        "end_idx": 281160,
+        "start_time": "00:46:19",
+        "end_time": "00:46:51"
       }
     },
     {
@@ -112,6 +190,12 @@
         "end_idx": 370304,
         "start_time": "00:47:42",
         "end_time": "00:48:13"
+      },
+      "faros": {
+        "start_idx": 284968,
+        "end_idx": 288345,
+        "start_time": "00:47:29",
+        "end_time": "00:48:03"
       }
     },
     {
@@ -120,6 +204,12 @@
         "end_idx": 379008,
         "start_time": "00:48:54",
         "end_time": "00:49:21"
+      },
+      "faros": {
+        "start_idx": 292122,
+        "end_idx": 295038,
+        "start_time": "00:48:41",
+        "end_time": "00:49:10"
       }
     },
     {
@@ -128,6 +218,12 @@
         "end_idx": 399488,
         "start_time": "00:51:33",
         "end_time": "00:52:01"
+      },
+      "faros": {
+        "start_idx": 308091,
+        "end_idx": 311089,
+        "start_time": "00:51:20",
+        "end_time": "00:51:50"
       }
     },
     {
@@ -136,6 +232,12 @@
         "end_idx": 408192,
         "start_time": "00:52:39",
         "end_time": "00:53:09"
+      },
+      "faros": {
+        "start_idx": 314804,
+        "end_idx": 318023,
+        "start_time": "00:52:28",
+        "end_time": "00:53:00"
       }
     },
     {
@@ -144,6 +246,12 @@
         "end_idx": 417280,
         "start_time": "00:53:51",
         "end_time": "00:54:20"
+      },
+      "faros": {
+        "start_idx": 321994,
+        "end_idx": 324885,
+        "start_time": "00:53:39",
+        "end_time": "00:54:08"
       }
     },
     {
@@ -152,6 +260,12 @@
         "end_idx": 437888,
         "start_time": "00:56:31",
         "end_time": "00:57:01"
+      },
+      "faros": {
+        "start_idx": 337989,
+        "end_idx": 341064,
+        "start_time": "00:56:19",
+        "end_time": "00:56:50"
       }
     },
     {
@@ -160,6 +274,12 @@
         "end_idx": 446464,
         "start_time": "00:57:39",
         "end_time": "00:58:08"
+      },
+      "faros": {
+        "start_idx": 344723,
+        "end_idx": 348044,
+        "start_time": "00:57:27",
+        "end_time": "00:58:00"
       }
     },
     {
@@ -168,6 +288,12 @@
         "end_idx": 454912,
         "start_time": "00:58:45",
         "end_time": "00:59:14"
+      },
+      "faros": {
+        "start_idx": 351375,
+        "end_idx": 354588,
+        "start_time": "00:58:33",
+        "end_time": "00:59:05"
       }
     }
   ]
