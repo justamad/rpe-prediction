@@ -1,5 +1,4 @@
 from typing import Tuple, Any, List
-
 from src.processing import apply_butterworth_filter, normalize_signal, find_peaks, utils
 
 import pandas as pd
@@ -9,13 +8,14 @@ import os
 
 class GaitUp(object):
 
-    def __init__(self, folder, start=0, end=-1, synchronization_file_name: str = "ST327.csv"):
+    def __init__(self, folder, synchronization_file_name: str = "ST327.csv"):
         if not os.path.exists(folder):
             raise Exception(f"Folder {folder} does not exist.")
 
         self.files = {}
         for csv_file in os.listdir(folder):
-            data = pd.read_csv(os.path.join(folder, csv_file), delimiter=',').iloc[start:end]
+            data = pd.read_csv(os.path.join(folder, csv_file), delimiter=',')
+            print(len(data))
             self.files[csv_file] = data
 
         self._sampling_frequency = 128
@@ -26,7 +26,7 @@ class GaitUp(object):
 
     def get_synchronization_signal(self):
         data = self.files[self.synchronization_file_name]['Accel Y'].to_numpy()
-        return data  # Change the orientation
+        return data
 
     def get_timestamps(self) -> np.ndarray:
         return np.arange(len(self.files[self.synchronization_file_name])) / self.sampling_frequency

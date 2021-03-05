@@ -1,5 +1,5 @@
 from .azure import AzureKinect
-from src.calibration import read_calibration_folder, find_rigid_transformation_svd
+from src.azure.calibration import read_calibration_folder, find_rigid_transformation_svd
 
 import numpy as np
 
@@ -22,7 +22,7 @@ class MultiAzure(AzureKinect):
 
         master.multiply_matrix(rotation, translation)
 
-        super().__init__(master.data)
+        super().__init__(master.config_file)
 
     def synchronize_azures(self, master, sub):
         master_data = master.get_data(with_timestamps=True)

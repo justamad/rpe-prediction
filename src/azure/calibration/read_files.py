@@ -38,5 +38,5 @@ def read_calibration_file(file_name):
 
 
 if __name__ == '__main__':
-    a, b = read_calibration_folder("../../data")
+    a, b = read_calibration_folder("../../../data")
     print(a, b)

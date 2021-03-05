@@ -15,12 +15,12 @@ Then we find and synchronize all minima from the IMU acceleration to the Azure K
 """
 
 
-def synchronize_signals(kinect_camera, imu_sensor, method="peaks", show_plots=True):
+def synchronize_signals(kinect_camera, imu_sensor, method="peaks", show=True):
     # Find peaks in IMU and Kinect acceleration data
     kinect_clock, kinect_raw, kinect_processed, kinect_peaks = kinect_camera.get_synchronization_data()
     imu_clock, imu_raw, imu_processed, imu_peaks = imu_sensor.get_synchronization_data()
 
-    if show_plots:
+    if show:
         plt.scatter(kinect_clock[kinect_peaks], kinect_processed[kinect_peaks])
         plt.plot(kinect_clock, kinect_processed, label=f"{kinect_camera}")
         plt.plot(imu_clock, imu_processed, label=f"{imu_sensor}")
@@ -47,7 +47,7 @@ def synchronize_signals(kinect_camera, imu_sensor, method="peaks", show_plots=Tr
         raise Exception(f"Unknown synchronization method: {method}")
 
     # Plot the results
-    if show_plots:
+    if show:
         f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(20, 10), sharey=True)
 
         # Plot the Kinect data and its gradients

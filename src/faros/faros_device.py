@@ -9,13 +9,13 @@ import os
 
 class Faros(object):
 
-    def __init__(self, folder, start=0, end=-1):
+    def __init__(self, folder):
         if not os.path.exists(folder):
             raise Exception(f"Folder {folder} does not exist.")
 
         file_name = os.path.join(folder, "record.edf")
         self.file_name = file_name
-        self.acc_data = self.read_acceleration_data_from_file().iloc[start:end]
+        self.acc_data = self.read_acceleration_data_from_file()
         self.ecg_data = self.read_ecg_signal()
         self._sampling_frequency = self.read_acceleration_freq_from_file()
         self._sampling_frequency_ecg = self.read_ecg_freq_from_file()
@@ -83,6 +83,10 @@ class Faros(object):
         signals, signal_headers, header = highlevel.read_edf(self.file_name)
         idx = [header['label'] for header in signal_headers].index(label)
         return signals[idx]
+
+    def cut_trial(self, start_idx, end_idx):
+        data = self.acc_data.iloc[start_idx:end_idx]
+        return data
 
     @property
     def sampling_frequency(self):

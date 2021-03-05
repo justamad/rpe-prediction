@@ -29,3 +29,8 @@ class ConfigReader:
     def get(self, name: str) -> Any:
         config = self.trial_config
         return config[name]
+
+    def iterate_over_trials(self):
+        for i in range(21):
+            yield {'gaitup': self.get_start_indices('gaitup', i),
+                   'faros': self.get_start_indices('faros', i)}
