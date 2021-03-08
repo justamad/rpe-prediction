@@ -1,9 +1,10 @@
-from .utils import normalize_signal, upsample_data
+from .utils import normalize_signal
 from scipy import signal
+from os.path import join
 
 import numpy as np
-import matplotlib
-matplotlib.use("TkAgg")
+# import matplotlib
+# matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 
 """
@@ -15,7 +16,7 @@ Then we find and synchronize all minima from the IMU acceleration to the Azure K
 """
 
 
-def synchronize_signals(kinect_camera, imu_sensor, method="peaks", show=False):
+def synchronize_signals(kinect_camera, imu_sensor, method="peaks", show=False, path=None):
     # Find peaks in IMU and Kinect acceleration data
     kinect_clock, kinect_raw, kinect_processed, kinect_peaks = kinect_camera.get_synchronization_data()
     imu_clock, imu_raw, imu_processed, imu_peaks = imu_sensor.get_synchronization_data()
@@ -29,7 +30,13 @@ def synchronize_signals(kinect_camera, imu_sensor, method="peaks", show=False):
         plt.xlabel('Time (s)')
         plt.ylabel('Acceleration (normalized)')
         plt.legend()
-        plt.show()
+        if path is not None:
+            plt.savefig(join(path, "raw.png"))
+            plt.close()
+            plt.cla()
+            plt.clf()
+        else:
+            plt.show()
 
     # Synchronize data by shifting the IMU clock towards Azure Kinect clock
     if method == "peaks":
@@ -80,9 +87,21 @@ def synchronize_signals(kinect_camera, imu_sensor, method="peaks", show=False):
         ax3.set_ylabel("Vertical Axis (normalized)")
         ax3.legend()
         plt.tight_layout()
-        plt.show()
 
-    return imu_clock
+        if path is not None:
+            plt.savefig(join(path, "sync.png"))
+            plt.close()
+            plt.cla()
+            plt.clf()
+        else:
+            plt.show()
+
+    # Cut the data
+    start_t = max(kinect_clock[0], imu_clock[0])
+    end_t = min(kinect_clock[-1], imu_clock[-1])
+    azure = kinect_camera.cut_data(get_closest_index(kinect_clock, start_t), get_closest_index(kinect_clock, end_t))
+    imu = imu_sensor.cut_data(get_closest_index(imu_clock, start_t), get_closest_index(imu_clock, end_t))
+    return azure, imu
 
 
 def align_signals_based_on_peaks(reference_peaks, target_peaks, resolution=10):
@@ -123,3 +142,8 @@ def calculate_correlation(ref_signal, target_signal, sampling_frequency):
     corr = signal.correlate(ref_signal, target_signal)
     shift_in_samples = np.argmax(corr) - len(target_signal) - 1
     return shift_in_samples / sampling_frequency
+
+
+def get_closest_index(array, t):
+    arr = np.abs(array - t)
+    return np.argmin(arr)

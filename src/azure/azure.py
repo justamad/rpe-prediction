@@ -114,6 +114,10 @@ class AzureKinect(object):
 
         return [(joints.index(j1.lower()), joints.index(j2.lower())) for j1, j2 in connections]
 
+    def cut_data(self, start_idx, end_idx):
+        data = self.data.iloc[start_idx:end_idx]
+        return AzureKinect(data, self.sampling_frequency)
+
     def get_synchronization_signal(self) -> np.ndarray:
         spine_navel = self['spine_navel'].to_numpy()
         return spine_navel[:, 1]  # Only return y-axis

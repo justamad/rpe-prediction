@@ -36,8 +36,6 @@ class GaitUp(object):
         self.distance = 140
 
     def cut_data(self, start_idx, end_idx):
-        start_idx = int(start_idx * (100 / 128))
-        end_idx = int(end_idx * (100 / 128))
         data = self.data.iloc[start_idx:end_idx]
         return GaitUp(data, self.sampling_frequency)
 
