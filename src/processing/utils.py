@@ -35,14 +35,36 @@ def add_magnitude(data: np.ndarray) -> np.ndarray:
     return result
 
 
-def sample_data_uniformly(data_frame, sampling_rate):
+def apply_butterworth_filter_dataframe(data_frame, sampling_frequency):
+    """
+    Applies a butterworth filter to given data array
+    :param data_frame: pandas data frame consisting the data
+    :param sampling_frequency: the current sampling frequency
+    :return: pandas array with butterworth-filtered data
+    """
+    fc = 6  # Cut-off frequency of the filter
+    w = fc / (sampling_frequency / 2)  # Normalize the frequency
+    b, a = signal.butter(4, w, 'lp', analog=False)
+
+    data = data_frame.to_numpy()
+    rows, cols = data.shape
+    result = []
+
+    for column in range(cols):
+        raw_signal = data[:, column]
+        filtered_signal = signal.lfilter(b, a, raw_signal)
+        result.append(filtered_signal)
+
+    return pd.DataFrame(data=np.array(result).T, columns=data_frame.columns)
+
+
+def sample_data_uniformly(data_frame, timestamps, sampling_rate):
     """
     Applies a uniform sampling to given data frame
     :param data_frame: data frame consisting the data
-    :param sampling_rate: desired sampling frequency
+    :param sampling_rate: desired sampling frequency in frames per seconds (or Hz)
     :return: data frame with filtered data
     """
-    timestamps = data_frame['timestamp'].to_numpy()
     x = timestamps - timestamps[0]  # shift to zero
 
     # Define new constant sampling points
@@ -63,6 +85,12 @@ def sample_data_uniformly(data_frame, sampling_rate):
 
 
 def fill_missing_data(data, delta=33333):
+    """
+   Applies a uniform sampling to given data frame
+   :param data: data frame consisting the data
+   :param delta: desired sampling frequency in microseconds
+   :return: data frame with filtered data
+   """
     _, cols = data.shape
     data_body = data.to_numpy()
     diffs = np.diff(data["timestamp"]) / delta

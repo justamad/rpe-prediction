@@ -15,7 +15,7 @@ class ConfigReader:
 
     def get_start_indices(self, sensor: str, set_nr: int):
         set_list = self.trial_config["sets"]
-        cur_set = set_list[set_nr - 1]
+        cur_set = set_list[set_nr]
         cur_sensor = cur_set[sensor]
         return cur_sensor["start_idx"], cur_sensor["end_idx"]
 

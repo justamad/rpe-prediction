@@ -15,7 +15,7 @@ Then we find and synchronize all minima from the IMU acceleration to the Azure K
 """
 
 
-def synchronize_signals(kinect_camera, imu_sensor, method="peaks", show=True):
+def synchronize_signals(kinect_camera, imu_sensor, method="peaks", show=False):
     # Find peaks in IMU and Kinect acceleration data
     kinect_clock, kinect_raw, kinect_processed, kinect_peaks = kinect_camera.get_synchronization_data()
     imu_clock, imu_raw, imu_processed, imu_peaks = imu_sensor.get_synchronization_data()
@@ -36,11 +36,7 @@ def synchronize_signals(kinect_camera, imu_sensor, method="peaks", show=True):
         shift = align_signals_based_on_peaks(kinect_clock[kinect_peaks], imu_clock[imu_peaks])
         imu_clock += shift
     elif method == "correlation":
-        kinect_signal_upsampled = upsample_data(kinect_processed,
-                                                kinect_camera.sampling_frequency,
-                                                imu_sensor.sampling_frequency)
-
-        shift = calculate_correlation(kinect_signal_upsampled, imu_processed, imu_sensor.sampling_frequency)
+        shift = calculate_correlation(kinect_processed, imu_processed, imu_sensor.sampling_frequency)
         clock_diff = kinect_clock[0] - imu_clock[0]
         imu_clock = imu_clock + clock_diff + shift
     else:

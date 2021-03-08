@@ -1,4 +1,4 @@
-from src.processing import apply_butterworth_filter, normalize_signal, find_peaks, fill_missing_data
+from src.processing import apply_butterworth_filter, normalize_signal, find_peaks, fill_missing_data, sample_data_uniformly, apply_butterworth_filter_dataframe
 
 import pandas as pd
 import numpy as np
@@ -8,22 +8,26 @@ import json
 
 class AzureKinect(object):
 
-    def __init__(self, data_path):
+    def __init__(self, data_path, sampling_frequency=100):
         if isinstance(data_path, pd.DataFrame):
             self.data = data_path
-        elif os.path.exists(data_path):
-            self.data = pd.read_csv(data_path, delimiter=';')
+        elif isinstance(data_path, str):
+            if not os.path.exists(data_path):
+                raise Exception(f"Given file {data_path} does not exist.")
+
+            data = pd.read_csv(data_path, delimiter=';')
+            data = data[[c for c in data.columns if "(c)" not in c and "body_idx" not in c]].copy()
+            data = fill_missing_data(data)
+            data = data.loc[:, ~data.columns.str.contains('timestamp')]
+            data = apply_butterworth_filter_dataframe(data, sampling_frequency=sampling_frequency)
+            self.data = sample_data_uniformly(data, timestamps=np.arange(len(data)) / 30, sampling_rate=sampling_frequency)
         else:
-            raise Exception(f"Path {data_path} does not exists!")
+            raise Exception(f"Unknown argument {data_path} for Azure Kinect class.")
 
-        # Remove confidence values and body idx
-        self.data = self.data[[c for c in self.data.columns if "(c)" not in c and "body_idx" not in c]].copy()
-        self.data = fill_missing_data(self.data)
-
+        self._sampling_frequency = sampling_frequency
         self.height = 0.5
         self.prominence = 1.5
         self.distance = 40
-        self._sampling_frequency = 30
 
     def multiply_matrix(self, matrix, translation=np.array([0, 0, 0])):
         """
@@ -115,12 +119,11 @@ class AzureKinect(object):
         return spine_navel[:, 1]  # Only return y-axis
 
     def get_timestamps(self) -> np.ndarray:
-        timestamps = self.data['timestamp'].to_numpy() / 1e6  # convert to seconds
-        return timestamps
+        return np.arange(len(self.data)) / self.sampling_frequency
 
     def get_synchronization_data(self):
         clock = self.get_timestamps()
-        raw_data = normalize_signal(apply_butterworth_filter(self.get_synchronization_signal()))
+        raw_data = normalize_signal(self.get_synchronization_signal())
         acc_data = normalize_signal(np.gradient(np.gradient(raw_data)))  # Calculate 2nd derivative
         peaks = find_peaks(-acc_data, height=self.height, prominence=self.prominence, distance=self.distance)
         return clock, raw_data, acc_data, peaks
