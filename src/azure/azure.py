@@ -1,4 +1,4 @@
-from src.processing import apply_butterworth_filter, normalize_signal, find_peaks, fill_missing_data, sample_data_uniformly, apply_butterworth_filter_dataframe
+from src.processing import normalize_signal, find_peaks, fill_missing_data, sample_data_uniformly, apply_butterworth_filter_dataframe
 
 import pandas as pd
 import numpy as np
@@ -20,7 +20,7 @@ class AzureKinect(object):
             data = fill_missing_data(data)
             data = data.loc[:, ~data.columns.str.contains('timestamp')]
             data = apply_butterworth_filter_dataframe(data, sampling_frequency=sampling_frequency)
-            self.data = sample_data_uniformly(data, timestamps=np.arange(len(data)) / 30, sampling_rate=sampling_frequency)
+            self.data, _ = sample_data_uniformly(data, np.arange(len(data)) / 30, sampling_frequency)
         else:
             raise Exception(f"Unknown argument {data_path} for Azure Kinect class.")
 

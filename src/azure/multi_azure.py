@@ -12,8 +12,6 @@ class MultiAzure(AzureKinect):
         sub = AzureKinect(sub_path)
 
         # Temporal alignment
-        master.process_raw_data()
-        sub.process_raw_data()
         master, sub = self.synchronize_azures(master, sub)
 
         # Spatial alignment

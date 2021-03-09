@@ -21,9 +21,9 @@ os.makedirs(args.report_path)
 
 # Load data
 config = ConfigReader(join(args.src_path, "config.json"))
-# faros = Faros(join(args.src_path, "faros"))
+faros = Faros(join(args.src_path, "faros"))
 gaitup = GaitUp(join(args.src_path, "gaitup"))
-
+exit(-1)
 # Process individual sets
 for counter, sensor_trial in enumerate(config.iterate_over_trials()):
     # faros_set = faros.cut_trial(*sensor_trial['faros'])

@@ -24,7 +24,7 @@ class GaitUp(object):
                 data_frames.append(df)
 
             data = pd.concat(data_frames, join='outer', axis=1)
-            data = sample_data_uniformly(data, timestamps=np.arange(len(data)) / 128, sampling_rate=sampling_frequency)
+            data, _ = sample_data_uniformly(data, timestamps=np.arange(len(data)) / 128, sampling_rate=sampling_frequency)
             self.data = apply_butterworth_filter_dataframe(data, sampling_frequency=sampling_frequency)
 
         else:
