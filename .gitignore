@@ -126,11 +126,12 @@ dmypy.json
 
 # Generated Report Data
 reports/
-data/**/*.csv
+# data/**/*.csv
 data/**/*.png
-data/**/*.mkv
-data/**/*.edf
-data/**/*.EDF
+data/**/*.txt
+# data/**/*.mkv
+# data/**/*.edf
+# data/**/*.EDF
 # !data/bjarne_pilot/config.json
 # !data/**/*.json
 *.avi
