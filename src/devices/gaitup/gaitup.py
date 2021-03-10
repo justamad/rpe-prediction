@@ -2,7 +2,6 @@ from src.processing import normalize_signal, apply_butterworth_filter, find_clos
 from os.path import join
 
 import pandas as pd
-import numpy as np
 import os
 
 
@@ -62,7 +61,7 @@ class GaitUp(object):
         Shift the clock based on a given time delta
         @param delta: the time offset given in seconds
         """
-        self.data.loc[:, self.data.columns == 'Time'] += delta
+        self.data['Time'] += delta
 
     @property
     def timestamps(self):

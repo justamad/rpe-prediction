@@ -46,10 +46,6 @@ for counter, sensor_trial in enumerate(config.iterate_over_trials()):
     global_start = max(azure.timestamps[0], gaitup_clock[0], faros_clock[0])
     global_end = min(azure.timestamps[-1], gaitup_clock[-1], faros_clock[-1])
 
-    print(azure.timestamps)
-    print(gaitup_clock)
-    print(faros_clock)
-
     gaitup_set.shift_clock(gaitup_shift)
     faros.add_shift(faros_shift)
     azure.cut_data_based_on_time(global_start, global_end)
@@ -57,9 +53,13 @@ for counter, sensor_trial in enumerate(config.iterate_over_trials()):
     faros.cut_data_based_on_time(global_start, global_end)
     print(f"Global start: {global_start}, global end: {global_end}")
 
-    plt.plot(azure.timestamps, normalize_signal(azure["pelvis"].to_numpy()[:, 1]))
-    plt.plot(faros.timestamps_hr, normalize_signal(faros.hr_data))
-    plt.plot(gaitup_set.timestamps, normalize_signal(gaitup_set.get_synchronization_signal()))
+    plt.plot(azure.timestamps, normalize_signal(azure["pelvis"].to_numpy()[:, 1]), label="kinect")
+    plt.plot(faros.timestamps_hr, normalize_signal(faros.hr_data), label="faros")
+    plt.plot(gaitup_set.timestamps, normalize_signal(gaitup_set.get_synchronization_signal()), label="gaitup")
+    plt.legend()
+    plt.ylabel("Normalized Y-Axes")
+    plt.xlabel("Time (s)")
+    plt.tight_layout()
     plt.show()
 
     print(len(azure.timestamps), len(faros.timestamps_hr), len(gaitup_set.timestamps))
