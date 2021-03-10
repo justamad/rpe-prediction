@@ -48,22 +48,16 @@ class AzureKinect(object):
         self.update_data_body(final_result)
 
     def update_data_body(self, data):
-        """
-        Updates a new data body to joints
-        :param data: nd-array that contains new data
-        :return None
-        """
         samples, features = data.shape  # the new data format
         current_columns = self.data.columns  # current columns in data frame
-
         assert features == len(current_columns), f"Tries to assign data with wrong shape to {self}"
         self.data = pd.DataFrame(data=data, columns=current_columns)
 
     def __getitem__(self, item):
         """
         Get columns that contains the sub-string provided in item
-        :param item: given joint name as string
-        :return: pandas data frame most likely as nx3 (x,y,z) data frame
+        @param item: given joint name as string
+        @return: pandas data frame most likely as nx3 (x,y,z) data frame
         """
         if type(item) is not str:
             raise ValueError(f"Wrong Type for Index. Expected: str, Given: {type(item)}")

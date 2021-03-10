@@ -62,5 +62,7 @@ for counter, sensor_trial in enumerate(config.iterate_over_trials()):
     plt.plot(gaitup_set.timestamps, normalize_signal(gaitup_set.get_synchronization_signal()))
     plt.show()
 
+    print(len(azure.timestamps), len(faros.timestamps_hr), len(gaitup_set.timestamps))
+
     # Save the converted data
     dst_path = join(args.dst_path, set_counter)
