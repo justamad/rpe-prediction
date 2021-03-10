@@ -1,10 +1,9 @@
 from .azure import AzureKinect
-from src.azure.calibration import read_calibration_folder, find_rigid_transformation_svd
+from src.devices.azure.calibration import read_calibration_folder, find_rigid_transformation_svd
 
 import numpy as np
 import matplotlib
 matplotlib.use("TkAgg")
-import matplotlib.pyplot as plt
 
 
 class MultiAzure(AzureKinect):

@@ -1,6 +1,4 @@
-from src.faros import Faros
-from src.azure import AzureKinect
-from src.gaitup import GaitUp
+from src.devices import AzureKinect, Faros, GaitUp
 from src.processing import synchronize_signals, normalize_signal
 from src.config import ConfigReader
 from os.path import join

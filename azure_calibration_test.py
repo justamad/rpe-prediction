@@ -1,4 +1,4 @@
-from src.azure import AzureKinect, MultiAzure
+from src.devices.azure import AzureKinect, MultiAzure
 from src.rendering import SkeletonViewer
 
 from os.path import join
