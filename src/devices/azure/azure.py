@@ -1,4 +1,4 @@
-from src.processing import normalize_signal, find_peaks, find_closest_timestamp
+from src.processing import normalize_signal, find_closest_timestamp
 
 import pandas as pd
 import numpy as np
@@ -125,8 +125,7 @@ class AzureKinect(object):
         """
         raw_data = normalize_signal(self.get_synchronization_signal())
         acc_data = normalize_signal(np.gradient(np.gradient(raw_data)))  # Calculate 2nd derivative
-        peaks = find_peaks(-acc_data, height=self.height, prominence=self.prominence, distance=self.distance)
-        return self.timestamps, raw_data, acc_data, peaks
+        return self.timestamps, raw_data, acc_data
 
     def cut_data_based_on_time(self, start_time, end_time):
         """

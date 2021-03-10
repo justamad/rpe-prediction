@@ -1,4 +1,4 @@
-from src.processing import apply_butterworth_filter, normalize_signal, find_peaks, sample_data_uniformly, find_closest_timestamp
+from src.processing import apply_butterworth_filter, normalize_signal, sample_data_uniformly, find_closest_timestamp
 from pyedflib import highlevel
 from biosppy.signals import ecg
 from os.path import join
@@ -31,8 +31,8 @@ class Faros(object):
         # Set and calculate heart rate properties
         self._sampling_frequency_ecg = self.read_ecg_freq_from_file(signal_headers)
         ecg_factor = self._sampling_frequency_ecg // self._sampling_frequency_imu
-        self.ecg_data = self.read_ecg_signal(signals, signal_headers)[start*ecg_factor:end*ecg_factor]
-        self.timestamps_hr, self.hr_data = self.calculate_heart_rate_signal(sampling_frequency=100)
+        ecg_data = self.read_ecg_signal(signals, signal_headers)[start*ecg_factor:end*ecg_factor]
+        self.timestamps_hr, self.hr_data = self.calculate_heart_rate_signal(ecg_data, self._sampling_frequency_ecg, 100)
 
         # Check if necessary
         self.height = 1.2
@@ -40,12 +40,6 @@ class Faros(object):
 
     def get_acceleration_data(self):
         return self.acc_data.to_numpy()
-
-    def calculate_heart_rate_signal(self, sampling_frequency):
-        heart_rate = ecg.ecg(self.ecg_data, sampling_rate=self._sampling_frequency_ecg, show=False)
-        hr_x, hr = heart_rate['heart_rate_ts'], pd.DataFrame({'hr': heart_rate['heart_rate']}),
-        data, timestamps = sample_data_uniformly(hr, hr_x, sampling_rate=sampling_frequency, mode="linear")
-        return timestamps, data
 
     def cut_data_based_on_time(self, start_time, end_time):
         start_idx = find_closest_timestamp(self.timestamps_hr, start_time)
@@ -68,8 +62,7 @@ class Faros(object):
         raw_signal = apply_butterworth_filter(self.get_synchronization_signal())
         raw_signal = normalize_signal(raw_signal)
         processed_signal = -raw_signal  # Inversion of coordinate system
-        peaks = find_peaks(-processed_signal, height=self.height, prominence=self.prominence)
-        return self._timestamps_imu, raw_signal, processed_signal, peaks
+        return self._timestamps_imu, raw_signal, processed_signal
 
     @property
     def sampling_frequency(self):
@@ -81,6 +74,13 @@ class Faros(object):
         @return: string with sensor name
         """
         return "Faros"
+
+    @staticmethod
+    def calculate_heart_rate_signal(ecg_data, sampling_frequency_ecg, sampling_frequency_hr):
+        heart_rate = ecg.ecg(ecg_data, sampling_rate=sampling_frequency_ecg, show=False)
+        hr_x, hr = heart_rate['heart_rate_ts'], pd.DataFrame({'hr': heart_rate['heart_rate']}),
+        data, timestamps = sample_data_uniformly(hr, hr_x, sampling_rate=sampling_frequency_hr, mode="quadratic")
+        return timestamps, data
 
     @staticmethod
     def read_ecg_freq_from_file(signal_headers):

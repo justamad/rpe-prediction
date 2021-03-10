@@ -7,37 +7,21 @@ import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 
-"""
-SYNCHRONIZATION STRATEGY:
-
-Minimum in acceleration signal corresponds to maximum peak in positional data.
-Therefore, we first calculate the 2nd derivative from the Azure Kinect position data to get acceleration
-Then we find and synchronize all minima from the IMU acceleration to the Azure Kinect acceleration 
-"""
-
 
 def synchronize_signals(kinect_camera, imu_sensor, show=True, path=None):
+    """
+    Minimum in acceleration signal corresponds to maximum peak in positional data.
+    Therefore, we first calculate the 2nd derivative from the Azure Kinect position data to get acceleration
+    Then we find and synchronize all minima from the IMU acceleration to the Azure Kinect acceleration
+    @param kinect_camera:
+    @param imu_sensor:
+    @param show:
+    @param path:
+    @return:
+    """
     # Find peaks in IMU and Kinect acceleration data
-    kinect_clock, kinect_raw, kinect_processed, kinect_peaks = kinect_camera.get_synchronization_data()
-    imu_clock, imu_raw, imu_processed, imu_peaks = imu_sensor.get_synchronization_data()
-
-    if show:
-        plt.scatter(kinect_clock[kinect_peaks], kinect_processed[kinect_peaks])
-        plt.plot(kinect_clock, kinect_processed, label=f"{kinect_camera}")
-        plt.plot(imu_clock, imu_processed, label=f"{imu_sensor}")
-        plt.scatter(imu_clock[imu_peaks], imu_processed[imu_peaks])
-        plt.title(f"Acceleration Peak Finding: Kinect: {len(kinect_peaks)}, {imu_sensor}: {len(imu_peaks)}")
-        plt.xlabel('Time (s)')
-        plt.ylabel('Acceleration (normalized)')
-        plt.legend()
-        plt.tight_layout()
-        if path is not None:
-            plt.savefig(join(path, f"{str(imu_sensor)}.png"))
-            plt.close()
-            plt.cla()
-            plt.clf()
-        else:
-            plt.show()
+    kinect_clock, kinect_raw, kinect_processed = kinect_camera.get_synchronization_data()
+    imu_clock, imu_raw, imu_processed = imu_sensor.get_synchronization_data()
 
     # Synchronize data by shifting the IMU clock towards Azure Kinect clock
     kinect_signal_upsampled = upsample_data(kinect_processed,
@@ -55,22 +39,15 @@ def synchronize_signals(kinect_camera, imu_sensor, show=True, path=None):
         # Plot the Kinect data and its gradients
         ax1.plot(kinect_clock, kinect_raw, label="Positions")
         ax1.plot(kinect_clock, normalize_signal(np.gradient(kinect_raw)), label="Velocity")
-        second_derivative = normalize_signal(np.gradient(np.gradient(kinect_raw)))
-        acceleration_color = ax1.plot(kinect_clock, second_derivative, label="Acceleration")[0]._color
-        ax1.scatter(kinect_clock[kinect_peaks], second_derivative[kinect_peaks], label="Minimum Acceleration", color=acceleration_color)
-        ax1.scatter(kinect_clock[kinect_peaks], kinect_raw[kinect_peaks], color=acceleration_color)
-        for acc_minimum_position in kinect_clock[kinect_peaks]:
-            ax1.axvline(x=acc_minimum_position, color=acceleration_color)
-        ax1.set_title('Kinect Data and Gradients')
+        ax1.plot(kinect_clock, normalize_signal(np.gradient(np.gradient(kinect_raw))), label="Acceleration")
+        ax1.set_title('Kinect Position Data and Derivatives')
         ax1.set_xlabel("Time (s)")
         ax1.set_ylabel("Vertical Axis (normalized)")
         ax1.legend()
 
         # Plot IMU acceleration with Kinect acceleration
         ax2.plot(kinect_clock, kinect_processed, label=f"{kinect_camera}")
-        ax2.scatter(kinect_clock[kinect_peaks], kinect_processed[kinect_peaks])
         ax2.plot(imu_clock, imu_processed, label=f"{imu_sensor}")
-        ax2.scatter(imu_clock[imu_peaks], imu_processed[imu_peaks])
         ax2.set_title(f"Filtered {imu_sensor} Acceleration vs Kinect Acceleration")
         ax2.set_xlabel("Time (s)")
         ax2.set_ylabel("Acceleration (normalized)")
@@ -78,15 +55,12 @@ def synchronize_signals(kinect_camera, imu_sensor, show=True, path=None):
 
         # Plot Faros Acceleration and Kinect positions
         ax3.plot(kinect_clock, kinect_raw, label=f"{kinect_camera}")
-        ax3.scatter(kinect_clock[kinect_peaks], kinect_raw[kinect_peaks])
         ax3.plot(imu_clock, imu_raw, label=f"{imu_sensor}")
-        ax3.scatter(imu_clock[imu_peaks], imu_raw[imu_peaks])
         ax3.set_title(f"Raw {imu_sensor} Acceleration vs. Kinect Positions")
         ax3.set_xlabel("Time (s)")
         ax3.set_ylabel("Vertical Axis (normalized)")
         ax3.legend()
         plt.tight_layout()
-
         if path is not None:
             plt.savefig(join(path, f"{str(imu_sensor)}.png"))
             plt.close()
@@ -101,10 +75,10 @@ def synchronize_signals(kinect_camera, imu_sensor, show=True, path=None):
 def align_signals_based_on_peaks(reference_peaks, target_peaks, resolution=10):
     """
     Synchronization method based on peak detection algorithm
-    :param reference_peaks: peaks found in the reference signal
-    :param target_peaks: peaks found in the target signal
-    :param resolution: the resolution with which the target signal is moved over the reference signal
-    :return: shift in seconds
+    @param reference_peaks: peaks found in the reference signal
+    @param target_peaks: peaks found in the target signal
+    @param resolution: the resolution with which the target signal is moved over the reference signal
+    @return shift in seconds
     """
     assert len(target_peaks) == len(reference_peaks), \
         f"Found a different number of peaks in signals: {len(target_peaks)}, {len(reference_peaks)}."
@@ -128,10 +102,10 @@ def calculate_correlation(ref_signal, target_signal, sampling_frequency):
     """
     Calculates cross correlation and returns shift for target signal in seconds based on given sampling frequency
     Method assumes equal sampling frequency of both signals
-    :param ref_signal: the reference signal
-    :param target_signal: the target signal that will be registered to the reference signal
-    :param sampling_frequency: the used sampling frequency to determine shift in seconds
-    :return: shift in seconds for target signal
+    @param ref_signal: the reference signal
+    @param target_signal: the target signal that will be registered to the reference signal
+    @param sampling_frequency: the used sampling frequency to determine shift in seconds
+    @return shift in seconds for target signal
     """
     corr = signal.correlate(ref_signal, target_signal)
     shift_in_samples = np.argmax(corr) - len(target_signal) - 1

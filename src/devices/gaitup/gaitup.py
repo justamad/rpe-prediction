@@ -1,5 +1,4 @@
-from typing import Tuple, Any
-from src.processing import normalize_signal, find_peaks, apply_butterworth_filter, find_closest_timestamp
+from src.processing import normalize_signal, apply_butterworth_filter, find_closest_timestamp
 from os.path import join
 
 import pandas as pd
@@ -46,12 +45,11 @@ class GaitUp(object):
     def get_synchronization_signal(self):
         return self.data['ST327_Accel Y'].to_numpy()
 
-    def get_synchronization_data(self) -> Tuple[np.ndarray, Any, Any, np.ndarray]:
+    def get_synchronization_data(self):
         raw_signal = apply_butterworth_filter(self.get_synchronization_signal())
         raw_signal = normalize_signal(raw_signal)
         processed_signal = -raw_signal
-        peaks = find_peaks(-processed_signal, height=self.height, prominence=self.prominence, distance=self.distance)
-        return self._timestamps, raw_signal, processed_signal, peaks
+        return self._timestamps, raw_signal, processed_signal
 
     def shift_clock(self, delta):
         """
