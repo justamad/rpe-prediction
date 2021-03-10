@@ -27,6 +27,11 @@ def normalize_signal(data):
     return (data - data.mean()) / data.std()
 
 
+def find_closest_timestamp(timestamps, point):
+    differences = np.abs(timestamps - point)
+    return np.argmin(differences)
+
+
 def apply_butterworth_filter_dataframe(data_frame, sampling_frequency):
     """
     Applies a butterworth filter to given data array

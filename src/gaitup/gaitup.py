@@ -1,5 +1,5 @@
 from typing import Tuple, Any
-from src.processing import normalize_signal, find_peaks, sample_data_uniformly, apply_butterworth_filter
+from src.processing import normalize_signal, find_peaks, apply_butterworth_filter, find_closest_timestamp
 from os.path import join
 
 import pandas as pd
@@ -24,34 +24,45 @@ class GaitUp(object):
                 data_frames.append(df)
 
             self.data = pd.concat(data_frames, join='outer', axis=1)
-            # data, _ = sample_data_uniformly(data, timestamps=np.arange(len(data)) / 128, sampling_rate=sampling_frequency)
-            # self.data = apply_butterworth_filter_dataframe(data, sampling_frequency=sampling_frequency)
 
         else:
             raise Exception(f"Unknown argument to create Gaitup object: {data}")
 
         self._sampling_frequency = sampling_frequency
+        self._timestamps = np.arange(len(self.data)) / self.sampling_frequency
         self.height = 0.5
         self.prominence = 2
         self.distance = 140
 
-    def cut_data(self, start_idx, end_idx):
+    def cut_data_based_on_time(self, start_time, end_time):
+        start_idx = find_closest_timestamp(self._timestamps, start_time)
+        end_idx = find_closest_timestamp(self._timestamps, end_time)
+        return self.cut_data_based_on_index(start_idx, end_idx)
+
+    def cut_data_based_on_index(self, start_idx, end_idx):
         data = self.data.iloc[start_idx:end_idx]
         return GaitUp(data, self.sampling_frequency)
 
     def get_synchronization_signal(self):
         return self.data['ST327_Accel Y'].to_numpy()
 
-    def get_timestamps(self) -> np.ndarray:
-        return np.arange(len(self.data)) / self.sampling_frequency
-
     def get_synchronization_data(self) -> Tuple[np.ndarray, Any, Any, np.ndarray]:
-        clock = self.get_timestamps()
         raw_signal = apply_butterworth_filter(self.get_synchronization_signal())
         raw_signal = normalize_signal(raw_signal)
         processed_signal = -raw_signal
         peaks = find_peaks(-processed_signal, height=self.height, prominence=self.prominence, distance=self.distance)
-        return clock, raw_signal, processed_signal, peaks
+        return self._timestamps, raw_signal, processed_signal, peaks
+
+    def shift_clock(self, delta):
+        """
+        Shift the clock based on a given delta
+        @param delta:
+        """
+        self._timestamps += delta
+
+    @property
+    def timestamps(self):
+        return self._timestamps
 
     @property
     def sampling_frequency(self):

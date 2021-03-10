@@ -4,7 +4,6 @@ from os.path import join
 
 import numpy as np
 import matplotlib
-
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 
@@ -96,7 +95,7 @@ def synchronize_signals(kinect_camera, imu_sensor, show=True, path=None):
         else:
             plt.show()
 
-    return imu_clock
+    return imu_clock, clock_diff + shift
 
 
 def align_signals_based_on_peaks(reference_peaks, target_peaks, resolution=10):

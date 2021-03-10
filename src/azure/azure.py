@@ -1,4 +1,4 @@
-from src.processing import normalize_signal, find_peaks
+from src.processing import normalize_signal, find_peaks, find_closest_timestamp
 
 import pandas as pd
 import numpy as np
@@ -32,9 +32,8 @@ class AzureKinect(object):
     def multiply_matrix(self, matrix, translation=np.array([0, 0, 0])):
         """
         Multiply all data points with a matrix and add a translation vector
-        :param matrix: rotation or coordinate system transformation matrix
-        :param translation: translation vector
-        :return: None
+        @param matrix:
+        @param translation:
         """
         data = self.get_data(with_timestamps=False)
         samples, features = data.shape
@@ -114,10 +113,6 @@ class AzureKinect(object):
 
         return [(joints.index(j1.lower()), joints.index(j2.lower())) for j1, j2 in connections]
 
-    def cut_data(self, start_idx, end_idx):
-        data = self.data.iloc[start_idx:end_idx]
-        return AzureKinect(data, self.sampling_frequency)
-
     def get_synchronization_signal(self) -> np.ndarray:
         spine_navel = self['spine_navel'].to_numpy()
         return spine_navel[:, 1]  # Only return y-axis
@@ -132,9 +127,24 @@ class AzureKinect(object):
         peaks = find_peaks(-acc_data, height=self.height, prominence=self.prominence, distance=self.distance)
         return clock, raw_data, acc_data, peaks
 
+    def cut_data_based_on_time(self, start_time, end_time):
+        """
+        Cut the data based on given start and end time
+        @param start_time: start time in seconds
+        @param end_time: end time in seconds
+        """
+        time_stamps = self.get_timestamps()
+        start_idx = find_closest_timestamp(time_stamps, start_time)
+        end_idx = find_closest_timestamp(time_stamps, end_time)
+        self.data = self.data.iloc[start_idx:end_idx]
+
     @property
     def sampling_frequency(self):
         return self._sampling_frequency
 
     def __repr__(self):
-        return "azure"
+        """
+        String representation of Azure Kinect camera class
+        @return: camera name
+        """
+        return "Azure Kinect"
