@@ -1,13 +1,16 @@
 from src.faros import Faros
 from src.azure import AzureKinect
 from src.gaitup import GaitUp
-from src.processing import synchronize_signals
+from src.processing import synchronize_signals, normalize_signal
 from src.config import ConfigReader
 from os.path import join
 
 import shutil
 import os
 import argparse
+import matplotlib
+matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
 
 # Define Parameters
 parser = argparse.ArgumentParser()
@@ -39,10 +42,10 @@ for counter, sensor_trial in enumerate(config.iterate_over_trials()):
     gaitup_clock, gaitup_shift = synchronize_signals(azure, gaitup_set, show=True, path=report_path)
     faros_clock, faros_shift = synchronize_signals(azure, faros, show=True, path=report_path)
 
-    global_start = max(azure.get_timestamps()[0], gaitup_clock[0], faros_clock[0])
-    global_end = min(azure.get_timestamps()[-1], gaitup_clock[-1], faros_clock[-1])
+    global_start = max(azure.timestamps[0], gaitup_clock[0], faros_clock[0])
+    global_end = min(azure.timestamps[-1], gaitup_clock[-1], faros_clock[-1])
 
-    print(azure.get_timestamps())
+    print(azure.timestamps)
     print(gaitup_clock)
     print(faros_clock)
 
@@ -52,3 +55,8 @@ for counter, sensor_trial in enumerate(config.iterate_over_trials()):
     gaitup_set.cut_data_based_on_time(global_start, global_end)
     faros.cut_data_based_on_time(global_start, global_end)
     print(f"Global start: {global_start}, global end: {global_end}")
+
+    plt.plot(azure.timestamps, normalize_signal(azure["pelvis"].to_numpy()[:, 1]))
+    plt.plot(faros.timestamps_hr, normalize_signal(faros.hr_data))
+    plt.plot(gaitup_set.timestamps, normalize_signal(gaitup_set.get_synchronization_signal()))
+    plt.show()

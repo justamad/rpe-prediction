@@ -32,7 +32,7 @@ class Faros(object):
         self._sampling_frequency_ecg = self.read_ecg_freq_from_file(signal_headers)
         ecg_factor = self._sampling_frequency_ecg // self._sampling_frequency_imu
         self.ecg_data = self.read_ecg_signal(signals, signal_headers)[start*ecg_factor:end*ecg_factor]
-        self._timestamps_hr, self.hr_data = self.calculate_heart_rate_signal(sampling_frequency=100)
+        self.timestamps_hr, self.hr_data = self.calculate_heart_rate_signal(sampling_frequency=100)
 
         # Check if necessary
         self.height = 1.2
@@ -48,10 +48,10 @@ class Faros(object):
         return timestamps, data
 
     def cut_data_based_on_time(self, start_time, end_time):
-        start_idx = find_closest_timestamp(self._timestamps_hr, start_time)
-        end_idx = find_closest_timestamp(self._timestamps_hr, end_time)
+        start_idx = find_closest_timestamp(self.timestamps_hr, start_time)
+        end_idx = find_closest_timestamp(self.timestamps_hr, end_time)
         self.hr_data = self.hr_data[start_idx:end_idx]
-        self._timestamps_hr = self._timestamps_hr[start_idx:end_idx]
+        self.timestamps_hr = self.timestamps_hr[start_idx:end_idx]
 
     def add_shift(self, shift):
         """
@@ -59,7 +59,7 @@ class Faros(object):
         @param shift: shift in seconds to add
         """
         self._timestamps_imu += shift
-        self._timestamps_hr += shift
+        self.timestamps_hr += shift
 
     def get_synchronization_signal(self) -> np.ndarray:
         return self.acc_data['Accelerometer_X'].to_numpy()

@@ -17,6 +17,7 @@ class AzureKinect(object):
 
             data = pd.read_csv(data_path, delimiter=';')
             self.data = data[[c for c in data.columns if "(c)" not in c and "body_idx" not in c]].copy()
+            self.timestamps = np.arange(len(self.data)) / sampling_frequency
             # data = fill_missing_data(data)
             # data = data.loc[:, ~data.columns.str.contains('timestamp')]
             # data = apply_butterworth_filter_dataframe(data, sampling_frequency=sampling_frequency)
@@ -117,15 +118,15 @@ class AzureKinect(object):
         spine_navel = self['spine_navel'].to_numpy()
         return spine_navel[:, 1]  # Only return y-axis
 
-    def get_timestamps(self) -> np.ndarray:
-        return np.arange(len(self.data)) / self.sampling_frequency
-
     def get_synchronization_data(self):
-        clock = self.get_timestamps()
+        """
+        Get the synchronization data
+        @return: tuple with (timestamps, raw_data, acc_data, peaks)
+        """
         raw_data = normalize_signal(self.get_synchronization_signal())
         acc_data = normalize_signal(np.gradient(np.gradient(raw_data)))  # Calculate 2nd derivative
         peaks = find_peaks(-acc_data, height=self.height, prominence=self.prominence, distance=self.distance)
-        return clock, raw_data, acc_data, peaks
+        return self.timestamps, raw_data, acc_data, peaks
 
     def cut_data_based_on_time(self, start_time, end_time):
         """
@@ -133,10 +134,10 @@ class AzureKinect(object):
         @param start_time: start time in seconds
         @param end_time: end time in seconds
         """
-        time_stamps = self.get_timestamps()
-        start_idx = find_closest_timestamp(time_stamps, start_time)
-        end_idx = find_closest_timestamp(time_stamps, end_time)
+        start_idx = find_closest_timestamp(self.timestamps, start_time)
+        end_idx = find_closest_timestamp(self.timestamps, end_time)
         self.data = self.data.iloc[start_idx:end_idx]
+        self.timestamps = self.timestamps[start_idx:end_idx]
 
     @property
     def sampling_frequency(self):
