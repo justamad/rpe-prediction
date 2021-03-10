@@ -1,4 +1,4 @@
-from src.processing import normalize_signal, find_closest_timestamp
+from src.processing import normalize_signal, find_closest_timestamp, fill_missing_data, apply_butterworth_filter_dataframe
 
 import pandas as pd
 import numpy as np
@@ -17,24 +17,23 @@ class AzureKinect(object):
 
             data = pd.read_csv(data_path, delimiter=';')
             self.data = data[[c for c in data.columns if "(c)" not in c and "body_idx" not in c]].copy()
-            self.timestamps = np.arange(len(self.data)) / sampling_frequency
-            # data = fill_missing_data(data)
-            # data = data.loc[:, ~data.columns.str.contains('timestamp')]
-            # data = apply_butterworth_filter_dataframe(data, sampling_frequency=sampling_frequency)
-            # self.data, _ = sample_data_uniformly(data, np.arange(len(data)) / 30, sampling_frequency)
         else:
             raise Exception(f"Unknown argument {data_path} for Azure Kinect class.")
 
         self._sampling_frequency = sampling_frequency
-        self.height = 0.5
-        self.prominence = 1.5
-        self.distance = 40
+
+    def process_raw_data(self):
+        self.data.loc[:, self.data.columns == 'timestamp'] *= 1e-6
+        self.data = fill_missing_data(self.data, self.sampling_frequency)
+
+    def filter_data(self):
+        self.data = apply_butterworth_filter_dataframe(self.data, sampling_frequency=30)
 
     def multiply_matrix(self, matrix, translation=np.array([0, 0, 0])):
         """
         Multiply all data points with a matrix and add a translation vector
-        @param matrix:
-        @param translation:
+        @param matrix: the rotation matrix
+        @param translation: a translation vector
         """
         data = self.get_data(with_timestamps=False)
         samples, features = data.shape
@@ -92,7 +91,7 @@ class AzureKinect(object):
     def get_joints_as_list(self):
         """
         Return all joints in a list by removing the duplicate (x,y,z) axes
-        :return: list of joint names
+        @return: list of joint names
         """
         columns = list(self.data.columns)
         if 'timestamp' in self.data:
@@ -136,7 +135,11 @@ class AzureKinect(object):
         start_idx = find_closest_timestamp(self.timestamps, start_time)
         end_idx = find_closest_timestamp(self.timestamps, end_time)
         self.data = self.data.iloc[start_idx:end_idx]
-        self.timestamps = self.timestamps[start_idx:end_idx]
+        # self.timestamps = self.timestamps[start_idx:end_idx]
+
+    @property
+    def timestamps(self):
+        return self.data['timestamp'].to_numpy()
 
     @property
     def sampling_frequency(self):

@@ -1,24 +1,6 @@
 import matplotlib.pyplot as plt
 
 
-# def plot_trajectories_for_all_joints(azure_cam):
-#     joints = azure_cam.get_joints_as_list()
-#
-#     rows, cols = len(joints), 3
-#     print(joints)
-#     print(rows, cols)
-#     fig, axs = plt.subplots(rows, cols)
-#
-#     for joint_idx, joint in enumerate(joints):
-#         joint_data = azure_cam[joint].to_numpy()
-#         print(joint_data.shape)
-#         for axis_idx in range(3):
-#             # print(axis)
-#             axs[joint_idx, axis_idx].plot(joint_data[:, axis_idx])
-#
-#     plt.show()
-
-
 def plot_trajectories_for_all_joints(azure_cam, file_name, columns=4):
     joints = azure_cam.get_joints_as_list()
 

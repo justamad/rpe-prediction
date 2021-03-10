@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser()
 parser.add_argument('--src_path', type=str, dest='src_path', default="data/bjarne_trial")
 parser.add_argument('--report_path', type=str, dest='report_path', default="reports")
+parser.add_argument('--dst_path', type=str, dest='dst_path', default="data/intermediate")
 args = parser.parse_args()
 
 
@@ -30,12 +31,14 @@ gaitup = GaitUp(join(args.src_path, "gaitup"))
 # Process individual sets
 for counter, sensor_trial in enumerate(config.iterate_over_trials()):
     print(f"Convert set nr: {counter}...")
+    set_counter = f"{counter}_azure"
     azure = AzureKinect(join(args.src_path, "azure", f"{counter + 1:02}_sub", "positions_3d.csv"))
+    azure.process_raw_data()
     faros = Faros(join(args.src_path, "faros"), *sensor_trial['faros'])
     gaitup_set = gaitup.cut_data_based_on_index(*sensor_trial['gaitup'])
 
     # Synchronize signals with respect to Azure Kinect camera
-    report_path = join(args.report_path, f"{counter}_azure")
+    report_path = join(args.report_path, set_counter)
     delete_and_create_directory(report_path)
     gaitup_clock, gaitup_shift = synchronize_signals(azure, gaitup_set, show=True, path=report_path)
     faros_clock, faros_shift = synchronize_signals(azure, faros, show=True, path=report_path)
@@ -58,3 +61,6 @@ for counter, sensor_trial in enumerate(config.iterate_over_trials()):
     plt.plot(faros.timestamps_hr, normalize_signal(faros.hr_data))
     plt.plot(gaitup_set.timestamps, normalize_signal(gaitup_set.get_synchronization_signal()))
     plt.show()
+
+    # Save the converted data
+    dst_path = join(args.dst_path, set_counter)
