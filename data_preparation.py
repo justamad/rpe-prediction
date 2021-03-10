@@ -34,13 +34,13 @@ for counter, sensor_trial in enumerate(config.iterate_over_trials()):
 
     # Map indices to according sampling frequency
     start_idx, end_idx = sensor_trial['gaitup']
-    start_idx = int(start_idx * (100 / 128))
-    end_idx = int(end_idx * (100 / 128))
+    # start_idx = int(start_idx * (100 / 128))
+    # end_idx = int(end_idx * (100 / 128))
     gaitup_trial = gaitup.cut_data(start_idx, end_idx)
     azure = AzureKinect(join(args.src_path, "azure",  f"0{counter + 1}_sub", "positions_3d.csv"))
 
     # Synchronize signals
     report_path = join(args.report_path, f"{counter}_azure")
     clean_up_dirs(report_path)
-    azure, gaitup_trial = synchronize_signals(azure, gaitup_trial, method="correlation", show=True, path=report_path)
+    azure, gaitup_trial = synchronize_signals(azure, gaitup_trial, method="correlation")  # , show=True, path=report_path)
     print(len(azure.data), len(gaitup_trial.data))

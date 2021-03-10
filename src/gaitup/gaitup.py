@@ -1,5 +1,5 @@
 from typing import Tuple, Any
-from src.processing import normalize_signal, find_peaks, sample_data_uniformly, apply_butterworth_filter_dataframe
+from src.processing import normalize_signal, find_peaks, sample_data_uniformly, apply_butterworth_filter
 from os.path import join
 
 import pandas as pd
@@ -9,7 +9,7 @@ import os
 
 class GaitUp(object):
 
-    def __init__(self, data, sampling_frequency=100):
+    def __init__(self, data, sampling_frequency=128):
         if isinstance(data, pd.DataFrame):
             self.data = data
         elif isinstance(data, str):
@@ -23,9 +23,9 @@ class GaitUp(object):
                 df = df.add_prefix(file_name.replace('.csv', '') + "_")
                 data_frames.append(df)
 
-            data = pd.concat(data_frames, join='outer', axis=1)
-            data, _ = sample_data_uniformly(data, timestamps=np.arange(len(data)) / 128, sampling_rate=sampling_frequency)
-            self.data = apply_butterworth_filter_dataframe(data, sampling_frequency=sampling_frequency)
+            self.data = pd.concat(data_frames, join='outer', axis=1)
+            # data, _ = sample_data_uniformly(data, timestamps=np.arange(len(data)) / 128, sampling_rate=sampling_frequency)
+            # self.data = apply_butterworth_filter_dataframe(data, sampling_frequency=sampling_frequency)
 
         else:
             raise Exception(f"Unknown argument to create Gaitup object: {data}")
@@ -47,7 +47,7 @@ class GaitUp(object):
 
     def get_synchronization_data(self) -> Tuple[np.ndarray, Any, Any, np.ndarray]:
         clock = self.get_timestamps()
-        raw_signal = self.get_synchronization_signal()
+        raw_signal = apply_butterworth_filter(self.get_synchronization_signal())
         raw_signal = normalize_signal(raw_signal)
         processed_signal = -raw_signal
         peaks = find_peaks(-processed_signal, height=self.height, prominence=self.prominence, distance=self.distance)

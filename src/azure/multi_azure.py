@@ -2,27 +2,29 @@ from .azure import AzureKinect
 from src.azure.calibration import read_calibration_folder, find_rigid_transformation_svd
 
 import numpy as np
+import matplotlib
+matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
 
 
 class MultiAzure(AzureKinect):
 
     def __init__(self, master_path, sub_path, calibration_path, delay=1000):
-        self.delay = delay
         master = AzureKinect(master_path)
         sub = AzureKinect(sub_path)
+        self.delay = delay
 
         # Temporal alignment
-        master, sub = self.synchronize_azures(master, sub)
+        master, sub = self.synchronize_cameras(master, sub)
 
         # Spatial alignment
         points_a, points_b = read_calibration_folder(calibration_path)
         rotation, translation = find_rigid_transformation_svd(points_a, points_b)
-
         master.multiply_matrix(rotation, translation)
 
-        super().__init__(master.config_file)
+        super().__init__(master)
 
-    def synchronize_azures(self, master, sub):
+    def synchronize_cameras(self, master, sub):
         master_data = master.get_data(with_timestamps=True)
         subord_data = sub.get_data(with_timestamps=True)
 

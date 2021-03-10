@@ -1,4 +1,4 @@
-from src.processing import normalize_signal, find_peaks, fill_missing_data, sample_data_uniformly, apply_butterworth_filter_dataframe
+from src.processing import normalize_signal, find_peaks
 
 import pandas as pd
 import numpy as np
@@ -8,7 +8,7 @@ import json
 
 class AzureKinect(object):
 
-    def __init__(self, data_path, sampling_frequency=100):
+    def __init__(self, data_path, sampling_frequency=30):
         if isinstance(data_path, pd.DataFrame):
             self.data = data_path
         elif isinstance(data_path, str):
@@ -16,11 +16,11 @@ class AzureKinect(object):
                 raise Exception(f"Given file {data_path} does not exist.")
 
             data = pd.read_csv(data_path, delimiter=';')
-            data = data[[c for c in data.columns if "(c)" not in c and "body_idx" not in c]].copy()
-            data = fill_missing_data(data)
-            data = data.loc[:, ~data.columns.str.contains('timestamp')]
-            data = apply_butterworth_filter_dataframe(data, sampling_frequency=sampling_frequency)
-            self.data, _ = sample_data_uniformly(data, np.arange(len(data)) / 30, sampling_frequency)
+            self.data = data[[c for c in data.columns if "(c)" not in c and "body_idx" not in c]].copy()
+            # data = fill_missing_data(data)
+            # data = data.loc[:, ~data.columns.str.contains('timestamp')]
+            # data = apply_butterworth_filter_dataframe(data, sampling_frequency=sampling_frequency)
+            # self.data, _ = sample_data_uniformly(data, np.arange(len(data)) / 30, sampling_frequency)
         else:
             raise Exception(f"Unknown argument {data_path} for Azure Kinect class.")
 

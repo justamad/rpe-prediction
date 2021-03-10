@@ -5,6 +5,14 @@ import numpy as np
 import pandas as pd
 
 
+def upsample_data(data, old_sampling_rate, new_sampling_rate, mode="cubic"):
+    x = np.arange(len(data)) / old_sampling_rate
+    num = int(x[-1] * new_sampling_rate)  # Define new constant sampling points
+    xx = np.linspace(x[0], x[-1], num)
+    f = interpolate.interp1d(x, data, kind=mode)
+    return f(xx)
+
+
 def find_peaks(data, height, prominence, distance=None):
     peaks, _ = signal.find_peaks(data, height=height, prominence=prominence, distance=distance)
     return peaks
