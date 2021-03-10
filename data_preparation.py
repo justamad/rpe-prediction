@@ -29,13 +29,13 @@ gaitup = GaitUp(join(args.src_path, "gaitup"))
 # Process individual sets
 for counter, sensor_trial in enumerate(config.iterate_over_trials()):
     print(f"Convert trial {counter}...")
-    azure = AzureKinect(join(args.src_path, "azure", f"0{counter + 1}_sub", "positions_3d.csv"))
+    azure = AzureKinect(join(args.src_path, "azure", f"{counter + 1:02}_sub", "positions_3d.csv"))
     faros = Faros(join(args.src_path, "faros"), *sensor_trial['faros'])
     gaitup_trial = gaitup.cut_data(*sensor_trial['gaitup'])  # Map indices to according sampling frequency
 
     # Synchronize signals
     report_path = join(args.report_path, f"{counter}_azure")
     clean_up_dirs(report_path)
-    gaitup_clock = synchronize_signals(azure, gaitup_trial, method="correlation")  # , show=True, path=report_path)
-    faros_clock = synchronize_signals(azure, faros, method="correlation")  # , show=True, path=report_path)
+    gaitup_clock = synchronize_signals(azure, gaitup_trial, show=True, path=report_path)
+    faros_clock = synchronize_signals(azure, faros, show=True, path=report_path)
     print(len(azure.data), len(gaitup_trial.data))
