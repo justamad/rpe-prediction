@@ -1,4 +1,4 @@
-from src.processing import normalize_signal, find_closest_timestamp, fill_missing_data
+from src.devices.processing import normalize_signal, find_closest_timestamp, fill_missing_data
 from ..sensor_base import SensorBase
 import pandas as pd
 import numpy as np

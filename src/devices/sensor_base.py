@@ -1,4 +1,4 @@
-from src.processing import apply_butterworth_filter_dataframe
+from src.devices.processing import apply_butterworth_filter_dataframe
 
 import pandas as pd
 

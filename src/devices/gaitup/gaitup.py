@@ -1,4 +1,4 @@
-from src.processing import normalize_signal, apply_butterworth_filter, find_closest_timestamp
+from src.devices.processing import normalize_signal, apply_butterworth_filter, find_closest_timestamp
 from ..sensor_base import SensorBase
 from os.path import join
 
