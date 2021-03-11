@@ -23,18 +23,24 @@ class Faros(SensorBase):
             raise Exception(f"Faros file {file_name} does not exist.")
 
         signals, signal_headers, header = highlevel.read_edf(file_name)
+        print(signal_headers, header)
 
         # Set acceleration properties
-        self._sampling_frequency_imu = self._read_acceleration_freq_from_file(signal_headers)
+        sampling_frequency_imu = self._read_sampling_rate_for_label(signal_headers, "Acc")
         self.acc_data = self._read_acceleration_data_from_file(signals, signal_headers).iloc[start:end]
-        self._timestamps_imu = np.arange(len(self.acc_data)) / self._sampling_frequency_imu
+        self._timestamps_imu = np.arange(len(self.acc_data)) / sampling_frequency_imu
+        super().__init__(self.acc_data, sampling_frequency_imu)
 
         # Set and calculate heart rate properties
-        self._sampling_frequency_ecg = self._read_ecg_freq_from_file(signal_headers)
-        ecg_factor = self._sampling_frequency_ecg // self._sampling_frequency_imu
-        ecg_data = self._read_ecg_signal(signals, signal_headers)[start * ecg_factor:end * ecg_factor]
+        self._sampling_frequency_ecg = self._read_sampling_rate_for_label(signal_headers, "ECG")
+        ecg_factor = self._sampling_frequency_ecg // sampling_frequency_imu
+        ecg_data = self._read_signal_for_label(signals, signal_headers, "ECG")[start * ecg_factor:end * ecg_factor]
         self.timestamps_hr, self.hr_data = self._calculate_heart_rate_signal(ecg_data, self._sampling_frequency_ecg, 100)
-        super().__init__(self.acc_data, self._sampling_frequency_imu)
+
+        # Read HRV Properties
+        self._sampling_frequency_hrv = self._read_sampling_rate_for_label(signal_headers, "HRV")
+        self.hrv_data = self._read_signal_for_label(signals, signal_headers, "HRV")
+        self.timestamps_hrv = np.arange(len(self.hrv_data)) / self._sampling_frequency_hrv
 
     def get_acceleration_data(self):
         return self.acc_data.to_numpy()
@@ -54,6 +60,10 @@ class Faros(SensorBase):
         self.timestamps_hr += shift
 
     def get_synchronization_signal(self) -> np.ndarray:
+        """
+        Return a 1-D signal for synchronization using the most representative axis
+        @return: 1d numpy array with sensor data
+        """
         return self.acc_data['Accelerometer_X'].to_numpy()
 
     def get_synchronization_data(self):
@@ -61,6 +71,10 @@ class Faros(SensorBase):
         raw_signal = normalize_signal(raw_signal)
         processed_signal = -raw_signal  # Inversion of coordinate system
         return self._timestamps_imu, raw_signal, processed_signal
+
+    @property
+    def timestamps(self):
+        return self._timestamps_imu
 
     def __repr__(self):
         """
@@ -77,14 +91,8 @@ class Faros(SensorBase):
         return timestamps, data
 
     @staticmethod
-    def _read_ecg_freq_from_file(signal_headers):
-        sampling_freq = [signal['sample_rate'] for signal in signal_headers if signal['label'] == 'ECG']
-        assert len(sampling_freq) == 1, f"No or too many ECG signals: {sampling_freq}"
-        return sampling_freq[0]
-
-    @staticmethod
-    def _read_acceleration_freq_from_file(signal_headers):
-        sample_rates = list(map(lambda h: h["sample_rate"], filter(lambda h: "Acc" in h["label"], signal_headers)))
+    def _read_sampling_rate_for_label(signal_headers, label="Acc"):
+        sample_rates = list(map(lambda h: h["sample_rate"], filter(lambda h: label in h["label"], signal_headers)))
         if any([sr != sample_rates[0] for sr in sample_rates]):
             raise UserWarning(f"Not all Faros accelerometer sampling rates are the same: {sample_rates}")
         return sample_rates[0]
@@ -101,10 +109,6 @@ class Faros(SensorBase):
         return pd.DataFrame(data_body, columns=headers)
 
     @staticmethod
-    def _read_ecg_signal(signals, signal_headers):
-        ecg_signal = [signal['label'] for signal in signal_headers].index("ECG")
+    def _read_signal_for_label(signals, signal_headers, label):
+        ecg_signal = [signal['label'] for signal in signal_headers].index(label)
         return signals[ecg_signal]
-
-    @property
-    def timestamps(self):
-        return self._timestamps_imu
