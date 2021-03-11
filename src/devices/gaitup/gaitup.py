@@ -20,7 +20,7 @@ def read_directory_with_csv_file(folder_name):
         data_frames.append(df)
 
     data = pd.concat(data_frames, join='outer', axis=1)
-    data.rename(columns={"Time": "timestamp"})
+    data = data.rename(columns={"Time": "timestamp"})
     return data
 
 
@@ -62,7 +62,7 @@ class GaitUp(SensorBase):
         Shift the clock based on a given time delta
         @param delta: the time offset given in seconds
         """
-        self.data[['Time']] += delta
+        self.data[['timestamp']] += delta
 
     def __repr__(self):
         """
