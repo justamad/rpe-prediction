@@ -31,7 +31,7 @@ gaitup = GaitUp(join(args.src_path, "gaitup"))
 # Process individual sets
 for counter, sensor_trial in enumerate(config.iterate_over_trials()):
     print(f"Convert set nr: {counter}...")
-    set_counter = f"{counter}_azure"
+    set_counter = f"{counter:02}_set"
     azure = AzureKinect(join(args.src_path, "azure", f"{counter + 1:02}_sub", "positions_3d.csv"))
     azure.process_raw_data()
     faros = Faros(join(args.src_path, "faros"), *sensor_trial['faros'])
@@ -63,9 +63,12 @@ for counter, sensor_trial in enumerate(config.iterate_over_trials()):
     plt.ylabel("Normalized Y-Axes")
     plt.xlabel("Time (s)")
     plt.tight_layout()
-    plt.show()
+    # plt.show()
 
     print(len(azure.timestamps), len(faros.timestamps_hr), len(gaitup_set.timestamps))
 
     # Save the converted data
     dst_path = join(args.dst_path, set_counter)
+    delete_and_create_directory(dst_path)
+    azure.save_data_as_csv(join(dst_path, "azure.csv"))
+    gaitup_set.save_data_as_csv(join(dst_path, "gaitup.csv"))

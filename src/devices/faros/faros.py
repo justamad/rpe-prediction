@@ -23,7 +23,6 @@ class Faros(SensorBase):
             raise Exception(f"Faros file {file_name} does not exist.")
 
         signals, signal_headers, header = highlevel.read_edf(file_name)
-        print(signal_headers, header)
 
         # Set acceleration properties
         sampling_frequency_imu = self._read_sampling_rate_for_label(signal_headers, "Acc")
