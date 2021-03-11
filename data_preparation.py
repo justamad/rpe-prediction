@@ -49,7 +49,7 @@ for counter, sensor_trial in enumerate(config.iterate_over_trials()):
     gaitup_set.shift_clock(gaitup_shift)
     faros.add_shift(faros_shift)
     azure.cut_data_based_on_time(global_start, global_end)
-    gaitup_set.cut_data_based_on_time(global_start, global_end)
+    gaitup_set = gaitup_set.cut_data_based_on_time(global_start, global_end)
     faros.cut_data_based_on_time(global_start, global_end)
     print(f"Global start: {global_start}, global end: {global_end}")
 
