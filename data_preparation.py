@@ -72,3 +72,8 @@ for counter, sensor_trial in enumerate(config.iterate_over_trials()):
     delete_and_create_directory(dst_path)
     azure.save_data_as_csv(join(dst_path, "azure.csv"))
     gaitup_set.save_data_as_csv(join(dst_path, "gaitup.csv"))
+
+    # Save label to folder
+    f = open(join(dst_path, "label.txt"), "w")
+    f.write(str(sensor_trial['rpe']))
+    f.close()

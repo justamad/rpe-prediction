@@ -13,11 +13,16 @@ class ConfigReader:
         with open(trial_configuration_file_name) as f:
             self.trial_config = json.load(f)
 
-    def get_start_indices(self, sensor: str, set_nr: int):
+    def get_start_indices_for_set(self, sensor: str, set_nr: int):
         set_list = self.trial_config["sets"]
         cur_set = set_list[set_nr]
         cur_sensor = cur_set[sensor]
         return cur_sensor["start_idx"], cur_sensor["end_idx"]
+
+    def get_rpe_value_for_set(self, set_nr: int):
+        set_list = self.trial_config["sets"]
+        cur_set = set_list[set_nr]
+        return cur_set['rpe']
 
     def get_synchronization_sensor(self):
         return self.trial_config['sync_sensor']
@@ -32,5 +37,6 @@ class ConfigReader:
 
     def iterate_over_trials(self):
         for i in range(21):
-            yield {'gaitup': self.get_start_indices('gaitup', i),
-                   'faros': self.get_start_indices('faros', i)}
+            yield {'gaitup': self.get_start_indices_for_set('gaitup', i),
+                   'faros': self.get_start_indices_for_set('faros', i),
+                   'rpe': self.get_rpe_value_for_set(i)}
