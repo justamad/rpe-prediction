@@ -1,4 +1,5 @@
 from src.processing import normalize_signal, apply_butterworth_filter, find_closest_timestamp
+from ..sensor_base import SensorBase
 from os.path import join
 
 import pandas as pd
@@ -16,27 +17,27 @@ def read_directory_with_csv_file(folder_name):
 
         prefix = f"{file_name.replace('.csv', '')}_"
         df.columns = ["{}{}".format('' if c == 'Time' else prefix, c) for c in df.columns]
-        # df = df.add_prefix(file_name.replace('.csv', '') + "_")
         data_frames.append(df)
 
     data = pd.concat(data_frames, join='outer', axis=1)
+    data.rename(columns={"Time": "timestamp"})
     return data
 
 
-class GaitUp(object):
+class GaitUp(SensorBase):
 
     def __init__(self, data, sampling_frequency=128):
         if isinstance(data, pd.DataFrame):
-            self.data = data
+            data = data
         elif isinstance(data, str):
             if not os.path.exists(data):
                 raise Exception(f"Folder {data} does not exist.")
 
-            self.data = read_directory_with_csv_file(data)
+            data = read_directory_with_csv_file(data)
         else:
             raise Exception(f"Unknown argument to create Gaitup object: {data}")
 
-        self._sampling_frequency = sampling_frequency
+        super().__init__(data, sampling_frequency)
 
     def cut_data_based_on_time(self, start_time, end_time):
         start_idx = find_closest_timestamp(self.timestamps, start_time)
@@ -61,15 +62,11 @@ class GaitUp(object):
         Shift the clock based on a given time delta
         @param delta: the time offset given in seconds
         """
-        self.data['Time'] += delta
+        self.data[['Time']] += delta
 
     @property
     def timestamps(self):
         return self.data['Time'].to_numpy()
-
-    @property
-    def sampling_frequency(self):
-        return self._sampling_frequency
 
     def __repr__(self):
         """

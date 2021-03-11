@@ -1,33 +1,30 @@
-from src.processing import normalize_signal, find_closest_timestamp, fill_missing_data, apply_butterworth_filter_dataframe
-
+from src.processing import normalize_signal, find_closest_timestamp, fill_missing_data
+from ..sensor_base import SensorBase
 import pandas as pd
 import numpy as np
 import os
 import json
 
 
-class AzureKinect(object):
+class AzureKinect(SensorBase):
 
     def __init__(self, data_path, sampling_frequency=30):
         if isinstance(data_path, pd.DataFrame):
-            self.data = data_path
+            data = data_path
         elif isinstance(data_path, str):
             if not os.path.exists(data_path):
                 raise Exception(f"Given file {data_path} does not exist.")
 
             data = pd.read_csv(data_path, delimiter=';')
-            self.data = data[[c for c in data.columns if "(c)" not in c and "body_idx" not in c]].copy()
+            data = data[[c for c in data.columns if "(c)" not in c and "body_idx" not in c]].copy()
         else:
             raise Exception(f"Unknown argument {data_path} for Azure Kinect class.")
 
-        self._sampling_frequency = sampling_frequency
+        super().__init__(data, sampling_frequency)
 
     def process_raw_data(self):
         self.data.loc[:, self.data.columns == 'timestamp'] *= 1e-6
         self.data = fill_missing_data(self.data, self.sampling_frequency)
-
-    def filter_data(self):
-        self.data = apply_butterworth_filter_dataframe(self.data, sampling_frequency=30)
 
     def multiply_matrix(self, matrix, translation=np.array([0, 0, 0])):
         """
@@ -129,15 +126,10 @@ class AzureKinect(object):
         start_idx = find_closest_timestamp(self.timestamps, start_time)
         end_idx = find_closest_timestamp(self.timestamps, end_time)
         self.data = self.data.iloc[start_idx:end_idx]
-        # self.timestamps = self.timestamps[start_idx:end_idx]
 
     @property
     def timestamps(self):
         return self.data['timestamp'].to_numpy()
-
-    @property
-    def sampling_frequency(self):
-        return self._sampling_frequency
 
     def __repr__(self):
         """

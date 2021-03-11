@@ -1,6 +1,7 @@
 from src.processing import apply_butterworth_filter, normalize_signal, sample_data_uniformly, find_closest_timestamp
 from pyedflib import highlevel
 from biosppy.signals import ecg
+from ..sensor_base import SensorBase
 from os.path import join
 
 import pandas as pd
@@ -8,7 +9,7 @@ import numpy as np
 import os
 
 
-class Faros(object):
+class Faros(SensorBase):
 
     def __init__(self, folder, start=0, end=-1):
         """
@@ -33,10 +34,7 @@ class Faros(object):
         ecg_factor = self._sampling_frequency_ecg // self._sampling_frequency_imu
         ecg_data = self.read_ecg_signal(signals, signal_headers)[start*ecg_factor:end*ecg_factor]
         self.timestamps_hr, self.hr_data = self.calculate_heart_rate_signal(ecg_data, self._sampling_frequency_ecg, 100)
-
-        # Check if necessary
-        self.height = 1.2
-        self.prominence = 1.0
+        super().__init__(ecg_data, self._sampling_frequency_imu)
 
     def get_acceleration_data(self):
         return self.acc_data.to_numpy()
@@ -63,10 +61,6 @@ class Faros(object):
         raw_signal = normalize_signal(raw_signal)
         processed_signal = -raw_signal  # Inversion of coordinate system
         return self._timestamps_imu, raw_signal, processed_signal
-
-    @property
-    def sampling_frequency(self):
-        return self._sampling_frequency_imu
 
     def __repr__(self):
         """
