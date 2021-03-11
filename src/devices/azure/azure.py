@@ -127,10 +127,6 @@ class AzureKinect(SensorBase):
         end_idx = find_closest_timestamp(self.timestamps, end_time)
         self.data = self.data.iloc[start_idx:end_idx]
 
-    @property
-    def timestamps(self):
-        return self.data['timestamp'].to_numpy()
-
     def __repr__(self):
         """
         String representation of Azure Kinect camera class

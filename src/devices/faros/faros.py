@@ -25,16 +25,16 @@ class Faros(SensorBase):
         signals, signal_headers, header = highlevel.read_edf(file_name)
 
         # Set acceleration properties
-        self._sampling_frequency_imu = self.read_acceleration_freq_from_file(signal_headers)
-        self.acc_data = self.read_acceleration_data_from_file(signals, signal_headers).iloc[start:end]
+        self._sampling_frequency_imu = self._read_acceleration_freq_from_file(signal_headers)
+        self.acc_data = self._read_acceleration_data_from_file(signals, signal_headers).iloc[start:end]
         self._timestamps_imu = np.arange(len(self.acc_data)) / self._sampling_frequency_imu
 
         # Set and calculate heart rate properties
-        self._sampling_frequency_ecg = self.read_ecg_freq_from_file(signal_headers)
+        self._sampling_frequency_ecg = self._read_ecg_freq_from_file(signal_headers)
         ecg_factor = self._sampling_frequency_ecg // self._sampling_frequency_imu
-        ecg_data = self.read_ecg_signal(signals, signal_headers)[start*ecg_factor:end*ecg_factor]
-        self.timestamps_hr, self.hr_data = self.calculate_heart_rate_signal(ecg_data, self._sampling_frequency_ecg, 100)
-        super().__init__(ecg_data, self._sampling_frequency_imu)
+        ecg_data = self._read_ecg_signal(signals, signal_headers)[start * ecg_factor:end * ecg_factor]
+        self.timestamps_hr, self.hr_data = self._calculate_heart_rate_signal(ecg_data, self._sampling_frequency_ecg, 100)
+        super().__init__(self.acc_data, self._sampling_frequency_imu)
 
     def get_acceleration_data(self):
         return self.acc_data.to_numpy()
@@ -70,27 +70,27 @@ class Faros(SensorBase):
         return "Faros"
 
     @staticmethod
-    def calculate_heart_rate_signal(ecg_data, sampling_frequency_ecg, sampling_frequency_hr):
-        heart_rate = ecg.ecg(ecg_data, sampling_rate=sampling_frequency_ecg, show=False)
+    def _calculate_heart_rate_signal(ecg_data, sampling_frequency_ecg, sampling_frequency_hr, show=False):
+        heart_rate = ecg.ecg(ecg_data, sampling_rate=sampling_frequency_ecg, show=show)
         hr_x, hr = heart_rate['heart_rate_ts'], pd.DataFrame({'hr': heart_rate['heart_rate']}),
         data, timestamps = sample_data_uniformly(hr, hr_x, sampling_rate=sampling_frequency_hr, mode="quadratic")
         return timestamps, data
 
     @staticmethod
-    def read_ecg_freq_from_file(signal_headers):
+    def _read_ecg_freq_from_file(signal_headers):
         sampling_freq = [signal['sample_rate'] for signal in signal_headers if signal['label'] == 'ECG']
         assert len(sampling_freq) == 1, f"No or too many ECG signals: {sampling_freq}"
         return sampling_freq[0]
 
     @staticmethod
-    def read_acceleration_freq_from_file(signal_headers):
+    def _read_acceleration_freq_from_file(signal_headers):
         sample_rates = list(map(lambda h: h["sample_rate"], filter(lambda h: "Acc" in h["label"], signal_headers)))
         if any([sr != sample_rates[0] for sr in sample_rates]):
             raise UserWarning(f"Not all Faros accelerometer sampling rates are the same: {sample_rates}")
         return sample_rates[0]
 
     @staticmethod
-    def read_acceleration_data_from_file(signals, signal_headers):
+    def _read_acceleration_data_from_file(signals, signal_headers):
         headers = ['Accelerometer_X', 'Accelerometer_Y', 'Accelerometer_Z']
         data = []
         for column in headers:
@@ -101,6 +101,10 @@ class Faros(SensorBase):
         return pd.DataFrame(data_body, columns=headers)
 
     @staticmethod
-    def read_ecg_signal(signals, signal_headers):
+    def _read_ecg_signal(signals, signal_headers):
         ecg_signal = [signal['label'] for signal in signal_headers].index("ECG")
         return signals[ecg_signal]
+
+    @property
+    def timestamps(self):
+        return self._timestamps_imu

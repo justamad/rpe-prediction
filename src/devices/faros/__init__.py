@@ -1,1 +1,1 @@
-from .faros_device import Faros
+from .faros import Faros

@@ -64,10 +64,6 @@ class GaitUp(SensorBase):
         """
         self.data[['Time']] += delta
 
-    @property
-    def timestamps(self):
-        return self.data['Time'].to_numpy()
-
     def __repr__(self):
         """
         Returns a string representation for gait up device
