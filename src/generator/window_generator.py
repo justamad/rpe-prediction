@@ -2,6 +2,8 @@ from os.path import join
 
 import os
 import pandas as pd
+import copy
+import random
 import numpy as np
 
 
@@ -17,25 +19,31 @@ class Generator(object):
             raise FileNotFoundError(f"Given path {base_path} does not exist.")
 
         sets = os.listdir(base_path)
-        self.indices = {}
+        self.indices = []
         self.data = {}
+        self._window_size = 30
+        self._n_steps = n_steps
         for counter, cur_set in enumerate(sets):
-            azure = pd.read_csv(join(base_path, cur_set, "azure.csv"), sep=";")
-            imu = pd.read_csv(join(base_path, cur_set, "gaitup.csv"), sep=";")
-
-            n_samples = int((len(azure) - 30 + n_steps) / n_steps)
-            n_samples_o = int((len(imu) - 128 + 12.8) / 12.8)
-            print(n_samples, n_samples_o)
-            # print(len(azure) / len(imu))
-            # print(len(azure), len(imu))
+            azure = pd.read_csv(join(base_path, cur_set, "azure.csv"), sep=";").to_numpy()
+            imu = pd.read_csv(join(base_path, cur_set, "gaitup.csv"), sep=";").to_numpy()
+            # print(azure.shape)
+            n_samples = min(int((len(azure) - 30 + n_steps) / n_steps), int((len(imu) - 128 + 12.8) / 12.8))
             self.data[counter] = (azure, imu)
-            self.indices[counter] = (np.arange(0, len(azure)), np.arange(len(imu)))
+            self.indices.extend([(counter, i) for i in range(0, n_steps * n_samples, n_steps)])
 
     def generate_sliding_windows(self, n_epochs):
+        indices = copy.deepcopy(self.indices)
         for epoch in range(n_epochs):
             print(f"Epoch nr: {epoch} started.")
-            yield epoch
+            while len(indices) > 0:
+                random_nr = random.randint(0, len(indices) - 1)
+                set_nr, start_idx = indices.pop(random_nr)
+                azure_data, imu_data = self.data[set_nr]
+                batch = azure_data[start_idx:start_idx+self._window_size, :]
+                yield batch
 
 
 if __name__ == '__main__':
     gen = Generator("../../data/intermediate", 3)
+    for w in gen.generate_sliding_windows(1):
+        print(w.shape)
