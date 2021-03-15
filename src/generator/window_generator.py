@@ -9,7 +9,7 @@ import numpy as np
 
 class Generator(object):
 
-    def __init__(self, base_path, n_steps):
+    def __init__(self, base_path, n_steps, window_size, batch_size):
         """
         Generator class for time series data
         @param base_path: path to processed data
@@ -21,29 +21,45 @@ class Generator(object):
         sets = os.listdir(base_path)
         self.indices = []
         self.data = {}
-        self._window_size = 30
+        self._window_size = window_size
         self._n_steps = n_steps
+        self._batch_size = batch_size
         for counter, cur_set in enumerate(sets):
             azure = pd.read_csv(join(base_path, cur_set, "azure.csv"), sep=";").to_numpy()
             imu = pd.read_csv(join(base_path, cur_set, "gaitup.csv"), sep=";").to_numpy()
-            # print(azure.shape)
-            n_samples = min(int((len(azure) - 30 + n_steps) / n_steps), int((len(imu) - 128 + 12.8) / 12.8))
-            self.data[counter] = (azure, imu)
+            n_samples = min(int((len(azure) - window_size + n_steps) / n_steps), int((len(imu) - 128 + 12.8) / 12.8))
+            with open(join(base_path, cur_set, "label.txt")) as file:
+                label = file.readline()
+                label = float(label)
+
+            self.data[counter] = (azure, imu, label)
             self.indices.extend([(counter, i) for i in range(0, n_steps * n_samples, n_steps)])
 
     def generate_sliding_windows(self, n_epochs):
-        indices = copy.deepcopy(self.indices)
+        indices = copy.deepcopy(self.indices)  # Better scramble data here
+        random.shuffle(indices)
+
         for epoch in range(n_epochs):
-            print(f"Epoch nr: {epoch} started.")
+            print(f"Epoch nr: {epoch + 1} started.")
+
+            current_batch = []
+            current_labels = []
             while len(indices) > 0:
-                random_nr = random.randint(0, len(indices) - 1)
-                set_nr, start_idx = indices.pop(random_nr)
-                azure_data, imu_data = self.data[set_nr]
-                batch = azure_data[start_idx:start_idx+self._window_size, :]
-                yield batch
+                if len(current_batch) >= self._batch_size:
+                    yield np.array(current_batch), np.array(current_labels)
+                    current_batch, current_labels = [], []
+
+                set_nr, start_idx = indices.pop()
+                azure_data, imu_data, label = self.data[set_nr]
+                data = azure_data[start_idx:start_idx+self._window_size, :]
+                current_batch.append(data)
+                current_labels.append(label)
+
+            if len(current_batch) > 0:
+                yield np.array(current_batch), np.array(current_labels)
 
 
 if __name__ == '__main__':
-    gen = Generator("../../data/intermediate", 3)
-    for w in gen.generate_sliding_windows(1):
-        print(w.shape)
+    gen = Generator("../../data/intermediate", n_steps=3, window_size=30, batch_size=16)
+    for input, output in gen.generate_sliding_windows(1):
+        print(input.shape, output)
