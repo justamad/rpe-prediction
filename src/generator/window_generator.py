@@ -36,14 +36,13 @@ class Generator(object):
             self.indices.extend([(counter, i) for i in range(0, n_steps * n_samples, n_steps)])
 
     def generate_sliding_windows(self, n_epochs):
-        indices = copy.deepcopy(self.indices)  # Better scramble data here
-        random.shuffle(indices)
-
         for epoch in range(n_epochs):
             print(f"Epoch nr: {epoch + 1} started.")
 
-            current_batch = []
-            current_labels = []
+            indices = copy.deepcopy(self.indices)  # Better scramble data here
+            random.shuffle(indices)
+
+            current_batch, current_labels = [], []
             while len(indices) > 0:
                 if len(current_batch) >= self._batch_size:
                     yield np.array(current_batch), np.array(current_labels)
@@ -61,5 +60,5 @@ class Generator(object):
 
 if __name__ == '__main__':
     gen = Generator("../../data/intermediate", n_steps=3, window_size=30, batch_size=16)
-    for input, output in gen.generate_sliding_windows(1):
-        print(input.shape, output)
+    for samples, output in gen.generate_sliding_windows(2):
+        print(samples.shape, output)
