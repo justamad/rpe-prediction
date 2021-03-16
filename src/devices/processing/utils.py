@@ -34,10 +34,10 @@ def find_closest_timestamp(timestamps, point):
 
 def apply_butterworth_filter_dataframe(data_frame, sampling_frequency):
     """
-    Applies a butterworth filter to given data array
-    :param data_frame: pandas data frame consisting the data
-    :param sampling_frequency: the current sampling frequency
-    :return: pandas array with butterworth-filtered data
+    Applies a Butterworth filter to the given dataframe
+    @param data_frame: data frame that contains positional, orientation or acceleration data
+    @param sampling_frequency: the current sampling frequency
+    @return: data frame with filtered data
     """
     fc = 6  # Cut-off frequency of the filter
     w = fc / (sampling_frequency / 2)  # Normalize the frequency

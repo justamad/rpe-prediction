@@ -62,9 +62,6 @@ class GaitUp(SensorBase):
         Shift the clock based on a given time delta
         @param delta: the time offset given in seconds
         """
-        # timestamps = self._data.loc[:, 'timestamp']
-        # shifted_timestamps = timestamps + delta
-        # self._data.loc[:, 'timestamp'] = shifted_timestamps
         self._data.loc[:, 'timestamp'] += delta
 
     def __repr__(self):
