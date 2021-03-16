@@ -123,14 +123,14 @@ class AzureKinect(SensorBase):
     @property
     def position_data(self):
         data = self._data.filter(regex='pos_').copy()
-        new_names = [(i, i[4:]) for i in data.columns.values]
+        new_names = [(i, i.replace('pos_', '')) for i in data.columns.values]
         data.rename(columns=dict(new_names), inplace=True)
         return data
 
     @property
     def orientation_data(self):
         data = self._data.filter(regex='ori_').copy()
-        new_names = [(i, i[4:]) for i in data.columns.values]
+        new_names = [(i, i.replace('ori_', '')) for i in data.columns.values]
         data.rename(columns=dict(new_names), inplace=True)
         return data
 

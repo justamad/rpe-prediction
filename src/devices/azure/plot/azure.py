@@ -23,11 +23,12 @@ def plot_trajectories_for_all_joints(df: pd.DataFrame, file_name: str = None, co
         joint_data = joint_data.to_numpy()
         axis = axs[joint_idx // columns, joint_idx % columns]
         axis.set_title(joint.replace('_', ' ').title())
+
         # Plot with color coding
         for idx, (ax, color) in enumerate(zip(axes, colors)):
             axis.plot(joint_data[:, idx], color=color, label=ax)
 
-        if joint_idx == 31:
+        if joint_idx == len(joints) - 1:
             handles, labels = axis.get_legend_handles_labels()
             fig.legend(handles, labels, loc='upper right')
 
