@@ -14,6 +14,8 @@ class Generator(object):
         Generator class for time series data
         @param base_path: path to processed data
         @param n_steps: step size for sliding window
+        @param window_size: current number of samples per window
+        @param batch_size: the given batch size
         """
         if not os.path.exists(base_path):
             raise FileNotFoundError(f"Given path {base_path} does not exist.")

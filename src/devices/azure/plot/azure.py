@@ -1,7 +1,14 @@
+import pandas as pd
 import matplotlib.pyplot as plt
 
 
-def plot_trajectories_for_all_joints(azure_cam, file_name, columns=4):
+def plot_trajectories_for_all_joints(azure_cam: pd.DataFrame, file_name: str = None, columns: int = 4):
+    """
+    Plot the trajectories for the Azure Kinect camera
+    @param azure_cam: camera object
+    @param file_name: file name of output file
+    @param columns: number of columns in the plot
+    """
     joints = azure_cam.get_joints_as_list()
 
     rows, cols = len(joints) // columns, columns
@@ -22,4 +29,3 @@ def plot_trajectories_for_all_joints(azure_cam, file_name, columns=4):
     fig.suptitle("Azure Kinect")
     fig.tight_layout()
     plt.savefig(file_name)
-    # plt.show()
