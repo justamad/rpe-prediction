@@ -10,7 +10,14 @@ def normalize_mean(df: pd.DataFrame):
     return (df - df.mean(axis=0)) / df.std(axis=0)
 
 
-def normalize_to_range(df: pd.DataFrame, minimum: int = -1, maximum: int = 1):
-    min = df.min(axis=0)
-    max = df.max(axis=0)
-    return (df - min) / (max - min)
+def normalize_into_interval(df: pd.DataFrame, a: int = 0, b: int = 1):
+    """
+    Normalize data into given interval [a,b] for each column independently
+    @param df: data frame that contains positional or orientation data
+    @param a: lower bound of interval
+    @param b: upper bound of interval
+    @return: normalized data in data frame
+    """
+    minimum = df.min(axis=0)
+    maximum = df.max(axis=0)
+    return (b - a) * ((df - minimum) / (maximum - minimum)) + a

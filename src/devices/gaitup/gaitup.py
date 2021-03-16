@@ -45,7 +45,7 @@ class GaitUp(SensorBase):
         return self.cut_data_based_on_index(start_idx, end_idx)
 
     def cut_data_based_on_index(self, start_idx, end_idx):
-        data = self._data.iloc[start_idx:end_idx]
+        data = self._data.iloc[start_idx:end_idx].copy()
         return GaitUp(data, self.sampling_frequency)
 
     def get_synchronization_signal(self):
@@ -62,7 +62,10 @@ class GaitUp(SensorBase):
         Shift the clock based on a given time delta
         @param delta: the time offset given in seconds
         """
-        self._data[['timestamp']] += delta
+        # timestamps = self._data.loc[:, 'timestamp']
+        # shifted_timestamps = timestamps + delta
+        # self._data.loc[:, 'timestamp'] = shifted_timestamps
+        self._data.loc[:, 'timestamp'] += delta
 
     def __repr__(self):
         """

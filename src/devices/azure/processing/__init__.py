@@ -1,1 +1,1 @@
-from .normalization import normalize_mean, normalize_to_range
+from .normalization import normalize_mean, normalize_into_interval

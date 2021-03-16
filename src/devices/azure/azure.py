@@ -82,7 +82,7 @@ class AzureKinect(SensorBase):
         return self._data.to_numpy()[:, 1:]
 
     def get_skeleton_connections(self, json_file):
-        joints = self.get_joints_as_list(self._data)
+        joints = self.get_joints_as_list(self.position_data)
         with open(json_file) as f:
             connections = json.load(f)
 
@@ -112,15 +112,21 @@ class AzureKinect(SensorBase):
 
     @staticmethod
     def get_joints_as_list(df):
-        return list(set([c[4:-4] for c in df.columns]))  # Remove prefix and axis (ori_test (x))
+        return list(set([c[:-4] for c in df.columns]))  # Remove axis (ori_test (x))
 
     @property
     def position_data(self):
-        return self._data.filter(regex='pos_')
+        data = self._data.filter(regex='pos_').copy()
+        new_names = [(i, i[4:]) for i in data.columns.values]
+        data.rename(columns=dict(new_names), inplace=True)
+        return data
 
     @property
     def orientation_data(self):
-        return self._data.filter(regex='ori_')
+        data = self._data.filter(regex='ori_').copy()
+        new_names = [(i, i[4:]) for i in data.columns.values]
+        data.rename(columns=dict(new_names), inplace=True)
+        return data
 
     def __repr__(self):
         """
