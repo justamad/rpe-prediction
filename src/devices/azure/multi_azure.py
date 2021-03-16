@@ -50,6 +50,6 @@ class MultiAzure(AzureKinect):
         t1 = master_data[:, 0]
         t2 = subord_data[:, 0]
         print(list(t1 - t2))
-        master.update_data_body(master_data)
-        sub.update_data_body(subord_data)
+        # master.update_data_body(master_data)
+        # sub.update_data_body(subord_data)
         return master, sub

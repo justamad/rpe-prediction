@@ -30,7 +30,6 @@ class AzureKinect(SensorBase):
             new_names = [(i, 'ori_' + i.lower()) for i in ori_data.columns.values]
             ori_data.rename(columns=dict(new_names), inplace=True)
             data = pd.concat([pos_data, ori_data], axis=1)
-
         else:
             raise Exception(f"Unknown argument {data_path} for Azure Kinect class.")
 
@@ -45,29 +44,17 @@ class AzureKinect(SensorBase):
 
     def multiply_matrix(self, matrix, translation=np.array([0, 0, 0])):
         """
-        TODO: Change this method to work with position and orientation data
-        Multiply all data points with a matrix and add a translation vector
+        Multiply all data joint positions with a matrix and add a translation vector
         @param matrix: the rotation matrix
         @param translation: a translation vector
         """
-        data = self.get_data(with_timestamps=False)
+        df = self.position_data
+        data = df.to_numpy()
         samples, features = data.shape
         result = matrix * data.reshape(-1, 3).T + translation.reshape(3, 1)
         final_result = result.T.reshape(samples, features)
-
-        # check if timestamps in data are present
-        if 'timestamp' in self.data:
-            timestamps = self.data['timestamp'].to_numpy()
-            final_result = np.insert(final_result, 0, timestamps, axis=1)
-
-        self.update_data_body(final_result)
-
-    def update_data_body(self, data):
-        # TODO: Replace this method with pandas update method
-        samples, features = data.shape  # the new data format
-        current_columns = self.data.columns  # current columns in data frame
-        assert features == len(current_columns), f"Tries to assign data with wrong shape to {self}"
-        self.data = pd.DataFrame(data=data, columns=current_columns)
+        data = pd.DataFrame(data=final_result, columns=df.columns)
+        self.data.update(data)
 
     def __getitem__(self, item):
         """
@@ -121,8 +108,6 @@ class AzureKinect(SensorBase):
 
     def get_synchronization_signal(self) -> np.ndarray:
         return self.data['pos_spine_navel (y)'].to_numpy()
-        # spine_navel = self['spine_navel'].to_numpy()
-        # return spine_navel[:, 1]  # Only return y-axis
 
     def get_synchronization_data(self):
         """
@@ -142,6 +127,14 @@ class AzureKinect(SensorBase):
         start_idx = find_closest_timestamp(self.timestamps, start_time)
         end_idx = find_closest_timestamp(self.timestamps, end_time)
         self.data = self.data.iloc[start_idx:end_idx]
+
+    @property
+    def position_data(self):
+        return self.data.filter(regex='pos_')
+
+    @property
+    def orientation_data(self):
+        return self.data.filter(regex='ori_')
 
     def __repr__(self):
         """
