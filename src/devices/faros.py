@@ -1,7 +1,7 @@
 from src.devices.processing import apply_butterworth_filter, normalize_signal, sample_data_uniformly, find_closest_timestamp
 from pyedflib import highlevel
 from biosppy.signals import ecg
-from ..sensor_base import SensorBase
+from src.devices.sensor_base import SensorBase
 from os.path import join
 
 import pandas as pd

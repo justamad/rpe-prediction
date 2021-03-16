@@ -1,5 +1,5 @@
 from src.devices.processing import normalize_signal, find_closest_timestamp, fill_missing_data, apply_butterworth_filter_dataframe
-from ..sensor_base import SensorBase
+from src.devices.sensor_base import SensorBase
 from os.path import join
 
 import pandas as pd

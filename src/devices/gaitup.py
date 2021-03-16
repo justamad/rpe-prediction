@@ -1,5 +1,5 @@
 from src.devices.processing import normalize_signal, apply_butterworth_filter, find_closest_timestamp
-from ..sensor_base import SensorBase
+from src.devices.sensor_base import SensorBase
 from os.path import join
 
 import pandas as pd
@@ -13,19 +13,23 @@ def read_directory_with_csv_file(folder_name):
     @return: a single data frame that contains all sensor values
     """
     data_frames = []
-    for file_name in os.listdir(folder_name):
+    for counter, file_name in enumerate(os.listdir(folder_name)):
         df = pd.read_csv(join(folder_name, file_name), delimiter=',')
-        if len(data_frames) == 0:
+        if counter == 0:
             df = df[[c for c in df.columns if "Event" not in c]]
+            columns = df.columns[1:]
         else:
             df = df[[c for c in df.columns if "Time" not in c and "Event" not in c]]
+            columns = df.columns
 
+        new_names = [(i, f'{i[:-2]} ({i[-1:]})') for i in columns]
+        df.rename(columns=dict(new_names), inplace=True)
         prefix = f"{file_name.lower().replace('.csv', '')}_"
         df.columns = ["{}{}".format('' if c == 'Time' else prefix, c.lower()) for c in df.columns]
         data_frames.append(df)
 
     data = pd.concat(data_frames, axis=1)
-    data = data.rename(columns={"Time": "timestamp"})
+    data = data.rename(columns={"time": "timestamp"})
     return data
 
 
@@ -54,7 +58,7 @@ class GaitUp(SensorBase):
         return GaitUp(data, self.sampling_frequency)
 
     def get_synchronization_signal(self):
-        return self._data['ST327_Accel Y'].to_numpy()
+        return self._data['st327_accel (y)'].to_numpy()
 
     def get_synchronization_data(self):
         raw_signal = apply_butterworth_filter(self.get_synchronization_signal())

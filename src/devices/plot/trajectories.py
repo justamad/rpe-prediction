@@ -1,7 +1,6 @@
-from ..azure import AzureKinect
-
 import pandas as pd
 import matplotlib.pyplot as plt
+import math
 
 colors = ['red', 'green', 'blue', 'yellow']
 
@@ -13,8 +12,8 @@ def plot_trajectories_for_all_joints(df: pd.DataFrame, file_name: str = None, co
     @param file_name: file name of output file
     @param columns: number of columns in the plot
     """
-    joints = AzureKinect.get_joints_as_list(df)
-    rows, cols = len(joints) // columns, columns
+    joints = get_joints_as_list(df)
+    rows, cols = math.ceil(len(joints) / columns), columns
     fig, axs = plt.subplots(rows, cols, figsize=(15, 15))
 
     for joint_idx, joint in enumerate(joints):
@@ -38,3 +37,7 @@ def plot_trajectories_for_all_joints(df: pd.DataFrame, file_name: str = None, co
         plt.savefig(file_name)
     else:
         plt.show()
+
+
+def get_joints_as_list(df):
+    return list(set([c[:-4] for c in df.columns]))

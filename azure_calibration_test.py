@@ -1,4 +1,4 @@
-from src.devices.azure import AzureKinect, MultiAzure
+from src.devices.multicam import AzureKinect, MultiAzure
 from src.rendering import SkeletonViewer
 
 from os.path import join
@@ -17,7 +17,7 @@ azure_sub.process_raw_data()
 multi_azure = MultiAzure(master_azure, sub_azure, calibraton_path)
 
 viewer = SkeletonViewer()
-viewer.add_skeleton(azure_master.get_data() / 1000, azure_master.get_skeleton_connections("src/azure/azure.json"))
-viewer.add_skeleton(azure_sub.get_data() / 1000, azure_master.get_skeleton_connections("src/azure/azure.json"))
-viewer.add_skeleton(multi_azure.get_data() / 1000, azure_master.get_skeleton_connections("src/azure/azure.json"))
+viewer.add_skeleton(azure_master.get_data() / 1000, azure_master.get_skeleton_connections("src/multicam/multicam.json"))
+viewer.add_skeleton(azure_sub.get_data() / 1000, azure_master.get_skeleton_connections("src/multicam/multicam.json"))
+viewer.add_skeleton(multi_azure.get_data() / 1000, azure_master.get_skeleton_connections("src/multicam/multicam.json"))
 viewer.show_window()
