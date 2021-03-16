@@ -65,8 +65,6 @@ for counter, sensor_trial in enumerate(config.iterate_over_trials()):
     plt.tight_layout()
     # plt.show()
 
-    print(len(azure.timestamps), len(faros.timestamps_hr), len(gaitup_set.timestamps))
-
     # Save the converted data
     dst_path = join(args.dst_path, set_counter)
     delete_and_create_directory(dst_path)

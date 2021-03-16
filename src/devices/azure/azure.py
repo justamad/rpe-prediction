@@ -39,8 +39,8 @@ class AzureKinect(SensorBase):
         """
         Processing the raw data
         """
-        self.data.loc[:, self.data.columns == 'timestamp'] *= 1e-6
-        self.data = fill_missing_data(self.data, self.sampling_frequency)
+        self._data.loc[:, self._data.columns == 'timestamp'] *= 1e-6
+        self._data = fill_missing_data(self._data, self.sampling_frequency)
 
     def multiply_matrix(self, matrix, translation=np.array([0, 0, 0])):
         """
@@ -54,7 +54,7 @@ class AzureKinect(SensorBase):
         result = matrix * data.reshape(-1, 3).T + translation.reshape(3, 1)
         final_result = result.T.reshape(samples, features)
         data = pd.DataFrame(data=final_result, columns=df.columns)
-        self.data.update(data)
+        self._data.update(data)
 
     def __getitem__(self, item):
         """
@@ -65,39 +65,21 @@ class AzureKinect(SensorBase):
         if type(item) is not str:
             raise ValueError(f"Wrong Type for Index. Expected: str, Given: {type(item)}")
 
-        columns = [col for col in self.data.columns if item.lower() in col.lower()]
+        columns = [col for col in self._data.columns if item.lower() in col.lower()]
         if not columns:
             raise Exception(f"Cannot find joint: {item} in {self}")
 
-        return self.data[columns]
+        return self._data[columns]
 
     def get_data(self, with_timestamps=False):
         if with_timestamps:
-            if 'timestamp' not in self.data:
+            if 'timestamp' not in self._data:
                 raise Exception(f"Data for {self} does not contain any timestamps.")
-            return self.data.to_numpy()
+            return self._data.to_numpy()
 
-        if 'timestamp' not in self.data:
-            return self.data.to_numpy()
-        return self.data.to_numpy()[:, 1:]
-
-    def get_joints_as_list(self):
-        """
-        Return all joints in a list by removing the duplicate (x,y,z) axes
-        @return: list of joint names
-        """
-        columns = list(self.data.columns)
-        if 'timestamp' in self.data:
-            columns = columns[1:]
-
-        joints = []
-        excluded_chars = ['(x)', '(y)', '(z)', ':x', ':y', ':z']
-        for joint in map(lambda x: x.lower(), columns[::3]):
-            for ex_char in excluded_chars:
-                joint = joint.replace(ex_char, '')
-            joints.append(joint.strip().lower())
-
-        return joints
+        if 'timestamp' not in self._data:
+            return self._data.to_numpy()
+        return self._data.to_numpy()[:, 1:]
 
     def get_skeleton_connections(self, json_file):
         joints = self.get_joints_as_list()
@@ -107,7 +89,7 @@ class AzureKinect(SensorBase):
         return [(joints.index(j1.lower()), joints.index(j2.lower())) for j1, j2 in connections]
 
     def get_synchronization_signal(self) -> np.ndarray:
-        return self.data['pos_spine_navel (y)'].to_numpy()
+        return self._data['pos_spine_navel (y)'].to_numpy()
 
     def get_synchronization_data(self):
         """
@@ -126,15 +108,22 @@ class AzureKinect(SensorBase):
         """
         start_idx = find_closest_timestamp(self.timestamps, start_time)
         end_idx = find_closest_timestamp(self.timestamps, end_time)
-        self.data = self.data.iloc[start_idx:end_idx]
+        self._data = self._data.iloc[start_idx:end_idx]
+
+    def get_joints_as_list(self):
+        """
+        Get the current joints as list
+        @return: The current joints from the Azure Kinect camera
+        """
+        return list(set([c[4:-4] for c in self._data.columns]))  # Remove prefix and axis (ori_test (x))
 
     @property
     def position_data(self):
-        return self.data.filter(regex='pos_')
+        return self._data.filter(regex='pos_')
 
     @property
     def orientation_data(self):
-        return self.data.filter(regex='ori_')
+        return self._data.filter(regex='ori_')
 
     def __repr__(self):
         """
