@@ -1,3 +1,5 @@
+from ..azure import AzureKinect
+
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -11,7 +13,7 @@ def plot_trajectories_for_all_joints(df: pd.DataFrame, file_name: str = None, co
     @param file_name: file name of output file
     @param columns: number of columns in the plot
     """
-    joints = list(set([c[4:-4] for c in df.columns]))  # Remove prefix and axis (ori_test (x))
+    joints = AzureKinect.get_joints_as_list(df)
     rows, cols = len(joints) // columns, columns
     fig, axs = plt.subplots(rows, cols, figsize=(15, 15))
 
@@ -20,7 +22,7 @@ def plot_trajectories_for_all_joints(df: pd.DataFrame, file_name: str = None, co
         axes = [c[-2:-1] for c in joint_data.columns]
         joint_data = joint_data.to_numpy()
         axis = axs[joint_idx // columns, joint_idx % columns]
-        axis.set_title(joint)
+        axis.set_title(joint.replace('_', ' ').title())
         # Plot with color coding
         for idx, (ax, color) in enumerate(zip(axes, colors)):
             axis.plot(joint_data[:, idx], color=color, label=ax)

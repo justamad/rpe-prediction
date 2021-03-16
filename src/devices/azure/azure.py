@@ -82,7 +82,7 @@ class AzureKinect(SensorBase):
         return self._data.to_numpy()[:, 1:]
 
     def get_skeleton_connections(self, json_file):
-        joints = self.get_joints_as_list()
+        joints = self.get_joints_as_list(self._data)
         with open(json_file) as f:
             connections = json.load(f)
 
@@ -110,12 +110,9 @@ class AzureKinect(SensorBase):
         end_idx = find_closest_timestamp(self.timestamps, end_time)
         self._data = self._data.iloc[start_idx:end_idx]
 
-    def get_joints_as_list(self):
-        """
-        Get the current joints as list
-        @return: The current joints from the Azure Kinect camera
-        """
-        return list(set([c[4:-4] for c in self._data.columns]))  # Remove prefix and axis (ori_test (x))
+    @staticmethod
+    def get_joints_as_list(df):
+        return list(set([c[4:-4] for c in df.columns]))  # Remove prefix and axis (ori_test (x))
 
     @property
     def position_data(self):
