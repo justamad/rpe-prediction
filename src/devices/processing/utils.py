@@ -13,11 +13,6 @@ def upsample_data(data, old_sampling_rate, new_sampling_rate, mode="cubic"):
     return f(xx)
 
 
-def find_peaks(data, height, prominence, distance=None):
-    peaks, _ = signal.find_peaks(data, height=height, prominence=prominence, distance=distance)
-    return peaks
-
-
 def apply_butterworth_filter(data, order=4, cut_off=0.1):
     sos = signal.butter(order, cut_off, output='sos')
     return signal.sosfiltfilt(sos, data)
@@ -32,16 +27,17 @@ def find_closest_timestamp(timestamps, point):
     return np.argmin(differences)
 
 
-def apply_butterworth_filter_dataframe(data_frame, sampling_frequency):
+def apply_butterworth_filter_dataframe(data_frame, sampling_frequency, order=4, fc=6):
     """
     Applies a Butterworth filter to the given dataframe
     @param data_frame: data frame that contains positional, orientation or acceleration data
     @param sampling_frequency: the current sampling frequency
+    @param order: The order of the Butterworth filter
+    @param fc: the cut-off frequency used in Butterworth filter
     @return: data frame with filtered data
     """
-    fc = 6  # Cut-off frequency of the filter
     w = fc / (sampling_frequency / 2)  # Normalize the frequency
-    b, a = signal.butter(4, w, 'lp', analog=False)
+    b, a = signal.butter(order, w, 'lp', analog=False)
 
     data = data_frame.to_numpy()
     rows, cols = data.shape

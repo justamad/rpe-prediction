@@ -27,6 +27,7 @@ def delete_and_create_directory(directory):
 # Load data
 config = ConfigReader(join(args.src_path, "config.json"))
 gaitup = GaitUp(join(args.src_path, "gaitup"))
+gaitup.filter_data()
 
 # Process individual sets
 for counter, sensor_trial in enumerate(config.iterate_over_trials()):
@@ -34,6 +35,7 @@ for counter, sensor_trial in enumerate(config.iterate_over_trials()):
     set_counter = f"{counter:02}_set"
     azure = AzureKinect(join(args.src_path, "azure", f"{counter + 1:02}_sub"))
     azure.process_raw_data()
+    azure.filter_data()
     faros = Faros(join(args.src_path, "faros"), *sensor_trial['faros'])
     gaitup_set = gaitup.cut_data_based_on_index(*sensor_trial['gaitup'])
 

@@ -42,12 +42,6 @@ class AzureKinect(SensorBase):
         self._data.loc[:, self._data.columns == 'timestamp'] *= 1e-6
         self._data = fill_missing_data(self._data, self.sampling_frequency)
 
-    def filter_data(self):
-        data = self._data[[c for c in self._data.columns if c != 'timestamp']]
-        data = self._data = apply_butterworth_filter_dataframe(data, self._sampling_frequency)
-        self._data.update(data)
-        self._data = self._data.iloc[10:-10]  # Cut off the edge effects of filtering
-
     def multiply_matrix(self, matrix, translation=np.array([0, 0, 0])):
         """
         Multiply all data joint positions with a matrix and add a translation vector

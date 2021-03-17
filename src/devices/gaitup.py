@@ -61,7 +61,7 @@ class GaitUp(SensorBase):
         return self._data['st327_accel (y)'].to_numpy()
 
     def get_synchronization_data(self):
-        raw_signal = apply_butterworth_filter(self.get_synchronization_signal())
+        raw_signal = self.get_synchronization_signal()
         raw_signal = normalize_signal(raw_signal)
         processed_signal = -raw_signal
         return self.timestamps, raw_signal, processed_signal
