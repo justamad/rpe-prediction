@@ -77,17 +77,12 @@ class AzureKinect(SensorBase):
 
         return self._data[columns]
 
-    def get_data(self, with_timestamps=False):
-        if with_timestamps:
-            if 'timestamp' not in self._data:
-                raise Exception(f"Data for {self} does not contain any timestamps.")
-            return self._data.to_numpy()
-
-        if 'timestamp' not in self._data:
-            return self._data.to_numpy()
-        return self._data.to_numpy()[:, 1:]
-
     def get_skeleton_connections(self, json_file):
+        """
+        Returns the joint connections from given json file accordingly to the current joints
+        @param json_file: file that contains all skeleton connections
+        @return: list that holds tuples (j1, j2) for joint connections (bones)
+        """
         joints = self.get_joints_as_list(self.position_data)
         with open(json_file) as f:
             connections = json.load(f)
