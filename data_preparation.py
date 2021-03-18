@@ -55,9 +55,6 @@ for counter, sensor_trial in enumerate(config.iterate_over_trials()):
     faros.cut_data_based_on_time(global_start, global_end)
     print(f"Global start: {global_start}, global end: {global_end}")
 
-    # multicam.filter_data()
-    gaitup_set.filter_data()
-
     plt.plot(azure.timestamps, normalize_signal(azure["pelvis"].to_numpy()[:, 1]), label="kinect")
     plt.plot(faros.timestamps_hr, normalize_signal(faros.hr_data), label="faros")
     plt.plot(gaitup_set.timestamps, normalize_signal(gaitup_set.get_synchronization_signal()), label="gaitup")
