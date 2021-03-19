@@ -12,7 +12,7 @@ def segment_exercises_based_on_joint(joint_data: np.array, exemplar: np.array, m
     @param exemplar: exemplar repetition
     @param max_cost: maximum threshold for DTW cost
     @param show: flag if results should be shown immediately
-    @return: TODO
+    @return: list of tuples with start and end points of candidates, list of costs for all observations
     """
     peaks = signal.find_peaks(-joint_data)[0]
 
@@ -25,10 +25,16 @@ def segment_exercises_based_on_joint(joint_data: np.array, exemplar: np.array, m
         cost = calculate_fast_dtw_cost(exemplar, observation)
         costs.append(cost)
         if cost < max_cost:
-            candidates.append(observation)
+            candidates.append((t1, t2))
 
-            if show:
-                plt.plot(observation, label=len(candidates))
+    if show:
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+        fig.suptitle('Segmentation')
+        ax1.plot(joint_data, label="Position data")
+        ax1.scatter(peaks, joint_data[peaks])
+        for counter, (t1, t2) in enumerate(candidates):
+            ax2.plot(joint_data[t1:t2], label=f"Rep: {counter + 1}")
+        ax2.legend()
 
     return candidates, costs
 
