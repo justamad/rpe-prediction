@@ -1,0 +1,1 @@
+from .segmentation import segment_exercises_based_on_joint
