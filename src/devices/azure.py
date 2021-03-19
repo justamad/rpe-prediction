@@ -56,22 +56,19 @@ class AzureKinect(SensorBase):
         data = pd.DataFrame(data=final_result, columns=df.columns)
         self._data.update(data)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str):
         """
         Get columns that contains the sub-string provided in item
         @param item: given joint name as string
         @return: pandas data frame most likely as nx3 (x,y,z) data frame
         """
-        if type(item) is not str:
-            raise ValueError(f"Wrong Type for Index. Expected: str, Given: {type(item)}")
-
         columns = [col for col in self._data.columns if item.lower() in col.lower()]
         if not columns:
             raise Exception(f"Cannot find joint: {item} in {self}")
 
         return self._data[columns]
 
-    def get_skeleton_connections(self, json_file):
+    def get_skeleton_connections(self, json_file: str):
         """
         Returns the joint connections from given json file accordingly to the current joints
         @param json_file: file that contains all skeleton connections
