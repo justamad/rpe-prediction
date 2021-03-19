@@ -76,12 +76,13 @@ def sample_data_uniformly(data_frame, timestamps, sampling_rate, mode="cubic"):
     return pd.DataFrame(data=np.array(uniform_sampled_data).T, columns=data_frame.columns), upsampled_timestamps
 
 
-def fill_missing_data(data, sampling_frequency, method="quadratic"):
+def fill_missing_data(data: pd.DataFrame, sampling_frequency: int, method: str = "quadratic", log: bool = False):
     """
     Identifies missing data points ina given data frame and fills it using interpolation
     @param data: the dataframe
     @param sampling_frequency: the current sampling frequency
     @param method: interpolation methods, such as quadratic
+    @param log: flag if missing points should be printed
     @return: data frame with filled gaps
     """
     _, cols = data.shape
@@ -89,7 +90,8 @@ def fill_missing_data(data, sampling_frequency, method="quadratic"):
     delta = 1 / sampling_frequency
     diffs = np.diff(data["timestamp"]) / delta
     diffs = (np.round(diffs) - 1).astype(np.uint32)
-    print(f'Number of missing data points: {np.sum(diffs)}')
+    if log:
+        print(f'Number of missing data points: {np.sum(diffs)}')
 
     inc = 0
     for idx, missing_frames in enumerate(diffs):
