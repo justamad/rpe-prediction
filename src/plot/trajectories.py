@@ -41,4 +41,9 @@ def plot_trajectories_for_all_joints(df: pd.DataFrame, title: str, file_name: st
 
 
 def get_joints_as_list(df):
+    """
+    Identify all joints given in the data frame, remove all axes or types from columns
+    @param df: a pandas data frame with sensor data
+    @return: list of filtered joint names
+    """
     return list(set([c[:-4] for c in df.columns]))

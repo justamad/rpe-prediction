@@ -39,3 +39,17 @@ def calculate_acceleration_std(df: pd.DataFrame):
     acceleration = np.gradient(velocity, axis=0)
     acceleration_std = acceleration.std(axis=0).reshape(-1, features)
     return pd.DataFrame(data=acceleration_std, columns=df.columns)
+
+
+def calculate_min_max_distance(df: pd.DataFrame):
+    """
+    Calculate the mean value of acceleration for all given joints
+    @param df: data frame that contains positional (x,y,z) data for all joints
+    @return: data frame that contains the mean velocity value for each axis and joint
+    """
+    positional_data = df.to_numpy()
+    samples, features = positional_data.shape
+    minimum = np.min(positional_data, axis=0)
+    maximum = np.max(positional_data, axis=0)
+    distances = np.abs(minimum - maximum).reshape(-1, features)
+    return pd.DataFrame(data=distances, columns=df.columns)
