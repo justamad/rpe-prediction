@@ -5,10 +5,11 @@ import math
 colors = ['red', 'green', 'blue', 'yellow']
 
 
-def plot_trajectories_for_all_joints(df: pd.DataFrame, file_name: str = None, columns: int = 4):
+def plot_trajectories_for_all_joints(df: pd.DataFrame, title: str, file_name: str = None, columns: int = 4):
     """
     Plot the trajectories for the Azure Kinect camera
     @param df: Data Frame that contains the positional or orientation data
+    @param title: The title of the graph
     @param file_name: file name of output file
     @param columns: number of columns in the plot
     """
@@ -31,7 +32,7 @@ def plot_trajectories_for_all_joints(df: pd.DataFrame, file_name: str = None, co
             handles, labels = axis.get_legend_handles_labels()
             fig.legend(handles, labels, loc='upper right')
 
-    fig.suptitle("Azure Kinect")
+    fig.suptitle(title)
     fig.tight_layout()
     if file_name is not None:
         plt.savefig(file_name)

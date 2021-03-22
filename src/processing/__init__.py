@@ -1,2 +1,2 @@
 from .segmentation import segment_exercises_based_on_joint
-from .kinect_features import calculate_velocity
+from .kinect_features import calculate_positions_std, calculate_velocity_std, calculate_acceleration_std
