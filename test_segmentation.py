@@ -1,5 +1,5 @@
 from src.devices import AzureKinect
-from src.processing import segment_exercises_based_on_joint, calculate_positions_std, calculate_velocity_std, calculate_acceleration_std, calculate_min_max_distance, normalize_into_interval, calculate_magnitude
+from src.processing import segment_exercises_based_on_joint, calculate_positions_std, calculate_velocity_std, calculate_acceleration_std, calculate_min_max_distance, calculate_acceleration_magnitude_std
 from src.plot import plot_sensor_data_for_axes, plot_sensor_data_for_single_axis
 
 import numpy as np
@@ -10,10 +10,12 @@ import matplotlib.pyplot as plt
 
 means = []
 exemplar = np.loadtxt("exe.np")
-features = {'acc_std': ("Acceleration Std", calculate_acceleration_std, []),
-            'velocity_std': ("Velocity Std", calculate_velocity_std, []),
-            'pos_std': ("Positions std", calculate_positions_std, []),
-            'min_max': ("Min-Max Distance", calculate_min_max_distance, [])}
+# features = {'acc_std': ("Acceleration Std", calculate_acceleration_std, []),
+#             'velocity_std': ("Velocity Std", calculate_velocity_std, []),
+#             'pos_std': ("Positions std", calculate_positions_std, []),
+#             'min_max': ("Min-Max Distance", calculate_min_max_distance, [])}
+
+features = {'acc_mag_std': ("Acceleration Magnitude Std", calculate_acceleration_magnitude_std, [])}
 
 durations = []
 
@@ -29,10 +31,6 @@ for counter in range(21):
 
     for t1, t2 in repetitions[:12]:
         df = azure.position_data.iloc[t1:t2, :]
-        df = normalize_into_interval(df)
-        # plot_trajectories_for_all_joints(df, "test")
-        magnitude = calculate_magnitude(df)
-        plot_sensor_data_for_single_axis(magnitude, "magnitude")
 
         # Calculate features
         for feature, (_, method, means) in features.items():
@@ -45,7 +43,7 @@ for counter in range(21):
 # Plot the final figures
 for feature, (title, _, means) in features.items():
     df = pd.concat(means)
-    plot_sensor_data_for_axes(df, title)
+    plot_sensor_data_for_single_axis(df, title)
 
 plt.plot(np.array(durations) / 30)
 plt.ylabel("Time [s]")

@@ -19,6 +19,18 @@ def calculate_magnitude(df):
     return pd.DataFrame(data=data, columns=joints)
 
 
+def calculate_gradient(df):
+    data = df.to_numpy()
+    grad = np.gradient(data, axis=0)
+    return pd.DataFrame(grad, columns=df.columns)
+
+
+def calculate_second_gradient(df):
+    data = df.to_numpy()
+    grad = np.gradient(np.gradient(data, axis=0), axis=0)
+    return pd.DataFrame(grad, columns=df.columns)
+
+
 def get_joints_as_list(df):
     """
     Identify all joints given in the data frame, remove all axes or types from columns
