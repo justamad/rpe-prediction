@@ -31,10 +31,16 @@ def calculate_second_gradient(df):
     return pd.DataFrame(grad, columns=df.columns)
 
 
+def filter_dataframe(df: pd.DataFrame, excluded_matches: list):
+    for excluded_part in excluded_matches:
+        df = df.loc[:, ~df.columns.str.contains(excluded_part)]
+    return df
+
+
 def get_joints_as_list(df):
     """
     Identify all joints given in the data frame, remove all axes or types from columns
     @param df: a pandas data frame with sensor data
-    @return: list of filtered joint names
+    @return: list of filtered joint names in alphabetical order
     """
-    return list(set([c[:-4] for c in df.columns]))
+    return sorted(set([c[:-4] for c in df.columns]))

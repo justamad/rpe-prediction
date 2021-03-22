@@ -1,5 +1,5 @@
 from src.devices import AzureKinect
-from src.processing import segment_exercises_based_on_joint, calculate_positions_std, calculate_velocity_std, calculate_acceleration_std, calculate_min_max_distance, calculate_acceleration_magnitude_std
+from src.processing import segment_exercises_based_on_joint, calculate_positions_std, calculate_velocity_std, calculate_acceleration_std, calculate_min_max_distance, calculate_acceleration_magnitude_std, filter_dataframe
 from src.plot import plot_sensor_data_for_axes, plot_sensor_data_for_single_axis
 
 import numpy as np
@@ -17,6 +17,8 @@ exemplar = np.loadtxt("exe.np")
 
 features = {'acc_mag_std': ("Acceleration Magnitude Std", calculate_acceleration_magnitude_std, [])}
 
+excluded_joints = ["eye", "ear", "nose", "wrist", "hand", "thumb"]
+
 durations = []
 
 # Iterate over all trials
@@ -28,9 +30,10 @@ for counter in range(21):
     pelvis = (pelvis - np.mean(pelvis)) / pelvis.std()
 
     repetitions, costs = segment_exercises_based_on_joint(-pelvis, exemplar, 30, 0.5, show=False)
+    positions = filter_dataframe(azure.position_data, excluded_joints)
 
     for t1, t2 in repetitions[:12]:
-        df = azure.position_data.iloc[t1:t2, :]
+        df = positions.iloc[t1:t2, :]
 
         # Calculate features
         for feature, (_, method, means) in features.items():
