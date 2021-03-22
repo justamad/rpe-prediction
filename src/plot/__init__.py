@@ -1,1 +1,1 @@
-from .trajectories import plot_trajectories_for_all_joints
+from .trajectories import plot_sensor_data_for_axes, plot_sensor_data_for_single_axis
