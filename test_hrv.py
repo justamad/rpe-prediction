@@ -24,7 +24,7 @@ def uniform_sampling(x_axis, y_axis, new_sampling_rate, mode="cubic"):
     return xx, f(xx)
 
 
-for entry in config.iterate_over_trials():
+for entry in config.iterate_over_sets():
     start, end = entry['faros']
     heart_rate = ecg.ecg(ecg_signal[start * 5:end * 5], sampling_rate=500, show=True)
     r_peaks = heart_rate['rpeaks'] / 500

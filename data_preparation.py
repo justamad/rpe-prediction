@@ -30,10 +30,10 @@ gaitup = GaitUp(join(args.src_path, "gaitup"))
 gaitup.filter_data()
 
 # Process individual sets
-for counter, sensor_trial in enumerate(config.iterate_over_trials()):
+for counter, sensor_trial in enumerate(config.iterate_over_sets()):
     print(f"Convert set nr: {counter}...")
     set_counter = f"{counter:02}_set"
-    azure = AzureKinect(join(args.src_path, "azure", f"{counter + 1:02}_sub"))
+    azure = AzureKinect(sensor_trial['azure'])
     azure.process_raw_data()
     azure.filter_data()
     faros = Faros(join(args.src_path, "faros"), *sensor_trial['faros'])
@@ -49,14 +49,14 @@ for counter, sensor_trial in enumerate(config.iterate_over_trials()):
     global_end = min(azure.timestamps[-1], gaitup_clock[-1], faros_clock[-1])
 
     gaitup_set.shift_clock(gaitup_shift)
-    faros.add_shift(faros_shift)
+    faros.shift_clock(faros_shift)
     azure.cut_data_based_on_time(global_start, global_end)
     gaitup_set = gaitup_set.cut_data_based_on_time(global_start, global_end)
     faros.cut_data_based_on_time(global_start, global_end)
     print(f"Global start: {global_start}, global end: {global_end}")
 
     plt.plot(azure.timestamps, normalize_signal(azure["pelvis"].to_numpy()[:, 1]), label="kinect")
-    plt.plot(faros.timestamps_hr, normalize_signal(faros.hr_data), label="faros")
+    # plt.plot(faros.timestamps_hr, normalize_signal(faros.hr_data), label="faros")
     plt.plot(gaitup_set.timestamps, normalize_signal(gaitup_set.get_synchronization_signal()), label="gaitup")
     plt.legend()
     plt.ylabel("Normalized Y-Axes")

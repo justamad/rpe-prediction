@@ -66,13 +66,6 @@ class GaitUp(SensorBase):
         processed_signal = -raw_signal
         return self.timestamps, raw_signal, processed_signal
 
-    def shift_clock(self, delta):
-        """
-        Shift the clock based on a given time delta
-        @param delta: the time offset given in seconds
-        """
-        self._data.loc[:, 'timestamp'] += delta
-
     @property
     def gyroscope_data(self):
         data = self._data.filter(regex='gyro').copy()

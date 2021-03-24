@@ -13,6 +13,9 @@ class ConfigReader:
         with open(trial_configuration_file_name) as f:
             self.trial_config = json.load(f)
 
+        self.root_dir = os.path.dirname(os.path.realpath(trial_configuration_file_name))
+        self._nr_sets = 21
+
     def get_start_indices_for_set(self, sensor: str, set_nr: int):
         set_list = self.trial_config['sets']
         cur_set = set_list[set_nr]
@@ -40,8 +43,9 @@ class ConfigReader:
         config = self.trial_config
         return config[name]
 
-    def iterate_over_trials(self):
-        for i in range(21):
-            yield {'gaitup': self.get_start_indices_for_set('gaitup', i),
-                   'faros': self.get_start_indices_for_set('faros', i),
-                   'rpe': self.get_rpe_value_for_set(i)}
+    def iterate_over_sets(self):
+        for set_count in range(self._nr_sets):
+            yield {'gaitup': self.get_start_indices_for_set('gaitup', set_count),
+                   'faros': self.get_start_indices_for_set('faros', set_count),
+                   'azure': f"{self.root_dir}/azure/{set_count + 1:02}_sub",
+                   'rpe': self.get_rpe_value_for_set(set_count)}

@@ -51,29 +51,29 @@ def apply_butterworth_filter_dataframe(data_frame, sampling_frequency, order=4, 
     return pd.DataFrame(data=np.array(result).T, columns=data_frame.columns)
 
 
-def sample_data_uniformly(data_frame, timestamps, sampling_rate, mode="cubic"):
+def sample_data_uniformly(data_frame, sampling_rate, mode="cubic"):
     """
     Applies a uniform sampling to given data frame
     :param data_frame: data frame consisting the data
-    :param timestamps: timestamps for given data, in seconds
     :param sampling_rate: desired sampling frequency in frames per seconds (or Hz)
     :param mode: the way of interpolating the data [linear, quadratic, cubic, ..]
     :return: data frame with filtered data
     """
+    timestamps = data_frame['timestamp'].to_numpy()
     nr_samples = int(timestamps[-1] - timestamps[0]) * sampling_rate  # The new number of samples after upsampling
     upsampled_timestamps = np.linspace(timestamps[0], timestamps[-1], nr_samples)
 
     frames, features = data_frame.shape
     data = data_frame.to_numpy()
 
-    uniform_sampled_data = []
-    for feature in range(features):
+    uniform_sampled_data = [upsampled_timestamps]
+    for feature in range(1, features):
         y = data[:, feature]
         f = interpolate.interp1d(timestamps, y, kind=mode)
         yy = f(upsampled_timestamps)
         uniform_sampled_data.append(yy)
 
-    return pd.DataFrame(data=np.array(uniform_sampled_data).T, columns=data_frame.columns), upsampled_timestamps
+    return pd.DataFrame(data=np.array(uniform_sampled_data).T, columns=data_frame.columns)
 
 
 def fill_missing_data(data: pd.DataFrame, sampling_frequency: int, method: str = "quadratic", log: bool = False):

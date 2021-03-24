@@ -1,6 +1,7 @@
 from src.devices import AzureKinect, sample_data_uniformly
 from src.processing import segment_exercises_based_on_joint, calculate_positions_std, calculate_velocity_std, calculate_acceleration_std, calculate_min_max_distance, calculate_acceleration_magnitude_std, filter_dataframe
 from src.plot import plot_sensor_data_for_axes, plot_sensor_data_for_single_axis
+from src.config import ConfigReader
 
 import numpy as np
 import pandas as pd
@@ -18,21 +19,24 @@ features = {'acc_std': ("Acceleration Std", calculate_acceleration_std, [], plot
 
 excluded_joints = ["eye", "ear", "nose", "wrist", "hand", "thumb"]
 
+config = ConfigReader("data/bjarne_trial/config.json")
 durations = []
 
 # Iterate over all trials
-for counter in range(21):
+for set_data in config.iterate_over_sets():
     # Create Azure Kinect objects and preprocess
-    azure = AzureKinect(f"data/bjarne_trial/azure/{counter + 1:02}_sub")
+    azure = AzureKinect(set_data['azure'])
     azure.process_raw_data()
     azure.filter_data(order=4)
+    azure.resample_data(sampling_frequency=128)
     positions = filter_dataframe(azure.position_data, excluded_joints)
-    positions, new_x = sample_data_uniformly(positions, timestamps=azure.timestamps, sampling_rate=100)
+
+    # positions, new_x = sample_data_uniformly(positions, timestamps=azure.timestamps, sampling_rate=128)
 
     pelvis = positions['pelvis (y)'].to_numpy()
     pelvis = (pelvis - np.mean(pelvis)) / pelvis.std()
 
-    repetitions, costs = segment_exercises_based_on_joint(-pelvis, exemplar, 30, 0.5, show=False)
+    repetitions, costs = segment_exercises_based_on_joint(-pelvis, exemplar, 30, 0.5, show=True)
 
     for t1, t2 in repetitions[:12]:
         df = positions.iloc[t1:t2, :]
