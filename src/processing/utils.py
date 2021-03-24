@@ -20,18 +20,34 @@ def calculate_magnitude(df):
 
 
 def calculate_gradient(df):
+    """
+    Calculate the first gradient using central differences in given data frame
+    :param df: origin data frame that contains time series data
+    :return: data frame that contains gradients
+    """
     data = df.to_numpy()
     grad = np.gradient(data, axis=0)
     return pd.DataFrame(grad, columns=df.columns)
 
 
 def calculate_second_gradient(df):
+    """
+    Calculate a second gradient using central differences for data in given data frame
+    :param df: origin data frame
+    :return: data frame that contains second gradient over rows
+    """
     data = df.to_numpy()
-    grad = np.gradient(np.gradient(data, axis=0), axis=0)
-    return pd.DataFrame(grad, columns=df.columns)
+    second_grad = np.gradient(np.gradient(data, axis=0), axis=0)
+    return pd.DataFrame(second_grad, columns=df.columns)
 
 
 def filter_dataframe(df: pd.DataFrame, excluded_matches: list):
+    """
+    Filters out columns in dataframe that contain partial string given in the list
+    :param df: the origin data frame
+    :param excluded_matches: a list with substrings that should be filtered out
+    :return: data frame with filtered columns
+    """
     for excluded_part in excluded_matches:
         df = df.loc[:, ~df.columns.str.contains(excluded_part)]
     return df
