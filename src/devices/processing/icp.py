@@ -45,7 +45,4 @@ def find_rigid_transformation_svd(points_a, points_b):
         R = Vt.T * U.T
 
     t = -R * centroid_a + centroid_b
-#     ret = np.eye(4)
-#     ret[0:3, 0:3] = R
-#     ret[0:3, 3] = t.reshape(3)
     return R, t

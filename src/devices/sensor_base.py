@@ -44,6 +44,14 @@ class SensorBase(object):
         """
         self._data.loc[:, 'timestamp'] += delta
 
+    def cut_data_by_index(self, start: int = 0, end: int = -1):
+        """
+        Cut the data based on start and end index
+        @param start: start index
+        @param end: end index
+        """
+        self._data = self._data.iloc[start:end]
+
     @property
     def timestamps(self):
         return self._data['timestamp'].to_numpy()

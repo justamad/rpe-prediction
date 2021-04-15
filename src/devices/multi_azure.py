@@ -1,5 +1,5 @@
 from src.devices import AzureKinect
-from src.devices.multicam.calibration import read_calibration_folder, find_rigid_transformation_svd
+from processing import find_rigid_transformation_svd
 
 import numpy as np
 import matplotlib
@@ -13,59 +13,28 @@ class MultiAzure(object):
         sub = AzureKinect(sub_path)
         master.process_raw_data()
         sub.process_raw_data()
-        self.delay = delay
 
         # Synchronize master and sub devices
-        timestamp_master = master.timestamps
-        timestamp_sub = sub.timestamps
-        start_master = timestamp_master[0]
+        sub.shift_clock(-delay)
+        start_point = master.timestamps[0]
+        master.shift_clock(-start_point)
+        sub.shift_clock(-start_point)
 
-        timestamp_master -= start_master
-        timestamp_sub -= start_master
-        timestamp_sub -= delay
-        minimum = np.argmin(np.abs(timestamp_sub))
-        print(minimum)
+        # Cut data based on same timestamps
+        minimum = int(np.argmin(np.abs(sub.timestamps)))
+        length = min(len(master.timestamps), len(sub.timestamps) - minimum)
+        master.cut_data_by_index(0, length)
+        sub.cut_data_by_index(minimum, minimum + length)
 
-        print(timestamp_master)
-        print(timestamp_sub)
+        master_position = master.position_data.to_numpy()
+        sub_position = sub.position_data.to_numpy()
+
+        points_a = master_position[100:200, :].reshape(-1, 3)
+        points_b = sub_position[100:200, :].reshape(-1, 3)
 
         # Spatial alignment
-        # points_a, points_b = read_calibration_folder(calibration_path)
         # rotation, translation = find_rigid_transformation_svd(points_a, points_b)
         # master.multiply_matrix(rotation, translation)
-
-        # super().__init__(master)
-
-    # def synchronize_cameras(self, master, sub):
-    #     master_data = master.get_data(with_timestamps=True)
-    #     subord_data = sub.get_data(with_timestamps=True)
-    #
-    #     # Subtract delay from subordinate device
-    #     master_timestamps = master_data[:, 0]
-    #     subord_timestamps = subord_data[:, 0]
-    #     print(list(np.diff(master_timestamps)))
-    #
-    #     first_mutual_frame = max(master_timestamps[0], subord_timestamps[0])
-    #     print(first_mutual_frame)
-    #
-    #     # Synchronize data in the beginning
-    #     master_begin = np.argmin(np.abs(master_timestamps - first_mutual_frame))
-    #     subord_begin = np.argmin(np.abs(subord_timestamps - first_mutual_frame))
-    #
-    #     master_data = master_data[master_begin:, :]
-    #     subord_data = subord_data[subord_begin:, :]
-    #
-    #     # Cut end
-    #     min_length = min(len(master_data), len(subord_data))
-    #     master_data = master_data[:min_length, :]
-    #     subord_data = subord_data[:min_length, :]
-    #
-    #     t1 = master_data[:, 0]
-    #     t2 = subord_data[:, 0]
-    #     print(list(t1 - t2))
-    #     # master.update_data_body(master_data)
-    #     # sub.update_data_body(subord_data)
-    #     return master, sub
 
 
 if __name__ == '__main__':
