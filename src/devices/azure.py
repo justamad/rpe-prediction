@@ -40,7 +40,7 @@ class AzureKinect(SensorBase):
         Processing the raw data
         """
         self._data.loc[:, self._data.columns == 'timestamp'] *= 1e-6
-        self._data = fill_missing_data(self._data, self.sampling_frequency)
+        self._data = fill_missing_data(self._data, self.sampling_frequency, log=True)
 
     def multiply_matrix(self, matrix, translation=np.array([0, 0, 0])):
         """

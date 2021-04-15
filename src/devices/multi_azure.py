@@ -1,4 +1,4 @@
-from src.devices.multicam import AzureKinect
+from src.devices import AzureKinect
 from src.devices.multicam.calibration import read_calibration_folder, find_rigid_transformation_svd
 
 import numpy as np
@@ -6,22 +6,35 @@ import matplotlib
 matplotlib.use("TkAgg")
 
 
-class MultiAzure(AzureKinect):
+class MultiAzure(object):
 
-    def __init__(self, master_path, sub_path, calibration_path, delay=1000):
+    def __init__(self, master_path, sub_path, pointcloud_master, pointcloud_sub, delay=0.001):
         master = AzureKinect(master_path)
         sub = AzureKinect(sub_path)
+        master.process_raw_data()
+        sub.process_raw_data()
         self.delay = delay
 
-        # Temporal alignment
-        master, sub = self.synchronize_cameras(master, sub)
+        # Synchronize master and sub devices
+        timestamp_master = master.timestamps
+        timestamp_sub = sub.timestamps
+        start_master = timestamp_master[0]
+
+        timestamp_master -= start_master
+        timestamp_sub -= start_master
+        timestamp_sub -= delay
+        minimum = np.argmin(np.abs(timestamp_sub))
+        print(minimum)
+
+        print(timestamp_master)
+        print(timestamp_sub)
 
         # Spatial alignment
-        points_a, points_b = read_calibration_folder(calibration_path)
-        rotation, translation = find_rigid_transformation_svd(points_a, points_b)
-        master.multiply_matrix(rotation, translation)
+        # points_a, points_b = read_calibration_folder(calibration_path)
+        # rotation, translation = find_rigid_transformation_svd(points_a, points_b)
+        # master.multiply_matrix(rotation, translation)
 
-        super().__init__(master)
+        # super().__init__(master)
 
     # def synchronize_cameras(self, master, sub):
     #     master_data = master.get_data(with_timestamps=True)
@@ -53,3 +66,8 @@ class MultiAzure(AzureKinect):
     #     # master.update_data_body(master_data)
     #     # sub.update_data_body(subord_data)
     #     return master, sub
+
+
+if __name__ == '__main__':
+    cam = MultiAzure("../../data/justin/azure/01_master", "../../data/justin/azure/01_sub",
+                     "../../data/3001188.ply", "../../data/30.ply")
