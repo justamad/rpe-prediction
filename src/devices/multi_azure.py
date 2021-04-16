@@ -1,5 +1,6 @@
 from src.devices import AzureKinect
 from processing import find_rigid_transformation_svd
+from src.rendering import SkeletonViewer
 
 import numpy as np
 import matplotlib
@@ -26,14 +27,18 @@ class MultiAzure(object):
         master.cut_data_by_index(0, length)
         sub.cut_data_by_index(minimum, minimum + length)
 
-        master_position = master.position_data.to_numpy()
-        sub_position = sub.position_data.to_numpy()
+        master_position = master.position_data.to_numpy()[1500:1600, :]
+        sub_position = sub.position_data.to_numpy()[1500:1600, :]
 
-        points_a = master_position[100:200, :].reshape(-1, 3)
-        points_b = sub_position[100:200, :].reshape(-1, 3)
+        # window = SkeletonViewer()
+        # window.add_skeleton(master_position)
+        # window.add_skeleton(sub_position)
+        # window.show_window()
 
         # Spatial alignment
-        # rotation, translation = find_rigid_transformation_svd(points_a, points_b)
+        rotation, translation = find_rigid_transformation_svd(master_position.reshape(-1, 3),
+                                                              sub_position.reshape(-1, 3), True)
+        print(rotation)
         # master.multiply_matrix(rotation, translation)
 
 
