@@ -1,8 +1,8 @@
 from src.devices import AzureKinect
 from processing import find_rigid_transformation_svd
-from src.rendering import SkeletonViewer
 
 import numpy as np
+import open3d as o3d
 import matplotlib
 matplotlib.use("TkAgg")
 
@@ -30,18 +30,24 @@ class MultiAzure(object):
         master_position = master.position_data.to_numpy()[1500:1600, :]
         sub_position = sub.position_data.to_numpy()[1500:1600, :]
 
-        # window = SkeletonViewer()
-        # window.add_skeleton(master_position)
-        # window.add_skeleton(sub_position)
-        # window.show_window()
-
         # Spatial alignment
         rotation, translation = find_rigid_transformation_svd(master_position.reshape(-1, 3),
-                                                              sub_position.reshape(-1, 3), True)
-        print(rotation)
-        # master.multiply_matrix(rotation, translation)
+                                                              sub_position.reshape(-1, 3), False)
+
+        affine = np.eye(4)
+        affine[0:3, 0:3] = rotation
+        affine[0:3, 3] = translation.reshape(3)
+
+        # Visualize Point clouds
+        pcd_m = o3d.io.read_point_cloud(pointcloud_master)
+        pcd_m.remove_statistical_outlier(50, 10)
+
+        pcd_s = o3d.io.read_point_cloud(pointcloud_sub)
+        pcd_s.remove_statistical_outlier(50, 10)
+        pcd_s.transform(affine)
+        o3d.visualization.draw_geometries([pcd_m, pcd_s], mesh_show_back_face=True)
 
 
 if __name__ == '__main__':
     cam = MultiAzure("../../data/justin/azure/01_master", "../../data/justin/azure/01_sub",
-                     "../../data/3001188.ply", "../../data/30.ply")
+                     "../../data/justin/3001188.ply", "../../data/justin/3000188.ply")

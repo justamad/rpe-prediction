@@ -51,18 +51,22 @@ def find_rigid_transformation_svd(points_a, points_b, show=False, path=None):
 
     t = -R * centroid_a + centroid_b
 
+    # Check the RMSE of the transformation
+    transformed = (R @ matrix_a + t).T
+    rmse = np.sqrt(np.sum(np.square(points_b - transformed), axis=1))
+    rmse_s = "RMSE transformation: mean: {:4f} mm, std: {:4f}".format(np.mean(rmse), np.std(rmse))
+
     if show:
-        sub_check = (R @ matrix_a + t).T
-        calibration_error = np.sqrt(np.sum(np.square(points_b - sub_check), axis=1))
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        ax.scatter(points_a[:, 0], points_a[:, 1], points_a[:, 2], label="Main")
-        ax.scatter(points_b[:, 0], points_b[:, 1], points_b[:, 2], label="Sub")
-        ax.scatter(sub_check[:, 0], sub_check[:, 1], sub_check[:, 2], label="Check")
-        plt.title("Calibration error. mean: {:4f} mm, std: {:4f}".format(np.mean(calibration_error),
-                                                                         np.std(calibration_error)))
+        ax.scatter(points_a[:, 0], points_a[:, 1], points_a[:, 2], label="Points A")
+        ax.scatter(points_b[:, 0], points_b[:, 1], points_b[:, 2], label="Points B")
+        ax.scatter(transformed[:, 0], transformed[:, 1], transformed[:, 2], label="Transf Points A")
+        plt.title(rmse_s)
         plt.legend()
         if path is None:
             plt.show()
+    else:
+        print(rmse_s)
 
     return R, t
