@@ -48,7 +48,7 @@ class AzureKinect(SensorBase):
         @param matrix: the rotation matrix
         @param translation: a translation vector
         """
-        df = self.position_data
+        df = self._data.filter(regex='pos_').copy()
         data = df.to_numpy()
         samples, features = data.shape
         result = matrix * data.reshape(-1, 3).T + translation.reshape(3, 1)
