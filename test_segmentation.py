@@ -23,9 +23,9 @@ config = ConfigReader("data/bjarne_trial/config.json")
 durations = []
 
 # Iterate over all trials
-for set_data in config.iterate_over_sets():
+for set_data in range(9):
     # Create Azure Kinect objects and preprocess
-    azure = AzureKinect(set_data['azure'])
+    azure = AzureKinect(f"data/arne_flywheel/azure/{set_data + 1:02}_sub",)
     azure.process_raw_data()
     azure.filter_data(order=4)
     azure.resample_data(sampling_frequency=128)
@@ -36,7 +36,7 @@ for set_data in config.iterate_over_sets():
     pelvis = positions['pelvis (y)'].to_numpy()
     pelvis = (pelvis - np.mean(pelvis)) / pelvis.std()
 
-    repetitions, costs = segment_exercises_based_on_joint(-pelvis, exemplar, 30, 0.5, show=True)
+    repetitions, costs = segment_exercises_based_on_joint(pelvis, exemplar, 30, 0.5, show=True)
 
     for t1, t2 in repetitions[:12]:
         df = positions.iloc[t1:t2, :]
