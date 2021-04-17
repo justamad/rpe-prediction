@@ -10,3 +10,4 @@ open3d
 panda3d_viewer
 biosppy
 tensorflow
+scikit-learn

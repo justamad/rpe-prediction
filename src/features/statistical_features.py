@@ -1,10 +1,10 @@
-from .utils import calculate_magnitude, calculate_second_gradient
+from src.processing.utils import calculate_magnitude, calculate_second_gradient
 
 import pandas as pd
 import numpy as np
 
 
-def calculate_positions_std(df: pd.DataFrame):
+def calculate_std(df: pd.DataFrame):
     """
     Calculate the mean position value for all given joints
     @param df: data frame that contains positional (x,y,z) data for all joints
@@ -56,7 +56,7 @@ def calculate_acceleration_std(df: pd.DataFrame):
     return pd.DataFrame(data=acceleration_std, columns=df.columns)
 
 
-def calculate_min_max_distance(df: pd.DataFrame):
+def calculate_range(df: pd.DataFrame):
     """
     Calculate the mean value of acceleration for all given joints
     @param df: data frame that contains positional (x,y,z) data for all joints
