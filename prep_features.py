@@ -22,4 +22,5 @@ for set_data in range(9):
     azure.filter_data(order=4)
     positions = filter_dataframe(azure.position_data, excluded_joints)
     features = calculate_features_sliding_window(positions, window_size=60, step_size=1)
+    print(features.shape)
     plot_sensor_data_for_axes(features, "Feature")
