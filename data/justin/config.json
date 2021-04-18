@@ -1,0 +1,33 @@
+{
+  "sync_sensor": "ST327.csv",
+  "subject_name": "Justin",
+  "sets": [
+    {
+      "rpe": 12
+    },
+    {
+      "rpe": 13
+    },
+    {
+      "rpe": 14
+    },
+    {
+      "rpe": 13
+    },
+    {
+      "rpe": 14
+    },
+    {
+      "rpe": 15
+    },
+    {
+      "rpe": 16
+    },
+    {
+      "rpe": 17
+    },
+    {
+      "rpe": 18
+    }
+  ]
+}
