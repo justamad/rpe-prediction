@@ -12,4 +12,3 @@ biosppy
 tensorflow
 scikit-learn
 sklearn
-Jointly
