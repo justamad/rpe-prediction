@@ -22,21 +22,21 @@ def read_csv_and_convert_timestamp(file_name):
 
 p_1 = read_csv_and_convert_timestamp("625.csv")
 print(p_1)
-plt.plot(p_1['ACCELERATION'])
-plt.show()
+# plt.plot(p_1['ACCELERATION'])
+# plt.show()
 
-exit(-1)
+# exit(-1)
 p_2 = read_csv_and_convert_timestamp("629.csv")
 print(p_1)
 
 sources = {
     'IMU_1': {
         'data': p_1,
-        'ref_column': 'ACCELERATION_X'
+        'ref_column': 'ACCELERATION'
     },
     'IMU_2': {
         'data': p_2,
-        'ref_column': 'ACCELERATION_X'}
+        'ref_column': 'ACCELERATION'}
 }
 
 ref_source_name = 'IMU_1'
