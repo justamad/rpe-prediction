@@ -27,12 +27,13 @@ def read_massive_csv_file(file_name):
         df = data.loc[data['deviceId'] == sensor_id].copy()
         df = df.reset_index(drop=True).pivot(index='sensorTimestamp', columns='type', values='value')
         df.to_csv(f'{sensor_id}.csv', sep=';')
+        print(df)
 
-        plt.plot(df["ACCELERATION_Y"], label=label)
+        # plt.plot(df["ACCELERATION_Y"], label=label)
 
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.show()
 
 
 if __name__ == '__main__':

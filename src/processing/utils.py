@@ -2,16 +2,17 @@ import pandas as pd
 import numpy as np
 
 
-def calculate_magnitude(df):
+def calculate_magnitude(df, axis_suffix=' (x)'):
     """
     Calculate the magnitude for a given data frame
     @param df: data frame that contains sensor data each with an (x,y,z) axis
+    @param axis_suffix: the axis suffix in the file
     @return: the magnitude for each joint/sensor in a data frame
     """
-    joints = get_joints_as_list(df)
+    joints = get_joints_as_list(df, axis_suffix)
     result = []
     for joint in joints:
-        joint_data = df[[c for c in df.columns if joint.lower() in c]].to_numpy()
+        joint_data = df[[c for c in df.columns if joint in c]].to_numpy()
         magnitude = np.sqrt(np.sum(np.square(joint_data), axis=1))
         result.append(magnitude)
 
@@ -53,10 +54,12 @@ def filter_dataframe(df: pd.DataFrame, excluded_matches: list):
     return df
 
 
-def get_joints_as_list(df):
+def get_joints_as_list(df, suffix):
     """
     Identify all joints given in the data frame, remove all axes or types from columns
     @param df: a pandas data frame with sensor data
+    @param suffix: the current suffix in data frame
     @return: list of filtered joint names in alphabetical order
     """
-    return sorted(set([c[:-4] for c in df.columns]))
+    suffix_len = len(suffix)
+    return sorted(set([c[:-suffix_len] for c in df.columns]))
