@@ -9,7 +9,7 @@ def read_parquet_sensor_data(file_name: str, timestamp_as_index=True) -> pd.Data
     @return: data frame that contains the sensor data organized in rows
     """
     df = pd.read_parquet(file_name)
-    drop_columns = ["studyId", "userId", "accuracy"]
+    drop_columns = ["studyId", "userId", "accuracy", "timestamp"]
 
     timestamp = df["timestamp"].explode(ignore_index=True)
     sensor_timestamp = df["sensorTimestamp"].explode(ignore_index=True)
@@ -47,5 +47,8 @@ def resort_file(data, sensors):
         df["sensorTimestamp"] = pd.to_datetime(df.index, unit="s")
         df = df.set_index("sensorTimestamp", drop=True)
         sensor_dict[sensor_id] = df
+        print(df)
+        print(df.columns)
+        print(df.index)
 
     return sensor_dict

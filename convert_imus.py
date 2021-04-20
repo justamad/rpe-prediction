@@ -17,7 +17,7 @@ args = parser.parse_args()
 
 sensors = [625, 626, 627, 628, 629, 630]
 
-df = read_parquet_sensor_data(join(args.path, "sensor-data.parquet"))
+df = read_parquet_sensor_data(join(args.path, "sensor-data.parquet"), timestamp_as_index=False)
 sensor_files = resort_file(df, sensors)
 
 sources = {str(k): {'data': calculate_and_append_magnitude(v), 'ref_column': 'MAGNITUDE'} for k, v in sensor_files.items()}

@@ -12,3 +12,5 @@ biosppy
 tensorflow
 scikit-learn
 sklearn
+pyarrow
+fastparquet
