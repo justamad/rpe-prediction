@@ -44,7 +44,6 @@ def resort_file(data, sensors):
     for sensor_id in sensors:
         df = data.loc[data['deviceId'] == sensor_id].copy()
         df = df.reset_index(drop=True).pivot(index='sensorTimestamp', columns='type', values='value')
-
         df["sensorTimestamp"] = pd.to_datetime(df.index, unit="s")
         df = df.set_index("sensorTimestamp", drop=True)
         sensor_dict[sensor_id] = df
