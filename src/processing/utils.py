@@ -20,6 +20,13 @@ def calculate_magnitude(df, axis_suffix=' (x)'):
     return result
 
 
+def calculate_and_append_magnitude(df, column_prefix="ACCELERATION"):
+    data = df[[c for c in df.columns if column_prefix in c]]
+    magnitude = np.sqrt(np.square(data).sum(axis=1))
+    df['MAGNITUDE'] = magnitude
+    return df
+
+
 def calculate_gradient(df):
     """
     Calculate the first gradient using central differences in given data frame
