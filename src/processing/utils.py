@@ -15,9 +15,9 @@ def calculate_magnitude(df, axis_suffix=' (x)'):
         data = df[[c for c in df.columns if joint in c]]
         result.append(np.sqrt(np.square(data).sum(axis=1)))
 
-    df = pd.concat(result, axis=1)
-    df.columns = joints
-    return df
+    result = pd.concat(result, axis=1)
+    result.columns = joints
+    return result
 
 
 def calculate_gradient(df):
