@@ -12,12 +12,12 @@ def calculate_magnitude(df, axis_suffix=' (x)'):
     joints = get_joints_as_list(df, axis_suffix)
     result = []
     for joint in joints:
-        joint_data = df[[c for c in df.columns if joint in c]].to_numpy()
-        magnitude = np.sqrt(np.sum(np.square(joint_data), axis=1))
-        result.append(magnitude)
+        data = df[[c for c in df.columns if joint in c]]
+        result.append(np.sqrt(np.square(data).sum(axis=1)))
 
-    data = np.array(result).reshape(-1, len(joints))
-    return pd.DataFrame(data=data, columns=joints)
+    df = pd.concat(result, axis=1)
+    df.columns = joints
+    return df
 
 
 def calculate_gradient(df):
