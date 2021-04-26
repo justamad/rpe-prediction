@@ -4,21 +4,26 @@ from sklearn.preprocessing import StandardScaler
 
 import pandas as pd
 import matplotlib
-matplotlib.use("TKAgg")
-
 import matplotlib.pyplot as plt
 import numpy as np
 
-X = pd.read_csv("X.csv", sep=";").to_numpy()
-y = pd.read_csv("y.csv", sep=";").to_numpy().reshape(-1)
+matplotlib.use("TKAgg")
 
-print(X.shape, y.shape)
+
+X_train = pd.read_csv("X_train.csv", sep=";").to_numpy()
+y_train = pd.read_csv("y_train.csv", sep=";").to_numpy().reshape(-1)
+
+X_test = pd.read_csv("X_test.csv", sep=";").to_numpy()
+y_test = pd.read_csv("y_test.csv", sep=";").to_numpy().reshape(-1)
+
+print(X_train.shape, y_train.shape)
+print(X_test.shape, y_test.shape)
 svr = make_pipeline(StandardScaler(), SVR(C=1.0, epsilon=0.2))
-svr.fit(X, y)
-print(svr.score(X, y))
+svr.fit(X_train, y_train)
+print(svr.score(X_train, y_train))
 
-pred_y = svr.predict(X)
-plt.plot(y, label="Ground Truth")
+pred_y = svr.predict(X_test)
+plt.plot(y_test, label="Ground Truth")
 plt.plot(pred_y, label="Predictions")
 plt.legend()
 plt.tight_layout()
