@@ -61,7 +61,7 @@ def filter_dataframe(df: pd.DataFrame, excluded_matches: list):
     return df
 
 
-def get_joints_as_list(df, suffix):
+def get_joints_as_list(df, suffix=' (x)'):
     """
     Identify all joints given in the data frame, remove all axes or types from columns
     @param df: a pandas data frame with sensor data
