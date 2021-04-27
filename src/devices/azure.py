@@ -22,12 +22,12 @@ class AzureKinect(SensorBase):
 
             pos_data = pd.read_csv(position_file, delimiter=';')
             pos_data = pos_data[[c for c in pos_data.columns if "(c)" not in c and "body_idx" not in c]].copy()
-            new_names = [(i, 'pos_' + i.lower()) for i in pos_data.iloc[:, 1:].columns.values]
+            new_names = [(i, i.lower() + " pos") for i in pos_data.iloc[:, 1:].columns.values]
             pos_data.rename(columns=dict(new_names), inplace=True)
 
             ori_data = pd.read_csv(orientation_file, delimiter=';')
             ori_data = ori_data[[c for c in ori_data.columns if "body_idx" not in c and "timestamp" not in c]].copy()
-            new_names = [(i, 'ori_' + i.lower()) for i in ori_data.columns.values]
+            new_names = [(i, i.lower() + " ori") for i in ori_data.columns.values]
             ori_data.rename(columns=dict(new_names), inplace=True)
             data = pd.concat([pos_data, ori_data], axis=1)
         else:
@@ -108,15 +108,15 @@ class AzureKinect(SensorBase):
 
     @property
     def position_data(self):
-        data = self._data.filter(regex='pos_').copy()
-        new_names = [(i, i.replace('pos_', '')) for i in data.columns.values]
+        data = self._data.filter(regex='pos').copy()
+        new_names = [(i, i.replace('pos', '')) for i in data.columns.values]
         data.rename(columns=dict(new_names), inplace=True)
         return data
 
     @property
     def orientation_data(self):
-        data = self._data.filter(regex='ori_').copy()
-        new_names = [(i, i.replace('ori_', '')) for i in data.columns.values]
+        data = self._data.filter(regex='ori').copy()
+        new_names = [(i, i.replace('ori', '')) for i in data.columns.values]
         data.rename(columns=dict(new_names), inplace=True)
         return data
 

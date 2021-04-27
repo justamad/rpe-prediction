@@ -61,6 +61,24 @@ def filter_dataframe(df: pd.DataFrame, excluded_matches: list):
     return df
 
 
+def reshape_data_for_ts(df, joints):
+    """
+    Reshape data to the specific format for the tsfresh library
+    :param df: current dataframe
+    :param joints: list of all joints in dataframe
+    :return: reshaped data frame
+    """
+    data_result = []
+    for joint in joints:
+        columns = ['timestamp'] + [c for c in df.columns if joint in c]
+        data = df[columns].copy()
+        data.columns = [c.replace(joint, '') for c in data.columns]
+        data['id'] = joint
+        data_result.append(data)
+
+    return pd.concat(data_result, ignore_index=True)
+
+
 def get_joints_as_list(df, suffix=' (x)'):
     """
     Identify all joints given in the data frame, remove all axes or types from columns

@@ -1,11 +1,10 @@
-from .statistical_features import calculate_range, calculate_std
+from tsfresh.feature_extraction import ComprehensiveFCParameters
+from src.processing import get_joints_as_list
 
+import tsfresh
 import pandas as pd
 
-feature_dict = {
-    'std': calculate_std,
-    'range': calculate_range
-}
+settings = ComprehensiveFCParameters()
 
 
 def calculate_features_sliding_window(df: pd.DataFrame, window_size: int, step_size: int = 1):
@@ -16,16 +15,13 @@ def calculate_features_sliding_window(df: pd.DataFrame, window_size: int, step_s
     @param step_size: the desired step size
     @return: pandas data frame that holds the calculated features in columns for all sensors/joints
     """
-    features = {f: [] for f in feature_dict.keys()}
+    joints = get_joints_as_list(df, " (x) pos")
+    joints.remove('t')  # TODO: Change this
 
     length = len(df) - window_size + 1
     for window in range(length):
         data = df[window:window + window_size - 1].copy()
+        data = reshape_data_for_ts(data, joints)
+        feat = tsfresh.extract_features(data, column_id='id', column_sort='timestamp', default_fc_parameters=settings)
+        print(feat)
 
-        for feature_name, method in feature_dict.items():
-            f = method(data)
-            features[feature_name].append(f)
-
-    all_features = [pd.concat(features_list).add_prefix(f"{name}_") for name, features_list in features.items()]
-    final = pd.concat(all_features, axis=1)
-    return final
