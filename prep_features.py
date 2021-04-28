@@ -26,6 +26,7 @@ def calculate_kinect_data(iterator, mode="train"):
         # segment_exercises_based_on_joint(positions[], )
         # orientations = filter_dataframe(azure.orientation_data, excluded_joints)
         features = calculate_features_sliding_window(data, window_size=60, step_size=1)
+        print(features)
         # plot_sensor_data_for_axes(features, "all")
         X.append(features)
         y.extend([set_data['rpe'] for _ in range(len(features))])
