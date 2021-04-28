@@ -79,6 +79,13 @@ def reshape_data_for_ts(df, joints):
     return pd.concat(data_result, ignore_index=True)
 
 
+def reshape_data_from_ts(df):
+    df2 = df.reset_index().melt(id_vars=['index'], value_vars=df.columns)
+    df2['name'] = df2['variable'] + '_' + df2['index']
+    df2 = df2[['name', 'value']].set_index('name').transpose()
+    return df2
+
+
 def get_joints_as_list(df, suffix=' (x)'):
     """
     Identify all joints given in the data frame, remove all axes or types from columns

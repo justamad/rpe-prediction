@@ -1,3 +1,3 @@
 from .segmentation import segment_exercises_based_on_joint
 from .normalization import normalize_mean, normalize_into_interval
-from .utils import get_joints_as_list, calculate_magnitude, calculate_gradient, filter_dataframe, calculate_and_append_magnitude, reshape_data_for_ts
+from .utils import get_joints_as_list, calculate_magnitude, calculate_gradient, filter_dataframe, calculate_and_append_magnitude, reshape_data_for_ts, reshape_data_from_ts
