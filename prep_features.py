@@ -31,7 +31,7 @@ def calculate_kinect_data(iterator, mode="train"):
         X.append(features)
         y.extend([set_data['rpe'] for _ in range(len(features))])
 
-    X = pd.concat(X)
+    X = pd.concat(X, ignore_index=True)
     y = pd.DataFrame(np.array(y), columns=["rpe"])
 
     print(X.shape)
