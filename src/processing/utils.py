@@ -61,31 +61,6 @@ def filter_dataframe(df: pd.DataFrame, excluded_matches: list):
     return df
 
 
-def reshape_data_for_ts(df, joints):
-    """
-    Reshape data to the specific format for the tsfresh library
-    :param df: current dataframe
-    :param joints: list of all joints in dataframe
-    :return: reshaped data frame
-    """
-    data_result = []
-    for joint in joints:
-        columns = ['timestamp'] + [c for c in df.columns if joint in c]
-        data = df[columns].copy()
-        data.columns = [c.replace(joint, '') for c in data.columns]
-        data['id'] = joint
-        data_result.append(data)
-
-    return pd.concat(data_result, ignore_index=True)
-
-
-def reshape_data_from_ts(df):
-    df2 = df.reset_index().melt(id_vars=['index'], value_vars=df.columns)
-    df2['name'] = df2['variable'] + '_' + df2['index']
-    df2 = df2[['name', 'value']].set_index('name').transpose()
-    return df2
-
-
 def get_joints_as_list(df, joints):
     """
     Identify all joints given in the data frame, remove all axes or types from columns
@@ -93,6 +68,4 @@ def get_joints_as_list(df, joints):
     @param joints: a full list of joints which forms a superset of possible joints in data frame
     @return: list of filtered joint names in alphabetical order
     """
-    left_joints = list(filter(lambda x: any([c for c in df.columns if x in c]), joints))
-    print(left_joints)
-    return left_joints
+    return list(filter(lambda x: any([c for c in df.columns if x in c]), joints))
