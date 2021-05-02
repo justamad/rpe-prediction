@@ -1,13 +1,14 @@
 import pandas as pd
 
 
-def normalize_mean(df: pd.DataFrame):
+def normalize_mean(df: pd.DataFrame, std_dev_factor: float = 1.0):
     """
     Normalize given positional data by subtracting mean and dividing by standard deviation
     @param df: the positional data stored in pandas data frame
+    @param std_dev_factor: a factor for the standard deviation
     @return: pandas dataframe with normalized positional data
     """
-    return (df - df.mean(axis=0)) / df.std(axis=0)
+    return (df - df.mean(axis=0)) / (std_dev_factor * df.std(axis=0))
 
 
 def normalize_into_interval(df: pd.DataFrame, a: int = 0, b: int = 1):
