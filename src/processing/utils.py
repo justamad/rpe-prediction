@@ -86,12 +86,13 @@ def reshape_data_from_ts(df):
     return df2
 
 
-def get_joints_as_list(df, suffix=' (x)'):
+def get_joints_as_list(df, joints):
     """
     Identify all joints given in the data frame, remove all axes or types from columns
     @param df: a pandas data frame with sensor data
-    @param suffix: the current suffix in data frame
+    @param joints: a full list of joints which forms a superset of possible joints in data frame
     @return: list of filtered joint names in alphabetical order
     """
-    suffix_len = len(suffix)
-    return sorted(set([c[:-suffix_len] for c in df.columns]))
+    left_joints = list(filter(lambda x: any([c for c in df.columns if x in c]), joints))
+    print(left_joints)
+    return left_joints

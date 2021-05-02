@@ -80,6 +80,14 @@ class AzureKinect(SensorBase):
 
         return [(joints.index(j1.lower()), joints.index(j2.lower())) for j1, j2 in connections]
 
+    @staticmethod
+    def get_skeleton_joints():
+        skeleton_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "joints.json")
+        with open(skeleton_file) as f:
+            joints = json.load(f)
+
+        return list(map(lambda x: x.lower(), joints))
+
     def get_synchronization_signal(self) -> np.ndarray:
         return self._data['pos_spine_navel (y)'].to_numpy()
 

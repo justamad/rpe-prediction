@@ -7,15 +7,16 @@ import math
 colors = ['red', 'green', 'blue', 'yellow']
 
 
-def plot_sensor_data_for_axes(df: pd.DataFrame, title: str, file_name: str = None, columns: int = 4):
+def plot_sensor_data_for_axes(df: pd.DataFrame, title: str, joints: list, file_name: str = None, columns: int = 4):
     """
     Plots the trajectories for the Azure Kinect camera
     @param df: Data Frame that contains the positional or orientation data
     @param title: The title of the graph
+    @param joints: A list of the current joints within the data frame
     @param file_name: file name of output file
     @param columns: number of columns in the plot
     """
-    joints = get_joints_as_list(df)
+    joints = get_joints_as_list(df, joints)
     rows, cols = math.ceil(len(joints) / columns), columns
     fig, axs = plt.subplots(rows, cols, figsize=(15, 15))
 
