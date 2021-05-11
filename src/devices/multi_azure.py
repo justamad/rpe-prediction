@@ -1,6 +1,6 @@
 from src.devices import AzureKinect
-from processing import find_rigid_transformation_svd
 from src.rendering import SkeletonViewer
+from .processing import find_rigid_transformation_svd
 
 import numpy as np
 import open3d as o3d
@@ -43,7 +43,7 @@ class MultiAzure(object):
 
         # Spatial alignment
         rotation, translation = find_rigid_transformation_svd(master_position.reshape(-1, 3),
-                                                              sub_position.reshape(-1, 3), False)
+                                                              sub_position.reshape(-1, 3), True)
 
         trans_init = np.eye(4)
         trans_init[0:3, 0:3] = rotation
@@ -51,22 +51,22 @@ class MultiAzure(object):
         self.master.multiply_matrix(rotation, translation)
 
         # Visualize Point clouds
-        pcd_m = o3d.io.read_point_cloud(self.point_cloud_master)
-        pcd_m.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+        # pcd_m = o3d.io.read_point_cloud(self.point_cloud_master)
+        # pcd_m.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
 
-        pcd_s = o3d.io.read_point_cloud(self.point_cloud_sub)
-        pcd_s.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+        # pcd_s = o3d.io.read_point_cloud(self.point_cloud_sub)
+        # pcd_s.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
         # pcd_s.transform(affine)
         # draw_registration_result(pcd_s, pcd_m, trans_init)
 
         print("Apply point-to-plane ICP")
-        threshold = 0.02
-        reg_p2l = o3d.pipelines.registration.registration_icp(
-            pcd_s, pcd_m, threshold, trans_init,
-            o3d.pipelines.registration.TransformationEstimationPointToPlane())
-        print(reg_p2l)
-        diff = reg_p2l.transformation - trans_init
-        print(f"Diff {diff}")
+        # threshold = 0.02
+        # reg_p2l = o3d.pipelines.registration.registration_icp(
+        #     pcd_s, pcd_m, threshold, trans_init,
+        #     o3d.pipelines.registration.TransformationEstimationPointToPlane())
+        # print(reg_p2l)
+        # diff = reg_p2l.transformation - trans_init
+        # print(f"Diff {diff}")
         # draw_registration_result(pcd_s, pcd_m, reg_p2l.transformation)
 
 
