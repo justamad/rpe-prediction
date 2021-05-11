@@ -22,7 +22,7 @@ class MultiAzure(object):
         self.delay = delay
 
         self.time_synchronization()
-        self.spatial_alignment()
+        # self.spatial_alignment()
 
     def time_synchronization(self):
         # Synchronize master and sub devices
@@ -36,6 +36,9 @@ class MultiAzure(object):
         length = min(len(self.master.timestamps), len(self.sub.timestamps) - minimum)
         self.master.cut_data_by_index(0, length)
         self.sub.cut_data_by_index(minimum, minimum + length)
+
+    def external_rotation(self, rotation, translation):
+        self.master.multiply_matrix(rotation, translation)
 
     def spatial_alignment(self):
         master_position = self.master.position_data.to_numpy()[1500:1600, :]
