@@ -45,7 +45,9 @@ class ConfigReader:
 
     def iterate_over_sets(self):
         for set_count in range(self._nr_sets):
-            yield {# 'gaitup': self.get_start_indices_for_set('gaitup', set_count),
-                   # 'faros': self.get_start_indices_for_set('faros', set_count),
-                   'azure': f"{self.root_dir}/azure/{set_count + 1:02}_sub",
-                   'rpe': self.get_rpe_value_for_set(set_count)}
+            yield {
+                'azure': f"{self.root_dir}/azure/{set_count + 1:02}_sub",
+                'rpe': self.get_rpe_value_for_set(set_count),
+                # 'gaitup': self.get_start_indices_for_set('gaitup', set_count),
+                # 'faros': self.get_start_indices_for_set('faros', set_count),
+            }
