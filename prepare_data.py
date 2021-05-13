@@ -29,11 +29,10 @@ def prepare_skeleton_data(iterator):
         azure.process_raw_data()
         azure.filter_data(order=4)
         data = filter_dataframe(azure._data, excluded_joints)
-        # data = filter_dataframe(data, ["timestamp", "pos"])
-        data = normalize_mean(data, std_dev_factor=1.0)
+        data = filter_dataframe(data, ["ori"])  # TODO: Fix, add timestamps to position_data?
+        # data = normalize_mean(data, std_dev_factor=1.0)
         # plot_sensor_data_for_axes(data, "Position_data", azure.get_skeleton_joints(), f"{set_data['azure']}_pos.png")
         # segment_exercises_based_on_joint(positions[], )
-        # orientations = filter_dataframe(azure.orientation_data, excluded_joints)
         features = calculate_features_sliding_window(data, window_size=30, step_size=2)
         x_data.append(features)
         y_labels.extend([set_data['rpe'] for _ in range(len(features))])
