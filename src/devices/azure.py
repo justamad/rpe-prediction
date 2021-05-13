@@ -21,11 +21,13 @@ class AzureKinect(SensorBase):
                 raise FileNotFoundError(f"Given files in {data_path} do not exist.")
 
             pos_data = pd.read_csv(position_file, delimiter=';')
+            pos_data = pos_data[pos_data['body_idx'] == 1]
             pos_data = pos_data[[c for c in pos_data.columns if "(c)" not in c and "body_idx" not in c]].copy()
             new_names = [(i, i.lower() + " pos") for i in pos_data.iloc[:, 1:].columns.values]
             pos_data.rename(columns=dict(new_names), inplace=True)
 
             ori_data = pd.read_csv(orientation_file, delimiter=';')
+            ori_data = ori_data[ori_data['body_idx'] == 1]
             ori_data = ori_data[[c for c in ori_data.columns if "body_idx" not in c and "timestamp" not in c]].copy()
             new_names = [(i, i.lower() + " ori") for i in ori_data.columns.values]
             ori_data.rename(columns=dict(new_names), inplace=True)
