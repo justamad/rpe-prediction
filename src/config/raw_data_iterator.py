@@ -1,4 +1,4 @@
-from .data_loader import DataLoader
+from .data_loader import DataLoader, LoadingException
 from os.path import join
 
 import os
@@ -19,8 +19,11 @@ class RawDataIterator(object):
         data_loaders = []
 
         for subject in os.listdir(self._input_path):
-            loader = DataLoader(join(self._input_path, subject))
-            data_loaders.append(loader)
+            try:
+                loader = DataLoader(join(self._input_path, subject))
+                data_loaders.append(loader)
+            except LoadingException as e:
+                print(f"Could not load file loader for {subject} trial: {e}")
 
         return data_loaders
 
