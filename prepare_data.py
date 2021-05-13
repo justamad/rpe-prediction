@@ -20,6 +20,7 @@ def prepare_skeleton_data(iterator):
     @return:
     """
     x_data, y_labels = [], []
+    groups = []
 
     # Iterate over all trials
     for set_data in iterator:
@@ -36,9 +37,10 @@ def prepare_skeleton_data(iterator):
         features = calculate_features_sliding_window(data, window_size=30, step_size=2)
         x_data.append(features)
         y_labels.extend([set_data['rpe'] for _ in range(len(features))])
+        groups.extend([set_data['group'] for _ in range(len(features))])
 
     X = pd.concat(x_data, ignore_index=True)
-    y = pd.DataFrame(np.array(y_labels), columns=["rpe"])
+    y = pd.DataFrame(np.stack([y_labels, groups], axis=1), columns=["rpe", "groups"])
     X.to_csv("x.csv", index=False, sep=';')
     y.to_csv("y.csv", index=False, sep=';')
 

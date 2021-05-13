@@ -32,6 +32,7 @@ class RawDataIterator(object):
         Method returns iterator over sets in entire data set
         @return: iterator
         """
-        for data_loader in self._data_loaders:
+        for subject_id, data_loader in enumerate(self._data_loaders):
             for trial in data_loader.iterate_over_sets():
+                trial['group'] = subject_id
                 yield trial
