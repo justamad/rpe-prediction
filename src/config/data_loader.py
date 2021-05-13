@@ -90,7 +90,7 @@ class DataLoader(object):
         found_sets = list(map(lambda l: l.get_nr_of_sets(), self._file_loaders.values()))
         result = found_sets.count(found_sets[0]) == len(found_sets)
         if not result:
-            print("Set(s) are missing!")
+            print(f"Set(s) are missing for subject: {root_path}")
         self._sets = found_sets[0]
 
     def iterate_over_sets(self):

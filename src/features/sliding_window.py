@@ -1,11 +1,11 @@
 from tsfresh.feature_extraction import MinimalFCParameters
-from src.processing import get_joints_as_list
 
 import tsfresh
 import pandas as pd
 import math
 
 settings = MinimalFCParameters()
+del settings['variance']  # Variance and standard deviation are highly correlated but std integrates nr of samples
 
 
 def calculate_features_sliding_window(df: pd.DataFrame, window_size: int, step_size: int = 1):
