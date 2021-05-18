@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import matplotlib
 
-matplotlib.use("TkAgg")
+# matplotlib.use("TkAgg")
 excluded_joints = ["eye", "ear", "nose", "wrist", "hand", "thumb"]
 file_iterator = RawDataIterator("data/raw")
 
@@ -47,4 +47,5 @@ def prepare_skeleton_data(iterator):
     print(y.shape)
 
 
-prepare_skeleton_data(file_iterator.iterate_over_all_subjects())
+if __name__ == '__main__':
+    prepare_skeleton_data(file_iterator.iterate_over_all_subjects())

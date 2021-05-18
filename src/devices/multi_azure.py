@@ -7,7 +7,7 @@ import open3d as o3d
 import matplotlib
 import copy
 
-matplotlib.use("TkAgg")
+# matplotlib.use("TkAgg")
 
 
 class MultiAzure(object):
