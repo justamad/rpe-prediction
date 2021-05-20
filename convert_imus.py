@@ -1,5 +1,5 @@
-from src.config import read_parquet_sensor_data, resort_file
-from src.processing import calculate_and_append_magnitude
+from rpe_prediction.config import read_parquet_sensor_data, resort_file
+from rpe_prediction.processing import calculate_and_append_magnitude
 from jointly.log import logger
 from os.path import join
 

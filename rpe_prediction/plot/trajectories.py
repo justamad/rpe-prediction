@@ -1,4 +1,4 @@
-from src.processing import get_joints_as_list
+from rpe_prediction.processing import get_joints_as_list
 
 import pandas as pd
 import matplotlib.pyplot as plt

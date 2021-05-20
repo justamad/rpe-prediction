@@ -1,4 +1,4 @@
-from src.devices.processing import apply_butterworth_filter_dataframe, sample_data_uniformly
+from rpe_prediction.processing import apply_butterworth_filter_dataframe, sample_data_uniformly
 
 import pandas as pd
 

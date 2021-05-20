@@ -1,5 +1,5 @@
-from src.devices import MultiAzure
-from src.rendering import SkeletonViewer
+from rpe_prediction.stereo_cam import StereoAzure
+from rpe_prediction.rendering import SkeletonViewer
 from os.path import join
 
 import numpy as np
@@ -12,7 +12,7 @@ trans = np.loadtxt("trans.np").reshape(3, 1)
 print(rot.shape)
 print(trans.shape)
 
-cam = MultiAzure(join(path, "01_master"), join(path, "01_sub"), None, None)
+cam = StereoAzure(join(path, "01_master"), join(path, "01_sub"), None, None)
 cam.external_rotation(rot, trans)
 
 viewer = SkeletonViewer()

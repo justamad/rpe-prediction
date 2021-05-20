@@ -1,4 +1,4 @@
-from .utils import normalize_signal, upsample_data
+from rpe_prediction.processing import normalize_signal, upsample_data
 from scipy import signal
 from os.path import join
 

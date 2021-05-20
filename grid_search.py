@@ -18,7 +18,7 @@ logo = LeaveOneGroupOut()
 # Set the tolerance to a large value to make the example faster
 tuned_parameters = [{'svr__kernel': ['rbf'],
                      'svr__gamma': [1e-3, 1e-4],
-                     'svr__C': [1, 10, 100, 1000]}]
+                     'svr__C': [1e0, 1e1, 1e2, 1e3]}]
 
 pipe = Pipeline(steps=[('scaler', StandardScaler()), ('svr', SVR())])
 

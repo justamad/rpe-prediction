@@ -1,7 +1,7 @@
-from src.devices import AzureKinect, sample_data_uniformly
-from src.processing import segment_exercises_based_on_joint, calculate_positions_std, calculate_velocity_std, calculate_acceleration_std, calculate_min_max_distance, calculate_acceleration_magnitude_std, filter_dataframe
-from src.plot import plot_sensor_data_for_axes, plot_sensor_data_for_single_axis
-from src.config import ConfigReader
+from rpe_prediction.devices import AzureKinect, sample_data_uniformly
+from rpe_prediction.processing import segment_exercises_based_on_joint, calculate_positions_std, calculate_velocity_std, calculate_acceleration_std, calculate_min_max_distance, calculate_acceleration_magnitude_std, filter_dataframe
+from rpe_prediction.plot import plot_sensor_data_for_axes, plot_sensor_data_for_single_axis
+from rpe_prediction.config import ConfigReader
 
 import numpy as np
 import pandas as pd

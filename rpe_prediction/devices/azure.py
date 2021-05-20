@@ -1,6 +1,6 @@
-from .processing import normalize_signal, find_closest_timestamp, fill_missing_data
-from .sensor_base import SensorBase
+from rpe_prediction.processing import normalize_signal, find_closest_timestamp, fill_missing_data
 from os.path import join
+from .sensor_base import SensorBase
 
 import pandas as pd
 import numpy as np
@@ -18,7 +18,7 @@ class AzureKinect(SensorBase):
             orientation_file = join(data_path, "orientations_3d.csv")
 
             if not os.path.exists(position_file) or not os.path.exists(orientation_file):
-                raise FileNotFoundError(f"Given files in {data_path} do not exist.")
+                raise FileNotFoundError(f"File {position_file} does not exist.")
 
             pos_data = pd.read_csv(position_file, delimiter=';')
             pos_data = pos_data[pos_data['body_idx'] == 1]
@@ -37,12 +37,12 @@ class AzureKinect(SensorBase):
 
         super().__init__(data, sampling_frequency)
 
-    def process_raw_data(self):
+    def process_raw_data(self, log=False):
         """
         Processing the raw data
         """
         self._data.loc[:, self._data.columns == 'timestamp'] *= 1e-6
-        self._data = fill_missing_data(self._data, self.sampling_frequency, log=True)
+        self._data = fill_missing_data(self._data, self.sampling_frequency, log=log)
 
     def multiply_matrix(self, matrix, translation=np.array([0, 0, 0])):
         """

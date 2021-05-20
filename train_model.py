@@ -1,5 +1,5 @@
-from src.models import build_multi_branch_model
-from src.generator import Generator
+from rpe_prediction.models import build_multi_branch_model
+from rpe_prediction.generator import Generator
 from datetime import datetime
 
 import numpy as np

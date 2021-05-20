@@ -1,6 +1,6 @@
 from pyedflib import highlevel
 from biosppy.signals import ecg
-from src.config import ConfigReader
+from rpe_prediction.config import ConfigReader
 
 from scipy import interpolate
 

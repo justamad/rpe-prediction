@@ -1,4 +1,4 @@
-from src.devices.processing import find_rigid_transformation_svd
+from rpe_prediction.devices.processing import find_rigid_transformation_svd
 from os.path import join
 
 import numpy as np

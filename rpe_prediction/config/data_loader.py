@@ -65,10 +65,16 @@ class AzureLoader(BaseLoader):
         @param trial_nr: the current set number, starts at 1
         @return: the current RPE value for given set number
         """
-        return join(self._azure_path, f"{trial_nr + 1:02}_{self._cam_type}")
+        trial = join(self._azure_path, f"{trial_nr + 1:02}_{self._cam_type}")
+        if not os.path.exists(trial):
+            raise LoadingException(f"{str(self)}: Could not load trial: {trial}")
+        return trial
 
     def get_nr_of_sets(self):
         return len(self._trials)
+
+    def __repr__(self):
+        return "AzureLoader"
 
 
 data_loaders = {'rpe': RPELoader,
@@ -99,5 +105,8 @@ class DataLoader(object):
         @return: Iterator over entire training set
         """
         for current_set in range(self._sets):
-            trial_dic = {k: v.get_trial_by_set_nr(current_set) for k, v in self._file_loaders.items()}
-            yield trial_dic
+            try:
+                trial_dic = {k: v.get_trial_by_set_nr(current_set) for k, v in self._file_loaders.items()}
+                yield trial_dic
+            except LoadingException as e:
+                print(e)

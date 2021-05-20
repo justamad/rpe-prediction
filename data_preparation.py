@@ -1,6 +1,6 @@
-from src.devices import AzureKinect, Faros, GaitUp
-from src.devices.processing import synchronize_signals, normalize_signal
-from src.config import ConfigReader
+from rpe_prediction.devices import AzureKinect, Faros, GaitUp
+from rpe_prediction.devices.processing import synchronize_signals, normalize_signal
+from rpe_prediction.config import ConfigReader
 from os.path import join
 
 import shutil

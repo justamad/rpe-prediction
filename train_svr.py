@@ -1,4 +1,4 @@
-from src.processing import normalize_into_interval
+from rpe_prediction.processing import normalize_into_interval
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import LeaveOneGroupOut
 from sklearn.svm import SVR

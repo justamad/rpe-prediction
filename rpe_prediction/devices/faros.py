@@ -1,4 +1,4 @@
-from .processing import apply_butterworth_filter, normalize_signal, sample_data_uniformly, find_closest_timestamp
+from rpe_prediction.processing import apply_butterworth_filter, normalize_signal, sample_data_uniformly, find_closest_timestamp
 from .sensor_base import SensorBase
 from pyedflib import highlevel
 from biosppy.signals import ecg

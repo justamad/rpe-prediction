@@ -1,16 +1,13 @@
-from src.devices import AzureKinect
-from src.rendering import SkeletonViewer
-from .processing import find_rigid_transformation_svd
+from rpe_prediction.devices import AzureKinect
+from rpe_prediction.rendering import SkeletonViewer
+from .icp import find_rigid_transformation_svd
 
 import numpy as np
 import open3d as o3d
-import matplotlib
 import copy
 
-# matplotlib.use("TkAgg")
 
-
-class MultiAzure(object):
+class StereoAzure(object):
 
     def __init__(self, master_path, sub_path, point_cloud_master, point_cloud_sub, delay=0.001):
         self.master = AzureKinect(master_path)
@@ -83,7 +80,7 @@ def draw_registration_result(source, target, transformation):
 
 
 if __name__ == '__main__':
-    cam = MultiAzure("../../data/justin/azure/01_master", "../../data/justin/azure/01_sub",
+    cam = StereoAzure("../../data/justin/azure/01_master", "../../data/justin/azure/01_sub",
                      "../../data/justin/3001188.ply", "../../data/justin/3000188.ply")
 
     viewer = SkeletonViewer()
