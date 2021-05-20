@@ -1,4 +1,4 @@
-from rpe_prediction.devices.processing import find_rigid_transformation_svd
+from rpe_prediction.stereo_cam import find_rigid_transformation_svd
 from os.path import join
 
 import numpy as np
@@ -34,10 +34,16 @@ def filter_zero(points_a, points_b):
     return points_a[mask], points_b[mask]
 
 
-data_sub = read_files(args.path, "sub")
-data_main = read_files(args.path, "main")
-data_sub, data_main = filter_zero(data_sub, data_main)
+def calculate_calibration(calibration_path, show=True, path=None):
+    data_sub = read_files(calibration_path, "sub")
+    data_main = read_files(calibration_path, "main")
+    data_sub, data_main = filter_zero(data_sub, data_main)
 
-rot, trans = find_rigid_transformation_svd(data_sub, data_main, True)
-np.savetxt("rot.np", rot)
-np.savetxt("trans.np", trans)
+    rot, trans = find_rigid_transformation_svd(data_sub, data_main, show=show, path=path)
+    return rot, trans
+
+
+if __name__ == '__main__':
+    rotation, translation = calculate_calibration(args.path, show=True)
+    np.savetxt("rot.np", rotation)
+    np.savetxt("trans.np", translation)

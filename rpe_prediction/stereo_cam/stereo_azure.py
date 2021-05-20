@@ -9,16 +9,15 @@ import copy
 
 class StereoAzure(object):
 
-    def __init__(self, master_path, sub_path, point_cloud_master, point_cloud_sub, delay=0.001):
+    def __init__(self, master_path, sub_path, delay=0.001):
         self.master = AzureKinect(master_path)
         self.sub = AzureKinect(sub_path)
         self.master.process_raw_data()
         self.sub.process_raw_data()
-        self.point_cloud_master = point_cloud_master
-        self.point_cloud_sub = point_cloud_sub
         self.delay = delay
 
         self.time_synchronization()
+
         # self.spatial_alignment()
 
     def time_synchronization(self):
@@ -34,8 +33,8 @@ class StereoAzure(object):
         self.master.cut_data_by_index(0, length)
         self.sub.cut_data_by_index(minimum, minimum + length)
 
-    def external_rotation(self, rotation, translation):
-        self.master.multiply_matrix(rotation, translation)
+    def apply_external_rotation(self, rotation, translation):
+        self.sub.multiply_matrix(rotation, translation)
 
     def spatial_alignment(self):
         master_position = self.master.position_data.to_numpy()[1500:1600, :]
@@ -77,13 +76,3 @@ def draw_registration_result(source, target, transformation):
     # target_temp.paint_uniform_color([0, 0.651, 0.929])
     source_temp.transform(transformation)
     o3d.visualization.draw_geometries([source_temp, target_temp], mesh_show_back_face=False)
-
-
-if __name__ == '__main__':
-    cam = StereoAzure("../../data/justin/azure/01_master", "../../data/justin/azure/01_sub",
-                     "../../data/justin/3001188.ply", "../../data/justin/3000188.ply")
-
-    viewer = SkeletonViewer()
-    viewer.add_skeleton(cam.master.position_data.to_numpy() / 1000)
-    viewer.add_skeleton(cam.sub.position_data.to_numpy() / 1000)
-    viewer.show_window()
