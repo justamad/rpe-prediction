@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 import matplotlib
 
-# matplotlib.use("TkAgg")
 excluded_joints = ["eye", "ear", "nose", "wrist", "hand", "thumb"]
 file_iterator = RawDataIterator("data/raw")
 
@@ -33,10 +32,10 @@ def prepare_skeleton_data(iterator):
         # data = normalize_mean(data, std_dev_factor=1.0)
         # plot_sensor_data_for_axes(data, "Position_data", azure.get_skeleton_joints(), f"{set_data['azure']}_pos.png")
         # segment_exercises_based_on_joint(positions[], )
-        # features = calculate_features_sliding_window(data, window_size=30, step_size=2)
-        # x_data.append(features)
-        # y_labels.extend([set_data['rpe'] for _ in range(len(features))])
-        # groups.extend([set_data['group'] for _ in range(len(features))])
+        features = calculate_features_sliding_window(data, window_size=30, step_size=10)
+        x_data.append(features)
+        y_labels.extend([set_data['rpe'] for _ in range(len(features))])
+        groups.extend([set_data['group'] for _ in range(len(features))])
 
     X = pd.concat(x_data, ignore_index=True)
     y = pd.DataFrame(np.stack([y_labels, groups], axis=1), columns=["rpe", "groups"])
