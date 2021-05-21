@@ -6,7 +6,7 @@ import math
 
 settings = MinimalFCParameters()
 del settings['variance']  # Variance and standard deviation are highly correlated but std integrates nr of samples
-del settings['length']
+del settings['length']  # Length is constant for all windows
 
 
 def calculate_features_sliding_window(df: pd.DataFrame, window_size: int, step_size: int = 1):
@@ -20,7 +20,7 @@ def calculate_features_sliding_window(df: pd.DataFrame, window_size: int, step_s
     windows = []
     n_windows = math.floor((len(df) - window_size) / step_size) + 1
 
-    print(f"Calculated Windows: {n_windows}")
+    # print(f"Calculated Windows: {n_windows}")
     for window_id, window_index in enumerate(range(0, n_windows, step_size)):
         window = df[window_index:window_index + window_size - 1].copy()
         window['id'] = window_id
