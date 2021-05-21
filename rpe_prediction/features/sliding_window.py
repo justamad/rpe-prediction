@@ -6,6 +6,7 @@ import math
 
 settings = MinimalFCParameters()
 del settings['variance']  # Variance and standard deviation are highly correlated but std integrates nr of samples
+del settings['length']
 
 
 def calculate_features_sliding_window(df: pd.DataFrame, window_size: int, step_size: int = 1):

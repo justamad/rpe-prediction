@@ -70,17 +70,19 @@ class AzureKinect(SensorBase):
 
         return self._data[columns]
 
-    def get_skeleton_connections(self, json_file: str):
+    @staticmethod
+    def get_skeleton_connections(position_data):
         """
         Returns the joint connections from given json file accordingly to the current joints
-        @param json_file: file that contains all skeleton connections
         @return: list that holds tuples (j1, j2) for joint connections (bones)
         """
-        joints = self.get_joints_as_list(self.position_data)
+        json_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "azure.json")
+        joints = AzureKinect.get_joints_as_list(position_data)
         with open(json_file) as f:
             connections = json.load(f)
 
-        return [(joints.index(j1.lower()), joints.index(j2.lower())) for j1, j2 in connections]
+        connection = [(joints.index(j1.lower()), joints.index(j2.lower())) for j1, j2 in connections]
+        return connection
 
     @staticmethod
     def get_skeleton_joints():
@@ -114,7 +116,13 @@ class AzureKinect(SensorBase):
 
     @staticmethod
     def get_joints_as_list(df):
-        return list(set([c[:-4] for c in df.columns]))  # Remove axis (ori_test (x))
+        columns = []
+        for column in df.columns:
+            column = column[:-5]
+            if column not in columns:
+                columns.append(column)
+
+        return columns
 
     @property
     def position_data(self):

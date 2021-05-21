@@ -42,6 +42,10 @@ def plot_sensor_data_for_axes(df: pd.DataFrame, title: str, joints: list, file_n
     else:
         plt.show()
 
+    plt.close()
+    plt.cla()
+    plt.clf()
+
 
 def plot_sensor_data_for_single_axis(df: pd.DataFrame, title: str, file_name: str = None, columns: int = 4):
     """

@@ -1,24 +1,33 @@
 from rpe_prediction.devices import AzureKinect
-from rpe_prediction.rendering import SkeletonViewer
+from rpe_prediction.processing import apply_butterworth_filter_dataframe
 from .icp import find_rigid_transformation_svd
 
 import numpy as np
+import pandas as pd
 import open3d as o3d
 import copy
+import matplotlib.pyplot as plt
 
 
 class StereoAzure(object):
 
     def __init__(self, master_path, sub_path, delay=0.001):
+        # Read in master device
         self.master = AzureKinect(master_path)
-        self.sub = AzureKinect(sub_path)
         self.master.process_raw_data()
-        self.sub.process_raw_data()
-        self.delay = delay
 
+        # Read in sub device
+        self.sub = AzureKinect(sub_path)
+        self.sub.process_raw_data()
+
+        self.delay = delay
         self.time_synchronization()
 
-        # self.spatial_alignment()
+        self.sub_pos = self.sub.position_data
+        self.mas_pos = self.master.position_data
+
+        self.avg_df = (self.sub_pos + self.mas_pos) / 2
+        # self.avg_df = apply_butterworth_filter_dataframe(self.avg_df, sampling_frequency=30)
 
     def time_synchronization(self):
         # Synchronize master and sub devices
@@ -35,6 +44,26 @@ class StereoAzure(object):
 
     def apply_external_rotation(self, rotation, translation):
         self.sub.multiply_matrix(rotation, translation)
+
+    def plot_axis(self):
+        row, cols = self.sub_pos.shape
+
+        for i in range(cols):
+            column_name = self.sub_pos.columns[i]
+            sub_data = self.sub_pos[column_name]
+            mas_data = self.mas_pos[column_name]
+            diff = np.abs(sub_data - mas_data)
+            avg = self.avg_df[column_name]
+
+            plt.plot(sub_data, label="sub")
+            plt.plot(mas_data, label="master")
+            plt.plot(diff, label="diff")
+            plt.plot(avg, label="Average")
+            plt.ylabel("MM")
+            plt.xlabel("Frames")
+            plt.title(f"{column_name} - Diff: {np.mean(diff)}, {np.std(diff)}")
+            plt.legend()
+            plt.show()
 
     def spatial_alignment(self):
         master_position = self.master.position_data.to_numpy()[1500:1600, :]

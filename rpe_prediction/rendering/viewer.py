@@ -21,18 +21,25 @@ class SkeletonViewer(object):
         self.render_window_interactor.AddObserver('KeyPressEvent', self.keypress_callback, 1.0)
 
         # Data objects
-        self.skeleton_objects = []
-        self.max_frames = 1e10
+        self._skeleton_objects = []
+        self._max_frames = 1e10
         self.__cur_frame = 0
         self.__break = False
 
-    def add_skeleton(self, data, connections=None, radius=0.02):
+    def add_skeleton(self, data, connections=None, radius: float = 0.02):
+        """
+        Add a new skeleton to the renderer
+        @param data: new skeleton data in a numpy array
+        @param connections: the connections of skeletons
+        @param radius: radius size of markers
+        @return: None
+        """
         actors_markers = []  # each marker has an own actor
         actors_bones = []  # actors for each line segment between two markers
         lines = []
         rows, cols = data.shape
-        if rows < self.max_frames:
-            self.max_frames = rows  # set max size to smallest video length
+        if rows < self._max_frames:
+            self._max_frames = rows  # set max size to smallest video length
 
         # Create all instances for all markers
         for marker in range(cols // 3):
@@ -45,7 +52,7 @@ class SkeletonViewer(object):
             mapper.AddInputConnection(sphere.GetOutputPort())
             actor = vtk.vtkActor()
             actor.SetMapper(mapper)
-            actor.GetProperty().SetColor(self.colors.GetColor3d(COLORS[len(self.skeleton_objects)]))
+            actor.GetProperty().SetColor(self.colors.GetColor3d(COLORS[len(self._skeleton_objects)]))
             self.renderer.AddActor(actor)
             actors_markers.append(actor)
 
@@ -60,18 +67,18 @@ class SkeletonViewer(object):
                 mapper.AddInputConnection(line.GetOutputPort())
                 actor = vtk.vtkActor()
                 actor.SetMapper(mapper)
-                actor.GetProperty().SetColor(self.colors.GetColor3d(COLORS[len(self.skeleton_objects)]))
+                actor.GetProperty().SetColor(self.colors.GetColor3d(COLORS[len(self._skeleton_objects)]))
                 self.renderer.AddActor(actor)
                 actors_bones.append(actor)
 
-        self.skeleton_objects.append({
+        self._skeleton_objects.append({
             'data': data,
             'connections': connections,
-            "lines": lines,
+            'lines': lines,
             'actors_markers': actors_markers,
         })
 
-    def show_window(self, scale=0.5):
+    def show_window(self, scale:float =0.5):
         # Initialize a timer for the animation
         self.render_window_interactor.AddObserver('TimerEvent', self.update)
 
@@ -89,11 +96,11 @@ class SkeletonViewer(object):
         self.render_window_interactor.Start()
 
     def update(self, obj, event):
-        if self.__cur_frame >= self.max_frames:
+        if self.__cur_frame >= self._max_frames:
             self.__cur_frame = 0
 
         # Draw individual skeleton
-        for skeleton_data in self.skeleton_objects:
+        for skeleton_data in self._skeleton_objects:
             # Update marker position for current frame
             data = skeleton_data['data']
             actors_markers = skeleton_data['actors_markers']
@@ -127,4 +134,4 @@ class SkeletonViewer(object):
             self.__cur_frame = new_frame if new_frame > 0 else self.__cur_frame
         elif key == 'Right':
             new_frame = self.__cur_frame + 1
-            self.__cur_frame = new_frame if new_frame < self.max_frames else self.__cur_frame
+            self.__cur_frame = new_frame if new_frame < self._max_frames else self.__cur_frame
