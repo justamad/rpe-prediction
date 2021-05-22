@@ -11,7 +11,7 @@ matplotlib.use("TkAgg")
 
 path = "data/raw/AEBA3A"
 
-# Find external rotation
+# Calculate external rotation
 rot, trans = calculate_calibration(join(path, "calibration"), show=False)
 
 cam = StereoAzure(join(path, "azure", "01_master"), join(path, "azure", "01_sub"))
@@ -27,5 +27,5 @@ avg = (mas_data + sub_data) / 2
 viewer = SkeletonViewer()
 viewer.add_skeleton(mas_data, joints)
 viewer.add_skeleton(sub_data, joints)
-viewer.add_skeleton(avg, joints)
+# viewer.add_skeleton(avg, joints)
 viewer.show_window()

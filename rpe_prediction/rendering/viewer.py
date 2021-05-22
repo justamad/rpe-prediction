@@ -126,12 +126,13 @@ class SkeletonViewer(object):
 
     def keypress_callback(self, obj, ev):
         key = obj.GetKeySym()
-        print(key, 'was pressed')
         if key == 'space':
             self.__break = not self.__break
         elif key == 'Left':
             new_frame = self.__cur_frame - 1
             self.__cur_frame = new_frame if new_frame > 0 else self.__cur_frame
+            print(f"Current Frame: {self.__cur_frame}")
         elif key == 'Right':
             new_frame = self.__cur_frame + 1
             self.__cur_frame = new_frame if new_frame < self._max_frames else self.__cur_frame
+            print(f"Current Frame: {self.__cur_frame}")
