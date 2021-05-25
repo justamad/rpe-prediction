@@ -6,7 +6,7 @@ import os
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--path', type=str, dest='path', default="data/cali")
+parser.add_argument('--path', type=str, dest='path', default="data/calibration")
 parser.add_argument('--square_size', type=float, dest='square_size', default=50.125)  # unit is in mm
 parser.add_argument('--width', type=int, dest='width', default=8)  # width of checkerboard
 parser.add_argument('--height', type=int, dest='height', default=5)  # height of checkerboard

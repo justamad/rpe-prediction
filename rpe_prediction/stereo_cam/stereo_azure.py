@@ -26,9 +26,6 @@ class StereoAzure(object):
         self.sub_pos = self.sub.position_data
         self.mas_pos = self.master.position_data
 
-        self.avg_df = (self.sub_pos + self.mas_pos) / 2
-        # self.avg_df = apply_butterworth_filter_dataframe(self.avg_df, sampling_frequency=30)
-
     def time_synchronization(self):
         # Synchronize master and sub devices
         self.sub.shift_clock(-self.delay)
@@ -44,6 +41,8 @@ class StereoAzure(object):
 
     def apply_external_rotation(self, rotation, translation):
         self.sub.multiply_matrix(rotation, translation)
+        self.sub_pos = self.sub.position_data
+        self.mas_pos = self.master.position_data
 
     def plot_axis(self):
         row, cols = self.sub_pos.shape
