@@ -7,9 +7,10 @@ COLORS = ["red", "green", "blue"]
 
 class SkeletonViewer(object):
 
-    def __init__(self):
+    def __init__(self, sphere_radius: float = 0.01):
         """
-        Skeleton Viewer that uses the VTK graphic framework
+        Constructor for Skeleton Viewer using VTK graphics framework
+        @param sphere_radius: the radius of spheres
         """
         self.colors = vtk.vtkNamedColors()
         self.renderer = vtk.vtkRenderer()
@@ -32,13 +33,13 @@ class SkeletonViewer(object):
         self.__break = False
         self.__trans_vector = np.array([0, 0, 0])
         self.__scale_factor = 1.0
+        self._sphere_radius = sphere_radius
 
-    def add_skeleton(self, data: pd.DataFrame, connections=None, radius: float = 0.02):
+    def add_skeleton(self, data: pd.DataFrame, connections=None):
         """
         Add a new skeleton to the renderer
         @param data: new skeleton data in a numpy array
         @param connections: the connections of skeletons
-        @param radius: radius size of markers
         @return: None
         """
         actors_markers = []  # each marker has an own actor
@@ -52,7 +53,7 @@ class SkeletonViewer(object):
             sphere.SetPhiResolution(100)
             sphere.SetThetaResolution(100)
             sphere.SetCenter(0, 0, 0)
-            sphere.SetRadius(radius)
+            sphere.SetRadius(self._sphere_radius)
             mapper = vtk.vtkPolyDataMapper()
             mapper.AddInputConnection(sphere.GetOutputPort())
             actor = vtk.vtkActor()

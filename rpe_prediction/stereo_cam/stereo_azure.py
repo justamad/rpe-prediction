@@ -59,7 +59,10 @@ class StereoAzure(object):
         rows, cols = grad_a.shape
         gradient_stack = np.stack([grad_a, grad_b], axis=2)
         sums = np.sum(gradient_stack, axis=2).reshape((rows, cols, 1))
-        return gradient_stack / sums
+        weights = gradient_stack / sums
+        weights_a = pd.DataFrame(weights[:, :, 0], columns=grad_a.columns)
+        weights_b = pd.DataFrame(weights[:, :, 1], columns=grad_b.columns)
+        return weights_a, weights_b
 
     def calculate_fusion(self, alpha, window_size=5):
         """
@@ -71,14 +74,32 @@ class StereoAzure(object):
         df_sub = self.sub_position
         df_master = self.mas_position
 
-        grad_a = np.square(np.gradient(self.sub_position.to_numpy(), axis=0))
-        grad_b = np.square(np.gradient(self.mas_position.to_numpy(), axis=0))
-        grad_a = pd.DataFrame(grad_a).rolling(window=window_size, min_periods=1, center=True).mean()
-        grad_b = pd.DataFrame(grad_b).rolling(window=window_size, min_periods=1, center=True).mean()
-        weights = self.calculate_percentage(grad_a, grad_b)
-        fused_skeleton = (1 - weights[:, :, 0] + alpha) * df_sub + (1 - weights[:, :, 1] - alpha) * df_master
-        # fused_skeleton = (0.5 + alpha) * df_sub + (0.5 - alpha) * df_master
-        return fused_skeleton
+        grad_a = pd.DataFrame(np.square(np.gradient(self.sub_position.to_numpy(), axis=0)), columns=df_sub.columns)
+        grad_b = pd.DataFrame(np.square(np.gradient(self.mas_position.to_numpy(), axis=0)), columns=df_master.columns)
+        grad_a = grad_a.rolling(window=window_size, min_periods=1, center=True).mean()
+        grad_b = grad_b.rolling(window=window_size, min_periods=1, center=True).mean()
+        weights_sub, weights_master = self.calculate_percentage(grad_a, grad_b)
+
+        alpha_weights_sub = pd.DataFrame(np.zeros(df_sub.shape), columns=df_sub.columns)
+        alpha_weights_sub[alpha_weights_sub.filter(like='left').columns] += alpha
+        alpha_weights_sub[alpha_weights_sub.filter(like='right').columns] -= alpha
+
+        alpha_weights_master = pd.DataFrame(np.zeros(df_sub.shape), columns=df_sub.columns)
+        alpha_weights_master[alpha_weights_master.filter(like='right').columns] += alpha
+        alpha_weights_master[alpha_weights_master.filter(like='left').columns] -= alpha
+
+        weight_sub_nd = (1 - weights_sub + alpha_weights_sub)
+        weight_sub_nd[weight_sub_nd > 1] = 1
+        weight_sub_nd[weight_sub_nd < 0] = 0
+
+        weight_master_nd = (1 - weights_master + alpha_weights_master)
+        weight_master_nd[weight_master_nd > 1] = 1
+        weight_master_nd[weight_master_nd < 0] = 0
+
+        weight_sub = pd.DataFrame(weight_sub_nd, columns=df_sub.columns)
+        weight_master = pd.DataFrame(weight_master_nd, columns=df_master.columns)
+        fused_skeleton = weight_sub * df_sub + weight_master * df_master
+        return fused_skeleton, weight_sub, weight_master
 
     @property
     def sub_position(self):
