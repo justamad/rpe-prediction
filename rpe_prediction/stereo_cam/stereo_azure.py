@@ -40,13 +40,14 @@ class StereoAzure(object):
         """
         self.sub.multiply_matrix(rotation, translation)
 
-    def calculate_spatial_on_data(self):
+    def calculate_spatial_on_data(self, show=False):
         master_position = self.master.position_data.to_numpy()  # [400:600, :]
         sub_position = self.sub.position_data.to_numpy()  # [400:600, :]
 
-        # Spatial alignment
+        # Find the best affine transformation
         rotation, translation = find_rigid_transformation_svd(master_position.reshape(-1, 3),
-                                                              sub_position.reshape(-1, 3), True)
+                                                              sub_position.reshape(-1, 3),
+                                                              show=show)
 
         trans_init = np.eye(4)
         trans_init[0:3, 0:3] = rotation
@@ -54,18 +55,16 @@ class StereoAzure(object):
         self.master.multiply_matrix(rotation, translation)
 
     @staticmethod
-    def calculate_percentage_df(grad_a, grad_b):
-        shape = grad_a.shape
-        mat = np.stack([grad_a, grad_b], axis=2)
-        sums = np.sum(mat, axis=2).reshape((shape[0], shape[1], 1))
-        mat = mat / sums
-        return 1 - mat
+    def calculate_percentage(grad_a, grad_b):
+        rows, cols = grad_a.shape
+        gradient_stack = np.stack([grad_a, grad_b], axis=2)
+        sums = np.sum(gradient_stack, axis=2).reshape((rows, cols, 1))
+        return gradient_stack / sums
 
-    def calculate_fusion(self, alpha, beta, window_size=5):
+    def calculate_fusion(self, alpha, window_size=5):
         """
         Calculate the fusion of sub and master cameras. Data should be calibrated as good as possible
         @param alpha: coefficient for dominant skeleton side
-        @param beta: coefficient for weaker skeleton side
         @param window_size: a window size of gradient averages
         @return: Fused skeleton data in a pandas array
         """
@@ -76,8 +75,9 @@ class StereoAzure(object):
         grad_b = np.square(np.gradient(self.mas_position.to_numpy(), axis=0))
         grad_a = pd.DataFrame(grad_a).rolling(window=window_size, min_periods=1, center=True).mean()
         grad_b = pd.DataFrame(grad_b).rolling(window=window_size, min_periods=1, center=True).mean()
-        gradient_weights = self.calculate_percentage_df(grad_a, grad_b)
-        fused_skeleton = alpha * gradient_weights[:, :, 0] * df_sub + beta * gradient_weights[:, :, 1] * df_master
+        weights = self.calculate_percentage(grad_a, grad_b)
+        fused_skeleton = (1 - weights[:, :, 0] + alpha) * df_sub + (1 - weights[:, :, 1] - alpha) * df_master
+        # fused_skeleton = (0.5 + alpha) * df_sub + (0.5 - alpha) * df_master
         return fused_skeleton
 
     @property

@@ -6,8 +6,9 @@ from rpe_prediction.processing import apply_butterworth_filter_dataframe
 from os.path import join
 
 import matplotlib
-matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
+
+matplotlib.use("TkAgg")
 
 path = "data/raw/AEBA3A"
 # Calculate external rotation
@@ -20,18 +21,20 @@ joints = AzureKinect.get_skeleton_connections(cam.master.position_data)
 
 mas_data = cam.mas_position
 sub_data = cam.sub_position
-avg = cam.calculate_fusion(alpha=1.1, beta=0.9, window_size=9)
+avg = cam.calculate_fusion(alpha=0.1, window_size=9)
 # avg = apply_butterworth_filter_dataframe(avg, sampling_frequency=30, order=4, fc=6)
 
+norm_avg = 0.5 * sub_data + 0.5 * mas_data
 
-plt.plot(mas_data['ankle_left (y) '], label="SUB Ankle Left (Y)")
+plt.plot(mas_data['ankle_left (y) '], label="MAS Ankle Left (Y)")
 plt.plot(sub_data['ankle_left (y) '], label="SUB Ankle Left (Y)")
-plt.plot(avg['ankle_left (y) '], label="SUB Ankle Left (Y)")
+plt.plot(avg['ankle_left (y) '], label="Average Ankle Left (Y)")
+plt.plot(norm_avg['ankle_left (y) '], label="Normal Average Ankle Left (Y)")
 plt.legend()
 plt.show()
 
-# viewer = SkeletonViewer()
-# viewer.add_skeleton(mas_data.to_numpy() / 1000, joints)
-# viewer.add_skeleton(sub_data.to_numpy() / 1000, joints)
-# viewer.add_skeleton(avg.to_numpy() / 1000, joints)
+viewer = SkeletonViewer()
+viewer.add_skeleton(mas_data, joints)
+viewer.add_skeleton(sub_data, joints)
+viewer.add_skeleton(avg, joints)
 # viewer.show_window()
