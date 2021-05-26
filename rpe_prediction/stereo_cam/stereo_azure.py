@@ -1,12 +1,8 @@
 from rpe_prediction.devices import AzureKinect
-from rpe_prediction.processing import apply_butterworth_filter_dataframe
 from .icp import find_rigid_transformation_svd
 
 import numpy as np
 import pandas as pd
-import open3d as o3d
-import copy
-import matplotlib.pyplot as plt
 
 
 class StereoAzure(object):
@@ -21,12 +17,9 @@ class StereoAzure(object):
         self.sub.process_raw_data()
 
         self.delay = delay
-        self.time_synchronization()
+        self.synchronize_temporal()
 
-        self.sub_pos = self.sub.position_data
-        self.mas_pos = self.master.position_data
-
-    def time_synchronization(self):
+    def synchronize_temporal(self):
         # Synchronize master and sub devices
         self.sub.shift_clock(-self.delay)
         start_point = self.master.timestamps[0]
@@ -40,33 +33,16 @@ class StereoAzure(object):
         self.sub.cut_data_by_index(minimum, minimum + length)
 
     def apply_external_rotation(self, rotation, translation):
+        """
+        Apply an external affine transformation consisting of rotation and translation
+        @param rotation: A 3x3 rotation matrix
+        @param translation: A 1x3 translation vector
+        """
         self.sub.multiply_matrix(rotation, translation)
-        self.sub_pos = self.sub.position_data
-        self.mas_pos = self.master.position_data
 
-    def plot_axis(self):
-        row, cols = self.sub_pos.shape
-
-        for i in range(cols):
-            column_name = self.sub_pos.columns[i]
-            sub_data = self.sub_pos[column_name]
-            mas_data = self.mas_pos[column_name]
-            diff = np.abs(sub_data - mas_data)
-            avg = self.avg_df[column_name]
-
-            plt.plot(sub_data, label="sub")
-            plt.plot(mas_data, label="master")
-            plt.plot(diff, label="diff")
-            plt.plot(avg, label="Average")
-            plt.ylabel("MM")
-            plt.xlabel("Frames")
-            plt.title(f"{column_name} - Diff: {np.mean(diff)}, {np.std(diff)}")
-            plt.legend()
-            plt.show()
-
-    def spatial_alignment(self):
-        master_position = self.master.position_data.to_numpy()[1500:1600, :]
-        sub_position = self.sub.position_data.to_numpy()[1500:1600, :]
+    def calculate_spatial_on_data(self):
+        master_position = self.master.position_data.to_numpy()  # [400:600, :]
+        sub_position = self.sub.position_data.to_numpy()  # [400:600, :]
 
         # Spatial alignment
         rotation, translation = find_rigid_transformation_svd(master_position.reshape(-1, 3),
@@ -77,30 +53,45 @@ class StereoAzure(object):
         trans_init[0:3, 3] = translation.reshape(3)
         self.master.multiply_matrix(rotation, translation)
 
-        # Visualize Point clouds
-        # pcd_m = o3d.io.read_point_cloud(self.point_cloud_master)
-        # pcd_m.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+    @staticmethod
+    def calculate_percentage_df(grad_a, grad_b):
+        shape = grad_a.shape
+        mat = np.stack([grad_a, grad_b], axis=2)
+        sums = np.sum(mat, axis=2).reshape((shape[0], shape[1], 1))
+        mat = mat / sums
+        return 1 - mat
 
-        # pcd_s = o3d.io.read_point_cloud(self.point_cloud_sub)
-        # pcd_s.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
-        # pcd_s.transform(affine)
-        # draw_registration_result(pcd_s, pcd_m, trans_init)
+    def calculate_fusion(self, alpha, beta, window_size=5):
+        """
+        Calculate the fusion of sub and master cameras. Data should be calibrated as good as possible
+        @param alpha: coefficient for dominant skeleton side
+        @param beta: coefficient for weaker skeleton side
+        @param window_size: a window size of gradient averages
+        @return: Fused skeleton data in a pandas array
+        """
+        df_sub = self.sub_position
+        df_master = self.mas_position
 
-        print("Apply point-to-plane ICP")
-        # threshold = 0.02
-        # reg_p2l = o3d.pipelines.registration.registration_icp(
-        #     pcd_s, pcd_m, threshold, trans_init,
-        #     o3d.pipelines.registration.TransformationEstimationPointToPlane())
-        # print(reg_p2l)
-        # diff = reg_p2l.transformation - trans_init
-        # print(f"Diff {diff}")
-        # draw_registration_result(pcd_s, pcd_m, reg_p2l.transformation)
+        grad_a = np.square(np.gradient(self.sub_position.to_numpy(), axis=0))
+        grad_b = np.square(np.gradient(self.mas_position.to_numpy(), axis=0))
+        grad_a = pd.DataFrame(grad_a).rolling(window=window_size, min_periods=1, center=True).mean()
+        grad_b = pd.DataFrame(grad_b).rolling(window=window_size, min_periods=1, center=True).mean()
+        gradient_weights = self.calculate_percentage_df(grad_a, grad_b)
+        fused_skeleton = alpha * gradient_weights[:, :, 0] * df_sub + beta * gradient_weights[:, :, 1] * df_master
+        return fused_skeleton
 
+    @property
+    def sub_position(self):
+        return self.sub.position_data
 
-def draw_registration_result(source, target, transformation):
-    source_temp = copy.deepcopy(source)
-    target_temp = copy.deepcopy(target)
-    # source_temp.paint_uniform_color([1, 0.706, 0])
-    # target_temp.paint_uniform_color([0, 0.651, 0.929])
-    source_temp.transform(transformation)
-    o3d.visualization.draw_geometries([source_temp, target_temp], mesh_show_back_face=False)
+    @property
+    def mas_position(self):
+        return self.master.position_data
+
+# def draw_registration_result(source, target, transformation):
+#     source_temp = copy.deepcopy(source)
+#     target_temp = copy.deepcopy(target)
+#     # source_temp.paint_uniform_color([1, 0.706, 0])
+#     # target_temp.paint_uniform_color([0, 0.651, 0.929])
+#     source_temp.transform(transformation)
+#     o3d.visualization.draw_geometries([source_temp, target_temp], mesh_show_back_face=False)

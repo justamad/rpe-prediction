@@ -78,7 +78,12 @@ class SkeletonViewer(object):
             'actors_markers': actors_markers,
         })
 
-    def show_window(self, scale:float =0.5):
+    def show_window(self, scale: float = 0.5):
+        """
+        Start the rendering sequence
+        @param scale: scaling factor
+        @return: None
+        """
         # Initialize a timer for the animation
         self.render_window_interactor.AddObserver('TimerEvent', self.update)
 
