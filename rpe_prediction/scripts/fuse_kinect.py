@@ -1,5 +1,5 @@
 from rpe_prediction.config import SubjectDataIterator, KinectFusionLoaderSet
-from rpe_prediction.processing import segment_exercises_based_on_joint
+from rpe_prediction.processing import segment_1d_joint_on_example
 from calibration import calculate_calibration
 from rpe_prediction.stereo_cam import StereoAzure
 from rpe_prediction.rendering import SkeletonViewer
@@ -11,7 +11,8 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 
 file_iterator = SubjectDataIterator("../../data/raw", KinectFusionLoaderSet())
-example = np.loadtxt("../../exe.np")
+# example = np.loadtxt("../../exe.np")
+example = np.loadtxt("example.np")
 
 path = "../../data/raw/AEBA3A"
 rot, trans = calculate_calibration(join(path, "calibration"), show=False)
@@ -23,9 +24,9 @@ def fuse_kinect_data(iterator):
         print(sub_path)
         azure = StereoAzure(master_path=master_path, sub_path=sub_path)
         azure.apply_external_rotation(rot, trans)
-        # avg, _, _ = azure.calculate_fusion(alpha=0.1, window_size=9)
         sub = azure.sub_position['pelvis (y) ']
-        segment_exercises_based_on_joint(sub, example, 20, 4, True)
+        segment_1d_joint_on_example(sub, example, min_duration=20, std_dev_percentage=0.5, show=True)
+        # avg, _, _ = azure.calculate_fusion(alpha=0.1, window_size=9)
         # plt.plot(sub)
         # plt.plot(avg['pelvis (y) '])
         # plt.show()
