@@ -18,7 +18,7 @@ def segment_exercises_based_on_joint(joint_data: np.array, exemplar: np.array, m
     @param path: path to save the image
     @return: list of tuples with start and end points of candidates, list of costs for all observations
     """
-    peaks = signal.find_peaks(joint_data, height=0)[0]
+    peaks, _ = signal.find_peaks(joint_data, height=1, prominence=1, width=min_duration)
     peaks = [0] + list(peaks) + [len(joint_data) - 1]  # Add first and last point as additional candidates
 
     candidates = []

@@ -1,6 +1,6 @@
 from rpe_prediction.processing import normalize_signal, find_closest_timestamp, fill_missing_data
-from os.path import join
 from .sensor_base import SensorBase
+from os.path import join
 
 import pandas as pd
 import numpy as np
@@ -11,35 +11,33 @@ import json
 class AzureKinect(SensorBase):
 
     def __init__(self, data_path, sampling_frequency=30):
-        if isinstance(data_path, pd.DataFrame):
-            data = data_path
-        elif isinstance(data_path, str):
-            position_file = join(data_path, "positions_3d.csv")
-            orientation_file = join(data_path, "orientations_3d.csv")
+        position_file = join(data_path, "positions_3d.csv")
+        orientation_file = join(data_path, "orientations_3d.csv")
 
-            if not os.path.exists(position_file) or not os.path.exists(orientation_file):
-                raise FileNotFoundError(f"File {position_file} does not exist.")
+        if not os.path.exists(position_file) or not os.path.exists(orientation_file):
+            raise FileNotFoundError(f"File {position_file} does not exist.")
 
-            pos_data = pd.read_csv(position_file, delimiter=';')
-            pos_data = pos_data[pos_data['body_idx'] == 1]
-            pos_data = pos_data[[c for c in pos_data.columns if "(c)" not in c and "body_idx" not in c]].copy()
-            new_names = [(i, i.lower() + " pos") for i in pos_data.iloc[:, 1:].columns.values]
-            pos_data.rename(columns=dict(new_names), inplace=True)
+        pos_data = pd.read_csv(position_file, delimiter=';')
+        counts = pos_data['body_idx'].value_counts()
+        body_idx = counts.index[counts.argmax()]
+        pos_data = pos_data[pos_data['body_idx'] == body_idx]
+        pos_data = pos_data[[c for c in pos_data.columns if "(c)" not in c and "body_idx" not in c]].copy()
+        new_names = [(i, i.lower() + " pos") for i in pos_data.iloc[:, 1:].columns.values]
+        pos_data.rename(columns=dict(new_names), inplace=True)
 
-            ori_data = pd.read_csv(orientation_file, delimiter=';')
-            ori_data = ori_data[ori_data['body_idx'] == 1]
-            ori_data = ori_data[[c for c in ori_data.columns if "body_idx" not in c and "timestamp" not in c]].copy()
-            new_names = [(i, i.lower() + " ori") for i in ori_data.columns.values]
-            ori_data.rename(columns=dict(new_names), inplace=True)
-            data = pd.concat([pos_data, ori_data], axis=1)
-        else:
-            raise Exception(f"Unknown argument {data_path} for Azure Kinect class.")
+        ori_data = pd.read_csv(orientation_file, delimiter=';')
+        ori_data = ori_data[ori_data['body_idx'] == body_idx]
+        ori_data = ori_data[[c for c in ori_data.columns if "body_idx" not in c and "timestamp" not in c]].copy()
+        new_names = [(i, i.lower() + " ori") for i in ori_data.columns.values]
+        ori_data.rename(columns=dict(new_names), inplace=True)
+        data = pd.concat([pos_data, ori_data], axis=1)
 
         super().__init__(data, sampling_frequency)
 
     def process_raw_data(self, log=False):
         """
         Processing the raw data
+        This consists of timestamps and filling missing data
         """
         self._data.loc[:, self._data.columns == 'timestamp'] *= 1e-6
         self._data = fill_missing_data(self._data, self.sampling_frequency, log=log)

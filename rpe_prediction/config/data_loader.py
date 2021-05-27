@@ -42,48 +42,50 @@ class RPELoader(BaseLoader):
         @param trial_nr: the current set number, starts at 1
         @return: the current RPE value for given set number
         """
-        return self._trials[trial_nr - 1]
+        return self._trials[trial_nr]
 
 
-class AzureLoader(BaseLoader):
+class StereoAzureLoader(BaseLoader):
 
-    def __init__(self, root_path, cam_type="sub"):
+    def __init__(self, root_path):
         super().__init__()
         self._azure_path = join(root_path, "azure")
-        self._cam_type = cam_type
         if not os.path.exists(self._azure_path):
             raise LoadingException(f"Azure file not present in {self._azure_path}")
 
-        self._trials = sorted(filter(lambda x: cam_type in x, os.listdir(self._azure_path)))
-        if len(self._trials) == 0:
-            raise LoadingException(f"Could not find trials for {cam_type} camera type.")
+        all_trials = list(map(lambda x: join(self._azure_path, x), os.listdir(self._azure_path)))
+        all_trials = list(filter(lambda x: os.path.isdir(x), all_trials))
+
+        self._sub_trials = {int(v[-6:-4]) - 1: v for v in filter(lambda x: 'sub' in x, all_trials)}
+        self._master_trials = {int(v[-9:-7]) - 1: v for v in filter(lambda x: 'master' in x, all_trials)}
+
+        if self._sub_trials.keys() != self._master_trials.keys():
+            raise LoadingException(f"Trials found: sub={len(self._sub_trials)} master={len(self._master_trials)}")
 
     def get_trial_by_set_nr(self, trial_nr: int):
         """
         Return azure Kinect data
-        # TODO: Implement lookup in cached trials
         @param trial_nr: the current set number, starts at 1
         @return: the current RPE value for given set number
         """
-        trial = join(self._azure_path, f"{trial_nr + 1:02}_{self._cam_type}")
-        if not os.path.exists(trial):
-            raise LoadingException(f"{str(self)}: Could not load trial: {trial}")
-        return trial
+        if trial_nr not in self._sub_trials or trial_nr not in self._master_trials:
+            raise LoadingException(f"{str(self)}: Error when loading set: {trial_nr}")
+        return self._sub_trials[trial_nr], self._master_trials[trial_nr]
 
     def get_nr_of_sets(self):
-        return len(self._trials)
+        return min(len(self._sub_trials), len(self._master_trials))
 
     def __repr__(self):
         return "AzureLoader"
 
 
-data_loaders = {'rpe': RPELoader,
-                'azure': AzureLoader}
+class FusionAzureLoader(StereoAzureLoader):
+    pass
 
 
-class DataLoader(object):
+class DataCollector(object):
 
-    def __init__(self, root_path):
+    def __init__(self, root_path, data_loaders):
         """
         Create instance of DataLoader for given root path
         @param root_path: current path to subject folder
@@ -101,7 +103,7 @@ class DataLoader(object):
 
     def iterate_over_sets(self):
         """
-        Iterate over the entire set
+        Iterate over the entire set and collect data from individual trials
         @return: Iterator over entire training set
         """
         for current_set in range(self._sets):

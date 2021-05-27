@@ -1,13 +1,13 @@
 from rpe_prediction.devices import AzureKinect
 from rpe_prediction.features import calculate_features_sliding_window
-from rpe_prediction.config import RawDataIterator
+from rpe_prediction.config import SubjectDataIterator, RawDataLoaderSet
 from rpe_prediction.processing import filter_dataframe, normalize_mean
 
 import numpy as np
 import pandas as pd
 
 excluded_joints = ["eye", "ear", "nose", "wrist", "hand", "thumb"]
-file_iterator = RawDataIterator("../../data/raw")
+file_iterator = SubjectDataIterator("../../data/raw", RawDataLoaderSet())
 
 
 def prepare_skeleton_data(iterator, window_size=30, step_size=2):
