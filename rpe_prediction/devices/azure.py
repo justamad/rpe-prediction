@@ -1,11 +1,13 @@
 from .sensor_base import SensorBase
-from rpe_prediction.processing import normalize_signal, find_closest_timestamp, fill_missing_data
+from rpe_prediction.processing import normalize_signal, find_closest_timestamp, fill_missing_data, filter_dataframe
 from os.path import join
 
 import pandas as pd
 import numpy as np
 import os
 import json
+
+excluded_joints = ["eye", "ear", "nose", "wrist", "hand", "thumb"]
 
 
 class AzureKinect(SensorBase):
@@ -120,6 +122,13 @@ class AzureKinect(SensorBase):
         start_idx = find_closest_timestamp(self.timestamps, start_time)
         end_idx = find_closest_timestamp(self.timestamps, end_time)
         self._data = self._data.iloc[start_idx:end_idx]
+
+    def remove_unnecessary_joints(self):
+        """
+        Remove unnecessary joints from data frame using the excluded joints
+        @return: None
+        """
+        self._data = filter_dataframe(self._data, excluded_joints)
 
     @staticmethod
     def get_joints_as_list(df):

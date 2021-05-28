@@ -99,7 +99,7 @@ class StereoAzure(object):
             plt.plot(df_master[joint], label="Master Camera")
             plt.plot(fused_skeleton[joint], label="Fused Camera")
             plt.plot(weight_sub[joint], label="Weights Sub")
-            plt.plot(weight_sub[joint], label="Weights Master")
+            plt.plot(weight_master[joint], label="Weights Master")
             plt.legend()
             plt.title(f"Current joint: {joint}")
             plt.tight_layout()
@@ -140,6 +140,10 @@ class StereoAzure(object):
         """
         self.sub.cut_data_by_index(start_index, end_index)
         self.master.cut_data_by_index(start_index, end_index)
+
+    def remove_unnecessary_joints(self):
+        self.sub.remove_unnecessary_joints()
+        self.master.remove_unnecessary_joints()
 
     @property
     def sub_position(self):
