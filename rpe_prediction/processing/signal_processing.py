@@ -27,7 +27,7 @@ def find_closest_timestamp(timestamps, point):
     return np.argmin(differences)
 
 
-def apply_butterworth_filter_dataframe(data_frame, sampling_frequency, order=4, fc=6):
+def apply_butterworth_df(data_frame, sampling_frequency, order=4, fc=6):
     """
     Applies a Butterworth filter to the given dataframe
     @param data_frame: data frame that contains positional, orientation or acceleration data
