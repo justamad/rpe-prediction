@@ -54,18 +54,9 @@ class StereoAzure(object):
         trans_init[0:3, 3] = translation.reshape(3)
         self.master.multiply_matrix(rotation, translation)
 
-    @staticmethod
-    def calculate_percentage(grad_a, grad_b):
-        rows, cols = grad_a.shape
-        gradient_stack = np.stack([grad_a, grad_b], axis=2)
-        sums = np.sum(gradient_stack, axis=2).reshape((rows, cols, 1))
-        weights = gradient_stack / sums
-        weights_a = pd.DataFrame(weights[:, :, 0], columns=grad_a.columns)
-        weights_b = pd.DataFrame(weights[:, :, 1], columns=grad_b.columns)
-        return weights_a, weights_b
-
     def calculate_fusion(self, alpha, window_size=5):
         """
+        TODO: Implement show argument for plotting the agreement instead of returning the weights
         Calculate the fusion of sub and master cameras. Data should be calibrated as good as possible
         @param alpha: coefficient for dominant skeleton side
         @param window_size: a window size of gradient averages
@@ -74,8 +65,8 @@ class StereoAzure(object):
         df_sub = self.sub_position
         df_master = self.mas_position
 
-        grad_a = pd.DataFrame(np.square(np.gradient(self.sub_position.to_numpy(), axis=0)), columns=df_sub.columns)
-        grad_b = pd.DataFrame(np.square(np.gradient(self.mas_position.to_numpy(), axis=0)), columns=df_master.columns)
+        grad_a = pd.DataFrame(np.square(np.gradient(df_sub.to_numpy(), axis=0)), columns=df_sub.columns)
+        grad_b = pd.DataFrame(np.square(np.gradient(df_master.to_numpy(), axis=0)), columns=df_master.columns)
         grad_a = grad_a.rolling(window=window_size, min_periods=1, center=True).mean()
         grad_b = grad_b.rolling(window=window_size, min_periods=1, center=True).mean()
         weights_sub, weights_master = self.calculate_percentage(grad_a, grad_b)
@@ -99,7 +90,27 @@ class StereoAzure(object):
         weight_sub = pd.DataFrame(weight_sub_nd, columns=df_sub.columns)
         weight_master = pd.DataFrame(weight_master_nd, columns=df_master.columns)
         fused_skeleton = weight_sub * df_sub + weight_master * df_master
-        return fused_skeleton, weight_sub, weight_master
+        return fused_skeleton
+
+    @staticmethod
+    def calculate_percentage(grad_a, grad_b):
+        rows, cols = grad_a.shape
+        gradient_stack = np.stack([grad_a, grad_b], axis=2)
+        sums = np.sum(gradient_stack, axis=2).reshape((rows, cols, 1))
+        weights = gradient_stack / sums
+        weights_a = pd.DataFrame(weights[:, :, 0], columns=grad_a.columns)
+        weights_b = pd.DataFrame(weights[:, :, 1], columns=grad_b.columns)
+        return weights_a, weights_b
+
+    def cut_skeleton_data(self, start_index: int, end_index: int):
+        """
+        Cut both cameras based on given start and end index
+        @param start_index: start index for cutting
+        @param end_index: end index for cutting
+        @return: None
+        """
+        self.sub.cut_data_by_index(start_index, end_index)
+        self.master.cut_data_by_index(start_index, end_index)
 
     @property
     def sub_position(self):

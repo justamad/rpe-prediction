@@ -1,5 +1,5 @@
-from rpe_prediction.processing import normalize_signal, find_closest_timestamp, fill_missing_data
 from .sensor_base import SensorBase
+from rpe_prediction.processing import normalize_signal, find_closest_timestamp, fill_missing_data
 from os.path import join
 
 import pandas as pd
@@ -10,29 +10,38 @@ import json
 
 class AzureKinect(SensorBase):
 
-    def __init__(self, data_path, sampling_frequency=30):
+    def __init__(self, data_path):
+        """
+        Constructor for Azure Kinect camera
+        @param data_path: path where the csv file resides in
+        """
         position_file = join(data_path, "positions_3d.csv")
         orientation_file = join(data_path, "orientations_3d.csv")
 
         if not os.path.exists(position_file) or not os.path.exists(orientation_file):
             raise FileNotFoundError(f"File {position_file} does not exist.")
 
+        # Read in csv files for position and orientation
         pos_data = pd.read_csv(position_file, delimiter=';')
-        counts = pos_data['body_idx'].value_counts()
-        body_idx = counts.index[counts.argmax()]
-        pos_data = pos_data[pos_data['body_idx'] == body_idx]
+        ori_data = pd.read_csv(orientation_file, delimiter=';')
+
+        # Remove all other bodies found in the images
+        body_idx_counts = pos_data['body_idx'].value_counts()
+        most_often_body_idx = body_idx_counts.index[body_idx_counts.argmax()]
+        pos_data = pos_data[pos_data['body_idx'] == most_often_body_idx]
+        ori_data = ori_data[ori_data['body_idx'] == most_often_body_idx]
+
+        # Remove unnecessary data from data frames
         pos_data = pos_data[[c for c in pos_data.columns if "(c)" not in c and "body_idx" not in c]].copy()
         new_names = [(i, i.lower() + " pos") for i in pos_data.iloc[:, 1:].columns.values]
         pos_data.rename(columns=dict(new_names), inplace=True)
 
-        ori_data = pd.read_csv(orientation_file, delimiter=';')
-        ori_data = ori_data[ori_data['body_idx'] == body_idx]
         ori_data = ori_data[[c for c in ori_data.columns if "body_idx" not in c and "timestamp" not in c]].copy()
         new_names = [(i, i.lower() + " ori") for i in ori_data.columns.values]
         ori_data.rename(columns=dict(new_names), inplace=True)
         data = pd.concat([pos_data, ori_data], axis=1)
 
-        super().__init__(data, sampling_frequency)
+        super().__init__(data, 30)
 
     def process_raw_data(self, log=False):
         """

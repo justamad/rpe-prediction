@@ -29,12 +29,12 @@ class SubjectDataIterator(object):
         Function checks for valid configuration files
         @return: a list that contains all configuration files
         """
-        data_loaders = []
+        data_loaders = {}
 
         for subject in os.listdir(self._input_path):
             try:
                 loader = DataCollector(join(self._input_path, subject), data_loaders_dict)
-                data_loaders.append(loader)
+                data_loaders[subject] = loader
             except LoadingException as e:
                 print(f"Could not load file loader for {subject} trial: {e}")
 
@@ -45,7 +45,20 @@ class SubjectDataIterator(object):
         Method returns an iterator over all sets of the entire loaded datasets
         @return: iterator that yields an data dictionary
         """
-        for subject_id, data_loader in enumerate(self._subject_data_loaders):
+        for subject_id, (subject_name, data_loader) in enumerate(self._subject_data_loaders.items()):
             for trial in data_loader.iterate_over_sets():
                 trial['group'] = subject_id
+                yield trial
+
+    def iterate_over_specific_subjects(self, *subjects):
+        """
+        Method returns an iterator for given specific subject
+        @param subjects:
+        @return:
+        """
+        for subject in subjects:
+            if subject not in self._subject_data_loaders:
+                print(f"Couldn't load data for subject: {subject}")
+                continue
+            for trial in self._subject_data_loaders[subject].iterate_over_sets():
                 yield trial

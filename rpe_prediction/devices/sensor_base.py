@@ -50,7 +50,7 @@ class SensorBase(object):
         @param start: start index
         @param end: end index
         """
-        self._data = self._data.iloc[start:end]
+        self._data = self._data.iloc[start:end].reset_index()
 
     @property
     def timestamps(self):

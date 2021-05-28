@@ -70,7 +70,7 @@ def segment_1d_joint_on_example(joint_data: np.array,
     plt.close()
     plt.cla()
     plt.clf()
-    return candidates, dtw_costs
+    return candidates
 
 
 def calculate_fast_dtw_cost(exemplar, observation):
