@@ -3,6 +3,7 @@ from .icp import find_rigid_transformation_svd
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 
 class StereoAzure(object):
@@ -40,9 +41,9 @@ class StereoAzure(object):
         """
         self.sub.multiply_matrix(rotation, translation)
 
-    def calculate_spatial_on_data(self, show=False):
-        master_position = self.master.position_data.to_numpy()  # [400:600, :]
-        sub_position = self.sub.position_data.to_numpy()  # [400:600, :]
+    def calculate_affine_transform_based_on_data(self, show=False):
+        master_position = self.master.position_data.to_numpy()
+        sub_position = self.sub.position_data.to_numpy()
 
         # Find the best affine transformation
         rotation, translation = find_rigid_transformation_svd(master_position.reshape(-1, 3),
@@ -54,12 +55,14 @@ class StereoAzure(object):
         trans_init[0:3, 3] = translation.reshape(3)
         self.master.multiply_matrix(rotation, translation)
 
-    def calculate_fusion(self, alpha, window_size=5):
+    def fuse_sub_and_master_cameras(self, alpha, window_size=5, show=False, path=None, joint='pelvis (y) '):
         """
-        TODO: Implement show argument for plotting the agreement instead of returning the weights
         Calculate the fusion of sub and master cameras. Data should be calibrated as good as possible
         @param alpha: coefficient for dominant skeleton side
         @param window_size: a window size of gradient averages
+        @param show: Flag whether results should be plotted
+        @param path: Path if result should be plotted
+        @param joint: joint name that should be plotted
         @return: Fused skeleton data in a pandas array
         """
         df_sub = self.sub_position
@@ -90,7 +93,33 @@ class StereoAzure(object):
         weight_sub = pd.DataFrame(weight_sub_nd, columns=df_sub.columns)
         weight_master = pd.DataFrame(weight_master_nd, columns=df_master.columns)
         fused_skeleton = weight_sub * df_sub + weight_master * df_master
+
+        if show:
+            plt.plot(df_sub[joint], label="Sub Camera")
+            plt.plot(df_master[joint], label="Master Camera")
+            plt.plot(fused_skeleton[joint], label="Fused Camera")
+            plt.plot(weight_sub[joint], label="Weights Sub")
+            plt.plot(weight_sub[joint], label="Weights Master")
+            plt.legend()
+            plt.title(f"Current joint: {joint}")
+            plt.tight_layout()
+
+            if path is not None:
+                plt.savefig(path)
+            else:
+                plt.show()
+
+            plt.close()
+            plt.clf()
+            plt.cla()
+
         return fused_skeleton
+
+    def check_agreement_of_both_cameras(self):
+        data_a = self.sub.position_data.to_numpy()
+        data_b = self.master.position_data.to_numpy()
+        differences = np.abs(data_a - data_b)
+        return np.mean(differences)
 
     @staticmethod
     def calculate_percentage(grad_a, grad_b):
@@ -119,11 +148,3 @@ class StereoAzure(object):
     @property
     def mas_position(self):
         return self.master.position_data
-
-# def draw_registration_result(source, target, transformation):
-#     source_temp = copy.deepcopy(source)
-#     target_temp = copy.deepcopy(target)
-#     # source_temp.paint_uniform_color([1, 0.706, 0])
-#     # target_temp.paint_uniform_color([0, 0.651, 0.929])
-#     source_temp.transform(transformation)
-#     o3d.visualization.draw_geometries([source_temp, target_temp], mesh_show_back_face=False)

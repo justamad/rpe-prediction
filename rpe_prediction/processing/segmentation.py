@@ -26,7 +26,7 @@ def segment_1d_joint_on_example(joint_data: np.array,
     exemplar = (exemplar - np.mean(exemplar)) / np.std(exemplar)
     joint_data = (joint_data - np.mean(joint_data)) / np.std(joint_data)
 
-    peaks, _ = signal.find_peaks(joint_data, height=0, prominence=0.05)
+    peaks, _ = signal.find_peaks(joint_data, height=0, prominence=0.05, width=min_duration)
 
     candidates = []
     dtw_costs = []
@@ -41,11 +41,9 @@ def segment_1d_joint_on_example(joint_data: np.array,
     # Calculate costs for segmentation candidates
     for t1, t2 in zip(peaks, peaks[1:]):
         observation = joint_data[t1:t2]
-        # Step 1: first check basic statistics
-        std_dev = np.std(observation)
-        length = t2 - t1
 
-        if std_dev < exemplar_std_threshold or length < min_duration:
+        # Step 1: first check basic statistics
+        if np.std(observation) < exemplar_std_threshold:
             ax2.plot(np.arange(t1, t2), observation, '--', color="gray")
             continue
         ax2.plot(np.arange(t1, t2), observation)
