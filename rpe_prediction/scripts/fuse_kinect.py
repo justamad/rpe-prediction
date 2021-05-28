@@ -22,6 +22,8 @@ def fuse_kinect_data(iterator):
     for set_data in iterator:
         sub_path, master_path = set_data['azure']
         azure = StereoAzure(master_path=master_path, sub_path=sub_path)
+        azure.reduce_skeleton_joints()
+
         print(f"Agreement initial: {azure.check_agreement_of_both_cameras()}")
 
         azure.apply_external_rotation(rot, trans)
@@ -33,7 +35,6 @@ def fuse_kinect_data(iterator):
         azure.calculate_affine_transform_based_on_data(show=False)
         print(f"Agreement internal: {azure.check_agreement_of_both_cameras()}")
 
-        azure.remove_unnecessary_joints()
         avg_df = azure.fuse_sub_and_master_cameras(alpha=0.1, window_size=5, show=True, path=None, joint="knee_left (y) ")
         avg_df_f = apply_butterworth_df(avg_df, order=4, sampling_frequency=30, fc=2)
 

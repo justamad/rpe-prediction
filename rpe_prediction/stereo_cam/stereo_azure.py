@@ -116,10 +116,15 @@ class StereoAzure(object):
         return fused_skeleton
 
     def check_agreement_of_both_cameras(self):
-        data_a = self.sub.position_data.to_numpy()
-        data_b = self.master.position_data.to_numpy()
-        differences = np.abs(data_a - data_b)
-        return np.mean(differences)
+        """
+        Calculate the agreement between sub and master camera
+        :return: TBD
+        """
+        data_a = self.sub.position_data
+        data_b = self.master.position_data
+        differences = (data_a - data_b).abs().mean(axis=0)
+        differences.plot.bar(x="joints", y="error", rot=90)
+        return differences.mean()
 
     @staticmethod
     def calculate_percentage(grad_a, grad_b):
@@ -141,7 +146,7 @@ class StereoAzure(object):
         self.sub.cut_data_by_index(start_index, end_index)
         self.master.cut_data_by_index(start_index, end_index)
 
-    def remove_unnecessary_joints(self):
+    def reduce_skeleton_joints(self):
         self.sub.remove_unnecessary_joints()
         self.master.remove_unnecessary_joints()
 
