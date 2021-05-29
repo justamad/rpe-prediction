@@ -79,26 +79,23 @@ class StereoAzureLoader(BaseLoader):
         return "AzureLoader"
 
 
-class FusionAzureLoader(StereoAzureLoader):
-    pass
-
-
 class DataCollector(object):
 
-    def __init__(self, root_path, data_loaders):
+    def __init__(self, subject_root_path, data_loaders):
         """
-        Create instance of DataLoader for given root path
-        @param root_path: current path to subject folder
+        Constructor for data collector that crawls and prepares all data
+        @param subject_root_path: the current path to subject folder
+        @param data_loaders: a dictionary that defines the data to be loaded
         """
         self._file_loaders = {}
         for loader_name, loader in data_loaders.items():
-            current_loader = loader(root_path)
+            current_loader = loader(subject_root_path)
             self._file_loaders[loader_name] = current_loader
 
         found_sets = list(map(lambda l: l.get_nr_of_sets(), self._file_loaders.values()))
         result = found_sets.count(found_sets[0]) == len(found_sets)
         if not result:
-            print(f"Set(s) are missing for subject: {root_path}")
+            print(f"Set(s) are missing for subject: {subject_root_path}")
         self._sets = found_sets[0]
 
     def iterate_over_sets(self):

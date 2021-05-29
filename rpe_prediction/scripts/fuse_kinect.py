@@ -19,6 +19,11 @@ rot, trans = calculate_calibration(join(path, "calibration"), show=False)
 
 
 def fuse_kinect_data(iterator):
+    """
+    Fuse Kinect data from sub and master camera and calculate features
+    @param iterator: iterator that crawls through raw data
+    @return: None
+    """
     for set_data in iterator:
         sub_path, master_path = set_data['azure']
         azure = StereoAzure(master_path=master_path, sub_path=sub_path)
@@ -36,23 +41,22 @@ def fuse_kinect_data(iterator):
         print(f"Agreement internal: {azure.check_agreement_of_both_cameras()}")
 
         avg_df = azure.fuse_sub_and_master_cameras(alpha=0.1, window_size=5, show=True, path=None, joint="knee_left (y) ")
-        avg_df_f = apply_butterworth_df(avg_df, order=4, sampling_frequency=30, fc=2)
 
-        plt.plot(avg_df['pelvis (y) '])
-        plt.plot(apply_butterworth_df(avg_df, order=4, sampling_frequency=30, fc=2)['pelvis (y) '], label="fc 2")
-        plt.plot(apply_butterworth_df(avg_df, order=4, sampling_frequency=30, fc=4)['pelvis (y) '], label="fc 4")
-        plt.plot(apply_butterworth_df(avg_df, order=4, sampling_frequency=30, fc=6)['pelvis (y) '], label="fc 6")
-        plt.plot(apply_butterworth_df(avg_df, order=4, sampling_frequency=30, fc=8)['pelvis (y) '], label="fc 8")
-        plt.legend()
-        plt.show()
+        # plt.plot(avg_df['pelvis (y) '])
+        # plt.plot(apply_butterworth_df(avg_df, order=4, sampling_frequency=30, fc=2)['pelvis (y) '], label="fc 2")
+        # plt.plot(apply_butterworth_df(avg_df, order=4, sampling_frequency=30, fc=4)['pelvis (y) '], label="fc 4")
+        # plt.plot(apply_butterworth_df(avg_df, order=4, sampling_frequency=30, fc=6)['pelvis (y) '], label="fc 6")
+        # plt.plot(apply_butterworth_df(avg_df, order=4, sampling_frequency=30, fc=8)['pelvis (y) '], label="fc 8")
+        # plt.legend()
+        # plt.show()
 
-        viewer = SkeletonViewer()
+        # viewer = SkeletonViewer()
         # viewer.add_skeleton(azure.sub_position)
         # viewer.add_skeleton(azure.mas_position)
-        viewer.add_skeleton(avg_df_f)
-        viewer.show_window()
+        # viewer.add_skeleton(avg_df)
+        # viewer.show_window()
 
 
 if __name__ == '__main__':
-    fuse_kinect_data(file_iterator.iterate_over_specific_subjects("CCB8AD"))
-    # fuse_kinect_data(file_iterator.iterate_over_all_subjects())
+    # fuse_kinect_data(file_iterator.iterate_over_specific_subjects("CCB8AD"))
+    fuse_kinect_data(file_iterator.iterate_over_all_subjects())
