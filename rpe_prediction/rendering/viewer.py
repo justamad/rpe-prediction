@@ -1,6 +1,8 @@
 import vtk
 import pandas as pd
 import numpy as np
+import os
+import json
 
 COLORS = ["red", "green", "blue"]
 
@@ -35,16 +37,17 @@ class SkeletonViewer(object):
         self.__scale_factor = 1.0
         self._sphere_radius = sphere_radius
 
-    def add_skeleton(self, data: pd.DataFrame, connections=None):
+    def add_skeleton(self, data: pd.DataFrame, draw_skeleton_lines=True):
         """
         Add a new skeleton to the renderer
         @param data: new skeleton data in a numpy array
-        @param connections: the connections of skeletons
+        @param draw_skeleton_lines: flag whether skeleton bones should be drawn
         @return: None
         """
         actors_markers = []  # each marker has an own actor
         actors_bones = []  # actors for each line segment between two markers
         lines = []
+        connections = None
         _, cols = data.shape
 
         # Create all instances for all markers
@@ -62,7 +65,9 @@ class SkeletonViewer(object):
             self.renderer.AddActor(actor)
             actors_markers.append(actor)
 
-        if connections is not None:
+        if draw_skeleton_lines:
+            connections = get_skeleton_connections(data)
+
             for _ in connections:
                 line = vtk.vtkLineSource()
                 line.SetPoint1(0, 0, 0)
@@ -158,3 +163,35 @@ class SkeletonViewer(object):
             new_frame = self.__cur_frame + 1
             self.__cur_frame = new_frame if new_frame < self.__max_frames else self.__cur_frame
             print(f"Current Frame: {self.__cur_frame}")
+
+
+def get_skeleton_connections(position_data):
+    """
+    Returns the joint connections from given json file accordingly to the current joints
+    @return: list that holds tuples (j1, j2) for joint connections (bones)
+    """
+    json_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "azure.json")
+    joints = get_joints_as_list(position_data)
+    with open(json_file) as f:
+        connections = json.load(f)
+
+    skeleton = []
+
+    for j1, j2 in connections:
+        j1, j2 = j1.lower(), j2.lower()
+        if j1 not in joints or j2 not in joints:
+            continue
+        skeleton.append((joints.index(j1), joints.index(j2)))
+
+    # connection = [(joints.index(j1.lower()), joints.index(j2.lower())) for j1, j2 in connections]
+    return skeleton
+
+
+def get_joints_as_list(df):
+    columns = []
+    for column in df.columns:
+        column = column[:-5]
+        if column not in columns:
+            columns.append(column)
+
+    return columns

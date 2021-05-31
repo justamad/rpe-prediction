@@ -7,7 +7,8 @@ import numpy as np
 import os
 import json
 
-excluded_joints = ["eye", "ear", "nose", "wrist", "handtip", "thumb"]
+excluded_joints = ["eye", "ear", "nose", "handtip", "thumb"]
+# excluded_joints = ["eye", "ear", "nose", "wrist", "handtip", "thumb"]
 
 
 class AzureKinect(SensorBase):
@@ -80,20 +81,6 @@ class AzureKinect(SensorBase):
         return self._data[columns]
 
     @staticmethod
-    def get_skeleton_connections(position_data):
-        """
-        Returns the joint connections from given json file accordingly to the current joints
-        @return: list that holds tuples (j1, j2) for joint connections (bones)
-        """
-        json_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "azure.json")
-        joints = AzureKinect.get_joints_as_list(position_data)
-        with open(json_file) as f:
-            connections = json.load(f)
-
-        connection = [(joints.index(j1.lower()), joints.index(j2.lower())) for j1, j2 in connections]
-        return connection
-
-    @staticmethod
     def get_skeleton_joints():
         skeleton_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "joints.json")
         with open(skeleton_file) as f:
@@ -129,16 +116,6 @@ class AzureKinect(SensorBase):
         @return: None
         """
         self._data = filter_dataframe(self._data, excluded_joints)
-
-    @staticmethod
-    def get_joints_as_list(df):
-        columns = []
-        for column in df.columns:
-            column = column[:-5]
-            if column not in columns:
-                columns.append(column)
-
-        return columns
 
     @property
     def position_data(self):

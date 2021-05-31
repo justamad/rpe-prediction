@@ -28,6 +28,7 @@ def fuse_kinect_data(iterator):
         sub_path, master_path = set_data['azure']
         azure = StereoAzure(master_path=master_path, sub_path=sub_path)
         azure.reduce_skeleton_joints()
+        print(sub_path)
 
         print(f"Agreement initial: {azure.check_agreement_of_both_cameras()}")
 
@@ -50,11 +51,11 @@ def fuse_kinect_data(iterator):
         # plt.legend()
         # plt.show()
 
-        # viewer = SkeletonViewer()
-        # viewer.add_skeleton(azure.sub_position)
-        # viewer.add_skeleton(azure.mas_position)
-        # viewer.add_skeleton(avg_df)
-        # viewer.show_window()
+        viewer = SkeletonViewer()
+        viewer.add_skeleton(azure.sub_position)
+        viewer.add_skeleton(azure.mas_position)
+        viewer.add_skeleton(avg_df)
+        viewer.show_window()
 
 
 if __name__ == '__main__':
