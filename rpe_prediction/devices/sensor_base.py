@@ -42,7 +42,7 @@ class SensorBase(object):
         Shift the clock based on a given time delta
         @param delta: the time offset given in seconds
         """
-        self._data.loc[:, 'timestamp'] += delta
+        self._data.index += delta
 
     def cut_data_by_index(self, start: int = 0, end: int = -1):
         """
@@ -50,11 +50,11 @@ class SensorBase(object):
         @param start: start index
         @param end: end index
         """
-        self._data = self._data.iloc[start:end].reset_index()
+        self._data = self._data.iloc[start:end]
 
     @property
     def timestamps(self):
-        return self._data['timestamp'].to_numpy()
+        return self._data.index.to_numpy()
 
     @property
     def sampling_frequency(self):

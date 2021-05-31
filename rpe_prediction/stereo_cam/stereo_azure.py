@@ -21,6 +21,10 @@ class StereoAzure(object):
         self.synchronize_temporal()
 
     def synchronize_temporal(self):
+        """
+        Synchronize the two camera stream in a temporal manner
+        @return: None
+        """
         # Synchronize master and sub devices
         self.sub.shift_clock(-self.delay)
         start_point = self.master.timestamps[0]
@@ -32,6 +36,7 @@ class StereoAzure(object):
         length = min(len(self.master.timestamps), len(self.sub.timestamps) - minimum)
         self.master.cut_data_by_index(0, length)
         self.sub.cut_data_by_index(minimum, minimum + length)
+        self.master.set_timestamps(self.sub.timestamps)
 
     def apply_external_rotation(self, rotation, translation):
         """
@@ -65,8 +70,8 @@ class StereoAzure(object):
         @param joint: joint name that should be plotted
         @return: Fused skeleton data in a pandas array
         """
-        df_sub = self.sub_position
-        df_master = self.mas_position
+        df_sub = self.sub_position.reset_index(drop=True)
+        df_master = self.mas_position.reset_index(drop=True)
 
         grad_a = pd.DataFrame(np.square(np.gradient(df_sub.to_numpy(), axis=0)), columns=df_sub.columns)
         grad_b = pd.DataFrame(np.square(np.gradient(df_master.to_numpy(), axis=0)), columns=df_master.columns)
@@ -93,6 +98,8 @@ class StereoAzure(object):
         weight_sub = pd.DataFrame(weight_sub_nd, columns=df_sub.columns)
         weight_master = pd.DataFrame(weight_master_nd, columns=df_master.columns)
         fused_skeleton = weight_sub * df_sub + weight_master * df_master
+        fused_skeleton['timestamp'] = self.sub_position.index
+        fused_skeleton = fused_skeleton.set_index('timestamp')
 
         if show:
             plt.plot(df_sub[joint], label="Sub Camera")
@@ -122,7 +129,12 @@ class StereoAzure(object):
         """
         data_a = self.sub.position_data
         data_b = self.master.position_data
+        d = data_a - data_b
+        diff = (data_a - data_b).abs().mean(axis=0)
+        diff_nan = data_a.isna().sum()
         differences = (data_a - data_b).abs().mean(axis=0)
+        a_nan = data_a.isna().sum()
+        b_nan = data_b.isna().sum()
         differences.plot.bar(x="joints", y="error", rot=90)
         return differences.mean()
 

@@ -8,7 +8,6 @@ import os
 import json
 
 excluded_joints = ["eye", "ear", "nose", "handtip", "thumb"]
-# excluded_joints = ["eye", "ear", "nose", "wrist", "handtip", "thumb"]
 
 
 class AzureKinect(SensorBase):
@@ -53,6 +52,7 @@ class AzureKinect(SensorBase):
         """
         self._data.loc[:, self._data.columns == 'timestamp'] *= 1e-6
         self._data = fill_missing_data(self._data, self.sampling_frequency, log=log)
+        # self._data = self._data.set_index('timestamp')
 
     def multiply_matrix(self, matrix, translation=np.array([0, 0, 0])):
         """
@@ -116,6 +116,9 @@ class AzureKinect(SensorBase):
         @return: None
         """
         self._data = filter_dataframe(self._data, excluded_joints)
+
+    def set_timestamps(self, timestamps):
+        self._data['timestamp'] = timestamps
 
     @property
     def position_data(self):

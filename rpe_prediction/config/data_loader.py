@@ -53,6 +53,7 @@ class StereoAzureLoader(BaseLoader):
         if not os.path.exists(self._azure_path):
             raise LoadingException(f"Azure file not present in {self._azure_path}")
 
+        # Load data into two dictionaries: {trial_n: abs_path, ...}
         all_trials = list(map(lambda x: join(self._azure_path, x), os.listdir(self._azure_path)))
         all_trials = list(filter(lambda x: os.path.isdir(x), all_trials))
 
@@ -76,7 +77,30 @@ class StereoAzureLoader(BaseLoader):
         return min(len(self._sub_trials), len(self._master_trials))
 
     def __repr__(self):
-        return "AzureLoader"
+        return "StereoAzureLoader"
+
+
+class FusedAzureLoader(BaseLoader):
+
+    def __init__(self, root_path):
+        super().__init__()
+        if not os.path.exists(root_path):
+            raise LoadingException(f"Azure file not present in {root_path}")
+
+        # Load data into dictionary: {trial_n: absolute_path, ...}
+        files = list(filter(lambda x: 'azure' in x, os.listdir(root_path)))
+        self.trials = {int(v.split('_')[0]): join(root_path, v) for v in files}
+
+    def get_trial_by_set_nr(self, trial_nr: int):
+        if trial_nr not in self.trials:
+            raise LoadingException(f"{str(self)}: Could not load trial: {trial_nr}")
+        return self.trials[trial_nr]
+
+    def get_nr_of_sets(self):
+        return len(self.trials)
+
+    def __repr__(self):
+        return "FusedAzureLoader"
 
 
 class DataCollector(object):
@@ -106,6 +130,7 @@ class DataCollector(object):
         for current_set in range(self._sets):
             try:
                 trial_dic = {k: v.get_trial_by_set_nr(current_set) for k, v in self._file_loaders.items()}
+                trial_dic['nr_set'] = current_set
                 yield trial_dic
             except LoadingException as e:
                 print(e)

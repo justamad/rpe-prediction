@@ -27,14 +27,5 @@ def calculate_features_sliding_window(df: pd.DataFrame, window_size: int, step_s
         windows.append(window)
 
     df = pd.concat(windows, ignore_index=True)
-    return calculate_ts_features(df)
-
-
-def calculate_ts_features(df):
-    """
-    Calculate features for entire dataframe that contains window index with column 'id'
-    @param df: dataframe for all possible windows
-    @return: calculated features
-    """
-    feat = tsfresh.extract_features(df, column_id='id', column_sort='timestamp', default_fc_parameters=settings)
-    return feat
+    features = tsfresh.extract_features(df, column_id='id', column_sort='timestamp', default_fc_parameters=settings)
+    return features

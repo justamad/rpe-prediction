@@ -1,4 +1,4 @@
-from .data_loader import DataCollector, LoadingException, StereoAzureLoader, RPELoader
+from .data_loader import DataCollector, LoadingException, StereoAzureLoader, RPELoader, FusedAzureLoader
 from os.path import join
 
 import os
@@ -17,6 +17,13 @@ class KinectFusionLoaderSet(dict):
         super().__init__({'azure': StereoAzureLoader})
 
 
+class ProcessedLoaderSet(dict):
+
+    def __init__(self):
+        super().__init__({'azure': FusedAzureLoader,
+                          'rpe': RPELoader})
+
+
 class SubjectDataIterator(object):
 
     def __init__(self, base_path, data_loaders_dict):
@@ -27,10 +34,10 @@ class SubjectDataIterator(object):
         """
         self._base_path = base_path
         self._data_loaders_dict = data_loaders_dict
-        self._subject_data_loaders = self.load_config_files()
+        self._subject_data_loaders = self.load_data_collectors()
         print(f"Found {len(self._subject_data_loaders)} subject folders.")
 
-    def load_config_files(self):
+    def load_data_collectors(self):
         """
         Function checks for valid configuration files
         @return: a list that contains all configuration files
@@ -53,6 +60,7 @@ class SubjectDataIterator(object):
         for subject_id, (subject_name, data_loader) in enumerate(self._subject_data_loaders.items()):
             for trial in data_loader.iterate_over_sets():
                 trial['group'] = subject_id
+                trial['subject_name'] = subject_name
                 yield trial
 
     def iterate_over_specific_subjects(self, *subjects):

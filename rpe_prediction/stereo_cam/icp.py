@@ -51,12 +51,12 @@ def find_rigid_transformation_svd(points_a, points_b, show=False, path=None):
 
     t = -R * centroid_a + centroid_b
 
-    # Check the RMSE of the transformation
-    transformed = (R @ matrix_a + t).T
-    rmse = np.sqrt(np.sum(np.square(points_b - transformed), axis=1))
-    rmse_s = "RMSE transformation: mean: {:4f} mm, std: {:4f}".format(np.mean(rmse), np.std(rmse))
-
     if show:
+        # Check the RMSE of the transformation
+        transformed = (R @ matrix_a + t).T
+        rmse = np.sqrt(np.sum(np.square(points_b - transformed), axis=1))
+        rmse_s = "RMSE transformation: mean: {:4f} mm, std: {:4f}".format(np.mean(rmse), np.std(rmse))
+
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         ax.scatter(points_a[:, 0], points_a[:, 1], points_a[:, 2], label="Points A")
@@ -66,7 +66,5 @@ def find_rigid_transformation_svd(points_a, points_b, show=False, path=None):
         plt.legend()
         if path is None:
             plt.show()
-    else:
-        print(rmse_s)
 
     return R, t
