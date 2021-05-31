@@ -1,15 +1,14 @@
-from calibration import calculate_calibration
-from rpe_prediction.config import SubjectDataIterator, KinectFusionLoaderSet
-from rpe_prediction.processing import segment_1d_joint_on_example, apply_butterworth_df
-from rpe_prediction.stereo_cam import StereoAzure
-from rpe_prediction.rendering import SkeletonViewer
+import argparse
+import os
 from os.path import join
 
-import os
-import numpy as np
-import argparse
 import matplotlib
-import matplotlib.pyplot as plt
+import numpy as np
+
+from calibration import calculate_calibration
+from rpe_prediction.config import SubjectDataIterator, KinectFusionLoaderSet
+from rpe_prediction.processing import segment_1d_joint_on_example
+from rpe_prediction.stereo_cam import StereoAzure
 
 matplotlib.use("TkAgg")
 
@@ -18,7 +17,6 @@ parser.add_argument('--src_path', type=str, dest='src_path', default="../../data
 parser.add_argument('--dst_path', type=str, dest='dst_path', default="../../data/processed/")
 args = parser.parse_args()
 
-file_iterator = SubjectDataIterator(args.src_path, KinectFusionLoaderSet())
 example = np.loadtxt("example.np")
 
 path = "../../data/raw/AEBA3A"
@@ -35,7 +33,9 @@ def fuse_kinect_data(iterator):
         sub_path, master_path = set_data['azure']
         azure = StereoAzure(master_path=master_path, sub_path=sub_path)
         azure.reduce_skeleton_joints()
+        print(f"Agreement initial: {azure.check_agreement_of_both_cameras()}")
         azure.apply_external_rotation(rot, trans)
+        print(f"Agreement external: {azure.check_agreement_of_both_cameras()}")
 
         # Segment data
         sub = azure.sub_position['pelvis (y) '].to_numpy()
@@ -71,5 +71,7 @@ def fuse_kinect_data(iterator):
 
 
 if __name__ == '__main__':
+    file_iterator = SubjectDataIterator(args.src_path, KinectFusionLoaderSet())
+
     # fuse_kinect_data(file_iterator.iterate_over_specific_subjects("CCB8AD"))
     fuse_kinect_data(file_iterator.iterate_over_all_subjects())

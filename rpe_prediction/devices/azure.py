@@ -1,11 +1,12 @@
-from .sensor_base import SensorBase
-from rpe_prediction.processing import normalize_signal, find_closest_timestamp, fill_missing_data, filter_dataframe
+import json
+import os
 from os.path import join
 
-import pandas as pd
 import numpy as np
-import os
-import json
+import pandas as pd
+
+from rpe_prediction.processing import normalize_signal, find_closest_timestamp, fill_missing_data, filter_dataframe
+from .sensor_base import SensorBase
 
 excluded_joints = ["eye", "ear", "nose", "handtip", "thumb"]
 
@@ -65,7 +66,7 @@ class AzureKinect(SensorBase):
         samples, features = data.shape
         result = matrix * data.reshape(-1, 3).T + translation.reshape(3, 1)
         final_result = result.T.reshape(samples, features)
-        data = pd.DataFrame(data=final_result, columns=df.columns)
+        data = pd.DataFrame(data=final_result, columns=df.columns, index=df.index)
         self._data.update(data)
 
     def __getitem__(self, item: str):
@@ -118,19 +119,17 @@ class AzureKinect(SensorBase):
         self._data = filter_dataframe(self._data, excluded_joints)
 
     def set_timestamps(self, timestamps):
-        self._data['timestamp'] = timestamps
+        """
+        Set the current timestamps to the given timestamps
+        @param timestamps: the new timestamps, has to be of same length
+        @return: None
+        """
+        self._data.index = timestamps
 
     @property
     def position_data(self):
         data = self._data.filter(regex='pos').copy()
         new_names = [(i, i.replace('pos', '')) for i in data.columns.values]
-        data.rename(columns=dict(new_names), inplace=True)
-        return data
-
-    @property
-    def orientation_data(self):
-        data = self._data.filter(regex='ori').copy()
-        new_names = [(i, i.replace('ori', '')) for i in data.columns.values]
         data.rename(columns=dict(new_names), inplace=True)
         return data
 

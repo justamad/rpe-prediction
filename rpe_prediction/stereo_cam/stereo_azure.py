@@ -1,9 +1,9 @@
-from rpe_prediction.devices import AzureKinect
-from .icp import find_rigid_transformation_svd
-
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+
+from rpe_prediction.devices import AzureKinect
+from .icp import find_rigid_transformation_svd
 
 
 class StereoAzure(object):
@@ -22,7 +22,7 @@ class StereoAzure(object):
 
     def synchronize_temporal(self):
         """
-        Synchronize the two camera stream in a temporal manner
+        Synchronize the two camera stream temporally
         @return: None
         """
         # Synchronize master and sub devices
@@ -129,12 +129,7 @@ class StereoAzure(object):
         """
         data_a = self.sub.position_data
         data_b = self.master.position_data
-        d = data_a - data_b
-        diff = (data_a - data_b).abs().mean(axis=0)
-        diff_nan = data_a.isna().sum()
         differences = (data_a - data_b).abs().mean(axis=0)
-        a_nan = data_a.isna().sum()
-        b_nan = data_b.isna().sum()
         differences.plot.bar(x="joints", y="error", rot=90)
         return differences.mean()
 
