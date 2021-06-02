@@ -1,12 +1,12 @@
-import json
-import os
+from rpe_prediction.processing import normalize_signal, find_closest_timestamp, fill_missing_data, filter_dataframe
+from .sensor_base import SensorBase
 from os.path import join
 
 import numpy as np
 import pandas as pd
+import json
+import os
 
-from rpe_prediction.processing import normalize_signal, find_closest_timestamp, fill_missing_data, filter_dataframe
-from .sensor_base import SensorBase
 
 excluded_joints = ["eye", "ear", "nose", "handtip", "thumb"]
 
