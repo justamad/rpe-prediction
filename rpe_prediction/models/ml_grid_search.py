@@ -1,10 +1,6 @@
-from sklearn.base import BaseEstimator
-from imblearn.pipeline import Pipeline
-from imblearn.over_sampling import RandomOverSampler
-from imblearn.under_sampling import RandomUnderSampler
-from sklearn.model_selection import GridSearchCV, LeaveOneGroupOut
-
 import pandas as pd
+from imblearn.pipeline import Pipeline
+from sklearn.model_selection import GridSearchCV, LeaveOneGroupOut
 
 
 class GridSearching(object):
@@ -52,5 +48,5 @@ class GridSearching(object):
         print("Best parameter (CV score=%0.3f):" % search.best_score_)
         print(search.best_params_)
         results = pd.DataFrame(search.cv_results_)
-        results.to_csv(f"{self._learner_name}_results.csv", sep=';')
+        results.to_csv(f"{self._learner_name}_results.csv", sep=';', index=False)
         return search

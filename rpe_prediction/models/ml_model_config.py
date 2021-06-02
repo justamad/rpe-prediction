@@ -10,6 +10,10 @@ class LearningModelBase(object):
         self.parameters = parameters
 
     def get_trial_data_dict(self):
+        """
+        Returns the collection of parameters for grid search
+        @return: dictionary that holds collection of parameters for grid search
+        """
         return {
             'model': self.model,
             'scaler': self.scaler,
