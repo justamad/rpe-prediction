@@ -1,8 +1,11 @@
 from imblearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV, LeaveOneGroupOut
 
-
 import pandas as pd
+
+scoring = {'R2': 'r2',
+           'MSE': 'neg_mean_squared_error',
+           'MAE': 'neg_mean_absolute_error'}
 
 
 class GridSearching(object):
@@ -42,7 +45,9 @@ class GridSearching(object):
                               param_grid=self._parameters,
                               cv=logo.get_n_splits(groups=self._groups),
                               n_jobs=-1,
-                              verbose=10)
+                              verbose=10,
+                              scoring=scoring,
+                              refit='MSE')
 
         print(search)
         search.fit(input_data, ground_truth)
