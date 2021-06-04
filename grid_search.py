@@ -10,8 +10,8 @@ def split_data(train_percentage=0.5):
     @param train_percentage: percentage value of train subjects
     @return: tuple with (x_train, y_train, x_test, y_test)
     """
-    X = pd.read_csv("../../x.csv", sep=";")
-    y = pd.read_csv("../../y.csv", sep=";")
+    X = pd.read_csv("x.csv", sep=";")
+    y = pd.read_csv("y.csv", sep=";")
     body_idx_counts = y['group'].unique()
     subjects = int(len(body_idx_counts) * train_percentage)
     train_subjects = np.random.choice(body_idx_counts, subjects, replace=False)
