@@ -1,3 +1,5 @@
+from imblearn.over_sampling import RandomOverSampler
+from imblearn.under_sampling import RandomUnderSampler
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
 
@@ -18,7 +20,8 @@ class LearningModelBase(object):
             'model': self.model,
             'scaler': self.scaler,
             'parameters': self.parameters,
-            'learner_name': str(self)
+            'learner_name': str(self),
+            'balancer': RandomOverSampler()
         }
 
 

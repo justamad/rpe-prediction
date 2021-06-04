@@ -1,11 +1,13 @@
-import pandas as pd
 from imblearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV, LeaveOneGroupOut
 
 
+import pandas as pd
+
+
 class GridSearching(object):
 
-    def __init__(self, model, scaler, parameters, groups, learner_name):
+    def __init__(self, model, scaler, parameters, groups, learner_name, balancer):
         """
         Constructor for Grid Search class
         @param model: the current regression model
@@ -18,11 +20,9 @@ class GridSearching(object):
             # ("remove_constants", constants_remover()),
             ("scaler", scaler),
             # ("feature_selection", selector),
+            ('balance_sampling', balancer),
             ("regression", model)
         ]
-
-        # if not skip_balancing:
-        #     steps.insert(2, ('balance_sampling', balancer()))
 
         self._parameters = parameters
         self._groups = groups
