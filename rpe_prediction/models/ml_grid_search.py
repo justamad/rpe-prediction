@@ -41,6 +41,7 @@ class GridSearching(object):
         search = GridSearchCV(estimator=pipe,
                               param_grid=self._parameters,
                               cv=logo.get_n_splits(groups=self._groups),
+                              n_jobs=-1,
                               verbose=10)
 
         print(search)

@@ -21,7 +21,7 @@ class LearningModelBase(object):
             'scaler': self.scaler,
             'parameters': self.parameters,
             'learner_name': str(self),
-            'balancer': RandomOverSampler()
+            'balancer': RandomUnderSampler()
         }
 
 

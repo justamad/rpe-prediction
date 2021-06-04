@@ -1,7 +1,7 @@
+from rpe_prediction.models import GridSearching, SVRModelConfig
+
 import numpy as np
 import pandas as pd
-
-from rpe_prediction.models import GridSearching, SVRModelConfig
 
 
 def split_data(train_percentage=0.5):
