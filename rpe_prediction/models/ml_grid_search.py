@@ -54,5 +54,6 @@ class GridSearching(object):
         print("Best parameter (CV score=%0.3f):" % search.best_score_)
         print(search.best_params_)
         results = pd.DataFrame(search.cv_results_)
+        results = results.drop(['params'], axis=1)
         results.to_csv(f"{self._learner_name}_results.csv", sep=';', index=False)
         return search
