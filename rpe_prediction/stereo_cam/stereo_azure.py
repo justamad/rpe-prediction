@@ -47,17 +47,24 @@ class StereoAzure(object):
         self.sub.multiply_matrix(rotation, translation)
 
     def calculate_affine_transform_based_on_data(self, show=False):
-        master_position = self.master.position_data.to_numpy()
-        sub_position = self.sub.position_data.to_numpy()
+        """
+        Calculate an affine transformation to register one skeleton to the other
+        @param show: flag if the result should be shown
+        @return: None
+        """
+        points_a = self.master.position_data.to_numpy()
+        points_b = self.sub.position_data.to_numpy()
+
+        gradients_master = np.sum(np.abs(np.gradient(points_a, axis=0)).reshape(-1, 3), axis=1)
+        gradients_sub = np.sum(np.abs(np.gradient(points_b, axis=0)).reshape(-1, 3), axis=1)
+        weights_total = 1 / (gradients_master + gradients_sub)
 
         # Find the best affine transformation
-        rotation, translation = find_rigid_transformation_svd(master_position.reshape(-1, 3),
-                                                              sub_position.reshape(-1, 3),
+        rotation, translation = find_rigid_transformation_svd(points_a.reshape(-1, 3),
+                                                              points_b.reshape(-1, 3),
+                                                              weights_total.reshape(-1, 1),
                                                               show=show)
 
-        trans_init = np.eye(4)
-        trans_init[0:3, 0:3] = rotation
-        trans_init[0:3, 3] = translation.reshape(3)
         self.master.multiply_matrix(rotation, translation)
 
     def fuse_sub_and_master_cameras(self, alpha, window_size=5, show=False, path=None, joint='pelvis (y) '):

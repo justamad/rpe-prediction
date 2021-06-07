@@ -4,12 +4,14 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 
-def find_rigid_transformation_svd(points_a, points_b, show=False, path=None):
+def find_rigid_transformation_svd(points_a: np.ndarray, points_b: np.ndarray, weights: np.ndarray = None,
+                                  show=False, path=None):
     """
     Calculate rigid transformation between two point sets, using singular value decomposition of covariance matrix
     Reference: http://nghiaho.com/?page_id=671
     @param points_a: Nx3 numpy array with reference point set
     @param points_b: Nx3 numpy array with moving point set
+    @param weights: A 1D-numpy array that holds weights for all points
     @param show: flag if result should be visualized
     @param path: path to save the image
     @return: 3x3 rotation matrix, 3x1 trans vector
@@ -28,9 +30,11 @@ def find_rigid_transformation_svd(points_a, points_b, show=False, path=None):
     if num_rows != 3:
         raise Exception(f"matrix B is not 3xN, it is {num_rows}x{num_cols}")
 
-    # Find mean column wise
-    centroid_a = np.mean(matrix_a, axis=1)
-    centroid_b = np.mean(matrix_b, axis=1)
+    if weights is None:
+        weights = np.ones((len(points_a), 1))
+
+    centroid_a = (np.sum(weights * points_a, axis=0, keepdims=True) / np.sum(weights)).T
+    centroid_b = (np.sum(weights * points_b, axis=0, keepdims=True) / np.sum(weights)).T
 
     # Subtract mean
     a_mean = matrix_a - np.tile(centroid_a, (1, num_cols))

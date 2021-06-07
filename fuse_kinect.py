@@ -1,26 +1,25 @@
-import argparse
-import os
-from os.path import join
-
-import matplotlib
-import numpy as np
-
 from calibration import calculate_calibration
 from rpe_prediction.config import SubjectDataIterator, KinectFusionLoaderSet
 from rpe_prediction.processing import segment_1d_joint_on_example
 from rpe_prediction.stereo_cam import StereoAzure
+from os.path import join
+
+import numpy as np
+import matplotlib
+import argparse
+import os
+
 
 matplotlib.use("TkAgg")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--src_path', type=str, dest='src_path', default="../../data/raw")
-parser.add_argument('--dst_path', type=str, dest='dst_path', default="../../data/processed/")
+parser.add_argument('--src_path', type=str, dest='src_path', default="data/raw")
+parser.add_argument('--dst_path', type=str, dest='dst_path', default="data/processed/")
 args = parser.parse_args()
 
 example = np.loadtxt("example.np")
 
-path = "../../data/raw/AEBA3A"
-rot, trans = calculate_calibration(join(path, "calibration"), show=False)
+rot, trans = calculate_calibration("data/calibration", show=False)
 
 
 def fuse_kinect_data(iterator):
@@ -34,10 +33,10 @@ def fuse_kinect_data(iterator):
         azure = StereoAzure(master_path=master_path, sub_path=sub_path)
         azure.reduce_skeleton_joints()
         print(f"Agreement initial: {azure.check_agreement_of_both_cameras()}")
-        azure.apply_external_rotation(rot, trans)
-        print(f"Agreement external: {azure.check_agreement_of_both_cameras()}")
+        # azure.apply_external_rotation(rot, trans)
+        # print(f"Agreement external: {azure.check_agreement_of_both_cameras()}")
 
-        # Segment data
+        # Segment data based on pelvis joint
         sub = azure.sub_position['pelvis (y) '].to_numpy()
         repetitions = segment_1d_joint_on_example(sub, example, min_duration=20, std_dev_percentage=0.5, show=False)
         azure.cut_skeleton_data(repetitions[0][0], repetitions[-1][1])
@@ -72,6 +71,4 @@ def fuse_kinect_data(iterator):
 
 if __name__ == '__main__':
     file_iterator = SubjectDataIterator(args.src_path, KinectFusionLoaderSet())
-
-    # fuse_kinect_data(file_iterator.iterate_over_specific_subjects("CCB8AD"))
     fuse_kinect_data(file_iterator.iterate_over_all_subjects())

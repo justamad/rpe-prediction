@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 
 settings = MinimalFCParameters()
 
-features = pd.read_csv("../../x.csv", delimiter=';', index_col=False)
-features = features.join(pd.read_csv("../../y.csv", delimiter=';', index_col=False))
+features = pd.read_csv("x.csv", delimiter=';', index_col=False)
+features = features.join(pd.read_csv("y.csv", delimiter=';', index_col=False))
 
 scaler = StandardScaler()
 
