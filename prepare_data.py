@@ -7,7 +7,7 @@ from rpe_prediction.config import SubjectDataIterator, ProcessedLoaderSet
 from rpe_prediction.features import calculate_features_sliding_window
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--src_path', type=str, dest='src_path', default="../../data/processed")
+parser.add_argument('--src_path', type=str, dest='src_path', default="data/processed")
 args = parser.parse_args()
 
 
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     file_iterator = SubjectDataIterator(args.src_path, ProcessedLoaderSet())
     X, y = prepare_skeleton_data(file_iterator, window_size=60, step_size=5)
 
-    X.to_csv("../../x.csv", index=False, sep=';')
-    y.to_csv("../../y.csv", index=False, sep=';')
+    X.to_csv("x.csv", index=False, sep=';')
+    y.to_csv("y.csv", index=False, sep=';')
     print(X.shape)
     print(y.shape)
