@@ -1,31 +1,27 @@
-from calibration import calculate_calibration
 from rpe_prediction.config import SubjectDataIterator, KinectFusionLoaderSet
 from rpe_prediction.processing import segment_1d_joint_on_example
 from rpe_prediction.stereo_cam import StereoAzure
 from os.path import join
 
 import numpy as np
-import matplotlib
 import argparse
 import os
 
 
-matplotlib.use("TkAgg")
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--src_path', type=str, dest='src_path', default="data/raw")
 parser.add_argument('--dst_path', type=str, dest='dst_path', default="data/processed/")
+parser.add_argument('--show_plots', type=bool, dest='show_plots', default=False)
 args = parser.parse_args()
 
 example = np.loadtxt("example.np")
 
-rot, trans = calculate_calibration("data/calibration", show=False)
 
-
-def fuse_kinect_data(iterator):
+def fuse_kinect_data(iterator, show=False):
     """
     Fuse Kinect data from sub and master camera and calculate features
     @param iterator: iterator that crawls through raw data
+    @param show: A flag whether to show the plots or not
     @return: None
     """
     for set_data in iterator:
@@ -70,5 +66,9 @@ def fuse_kinect_data(iterator):
 
 
 if __name__ == '__main__':
+    if args.show_plots:  # Quick fix for running script on server
+        import matplotlib
+        matplotlib.use("TkAgg")
+
     file_iterator = SubjectDataIterator(args.src_path, KinectFusionLoaderSet())
     fuse_kinect_data(file_iterator.iterate_over_all_subjects())
