@@ -10,19 +10,19 @@ scoring = {'R2': 'r2',
 
 class GridSearching(object):
 
-    def __init__(self, model, scaler, parameters, groups, learner_name, balancer):
+    def __init__(self, model, scaler, parameters, groups, learner_name, balancer, selector, constant_remover):
         """
         Constructor for Grid Search class
-        @param model: the current regression model
-        @param scaler: the current scaler
+        @param model: the current regression model to be optimized
+        @param scaler: the current scaler for input data
         @param parameters: the parameter search space
-        @param groups: the current groups
+        @param groups: the current groups for cross-validation
         @param learner_name: the name of the learner
         """
         self._steps = [
-            # ("remove_constants", constants_remover()),
+            ("remove_constants", constant_remover),
             ("scaler", scaler),
-            # ("feature_selection", selector),
+            ("feature_selection", selector),
             ('balance_sampling', balancer),
             ("regression", model)
         ]
@@ -33,7 +33,7 @@ class GridSearching(object):
 
     def perform_grid_search(self, input_data, ground_truth):
         """
-        Perform a grid search
+        Perform a grid search on the given input data and ground truth data
         @param input_data: the input training data
         @param ground_truth: ground truth data
         @return: Grid search object with best performing model
@@ -54,6 +54,6 @@ class GridSearching(object):
         print("Best parameter (CV score=%0.3f):" % search.best_score_)
         print(search.best_params_)
         results = pd.DataFrame(search.cv_results_)
-        results = results.drop(['params'], axis=1)
+        results = results.drop(['params'], axis="columns", inplace=True)
         results.to_csv(f"{self._learner_name}_results.csv", sep=';', index=False)
         return search
