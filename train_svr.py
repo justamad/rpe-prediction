@@ -1,6 +1,6 @@
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import LeaveOneGroupOut
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.svm import SVR, LinearSVR
 
 import pandas as pd
@@ -17,15 +17,24 @@ for counter, (train_index, test_index) in enumerate(logo.split(X, y, groups)):
     # print("TRAIN:", train_index, "TEST:", test_index)
     X_train, X_test = X[train_index], X[test_index]
     y_train, y_test = y[train_index].reshape(-1), y[test_index].reshape(-1)
-
     print(X_train.shape, y_train.shape)
     print(X_test.shape, y_test.shape)
-    svr = make_pipeline(StandardScaler(), SVR(kernel='rbf', C=1.0, gamma=0.001))
-    # svr = make_pipeline(SVR(kernel='rbf', C=1.0, gamma=0.001))
-    svr.fit(X_train, y_train)
-    print(svr.score(X_train, y_train))
 
-    pred_y = svr.predict(X_test)
+    svr = LinearSVR(C=100, max_iter=1e4)
+    # svr = make_pipeline(StandardScaler(), SVR(kernel='rbf', C=1.0, gamma=0.001))
+    # svr = make_pipeline(StandardScaler(), SVR(kernel='rbf', C=1.0, gamma=0.001))
+
+    pipe = Pipeline([
+        # ('constant', VarianceThreshold()),
+        ('scaler', StandardScaler()),
+        ('estimator', svr)
+    ])
+
+    # svr = make_pipeline(SVR(kernel='rbf', C=1.0, gamma=0.001))
+    pipe.fit(X_train, y_train)
+    print(pipe.score(X_train, y_train))
+
+    pred_y = pipe.predict(X_test)
 
     plt.plot(y_test, label="Ground Truth")
     plt.plot(pred_y, label="Predictions")
