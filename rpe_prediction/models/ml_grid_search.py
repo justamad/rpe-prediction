@@ -24,7 +24,7 @@ class GridSearching(object):
             ("scaler", scaler),
             ("feature_selection", selector),
             ('balance_sampling', balancer),
-            ("regression", model)
+            (learner_name, model)
         ]
 
         self._parameters = parameters
@@ -44,7 +44,7 @@ class GridSearching(object):
         search = GridSearchCV(estimator=pipe,
                               param_grid=self._parameters,
                               cv=logo.get_n_splits(groups=self._groups),
-                              n_jobs=-1,
+                              # n_jobs=-1,
                               verbose=10,
                               scoring=scoring,
                               refit='MSE')
