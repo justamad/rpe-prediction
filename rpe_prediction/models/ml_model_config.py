@@ -23,7 +23,7 @@ class LearningModelBase(object):
             'parameters': self.parameters,
             'learner_name': str(self),
             'balancer': RandomOverSampler(),
-            'selector': RFE(SVR('linear')),
+            'selector': RFE(SVR('linear'), verbose=10),
             'constant_remover': VarianceThreshold()
         }
 

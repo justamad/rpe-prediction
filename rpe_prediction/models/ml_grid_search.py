@@ -44,7 +44,7 @@ class GridSearching(object):
         search = GridSearchCV(estimator=pipe,
                               param_grid=self._parameters,
                               cv=logo.get_n_splits(groups=self._groups),
-                              # n_jobs=-1,
+                              n_jobs=-1,
                               verbose=10,
                               scoring=scoring,
                               refit='MSE')
@@ -54,6 +54,6 @@ class GridSearching(object):
         print("Best parameter (CV score=%0.3f):" % search.best_score_)
         print(search.best_params_)
         results = pd.DataFrame(search.cv_results_)
-        results = results.drop(['params'], axis="columns", inplace=True)
+        results = results.drop(['params'], axis=1)
         results.to_csv(f"{self._learner_name}_results.csv", sep=';', index=False)
         return search
