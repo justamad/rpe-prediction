@@ -38,11 +38,12 @@ for window_size in window_sizes:
         y_test_rpe = y_test['rpe']
         y_test_group = y_test['group']
 
+        # Iterate over models and perform Grid Search
         for model_config in models:
-
             param_dict = model_config.get_trial_data_dict()
             param_dict['groups'] = y_train_group
             grid_search = GridSearching(**param_dict)
             file_name = join(args.out_path, f"{str(model_config)}_winsize_{window_size}_step_{step_size}.csv")
             best_model = grid_search.perform_grid_search(X_train, y_train_rpe, result_file_name=file_name)
-            best_model.predict(X_test)
+            logging.info(best_model.predict(X_test))
+            logging.info(best_model.score(X_test, y_test))

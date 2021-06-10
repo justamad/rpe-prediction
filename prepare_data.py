@@ -50,7 +50,6 @@ def prepare_skeleton_data(iterator, window_size=30, step_size=2):
     @return: Tuple that contains input data and labels (input, labels)
     """
     means, std_dev = calculate_means_over_subjects(iterator)
-
     x_data = []
     y_data = []
 
@@ -60,17 +59,14 @@ def prepare_skeleton_data(iterator, window_size=30, step_size=2):
 
         # Normalize dataframe using the pre-calculated values
         data = (data - means[subject_name]) / std_dev[subject_name]
-        # features = calculate_features_sliding_window(data.reset_index(), window_size=window_size, step_size=step_size)
-        # x_data.append(features)
-        x_data.append(data)
+        features = calculate_features_sliding_window(data.reset_index(), window_size=window_size, step_size=step_size)
+        x_data.append(features)
 
         # Construct y-data with pseudonyms, rpe values and groups
         y = np.repeat([[set_data['subject_name'], set_data['rpe'], set_data['group']]], len(data), axis=0)
         y_data.append(pd.DataFrame(y, columns=['name', 'rpe', 'group']))
 
-    X = pd.concat(x_data, ignore_index=True)
-    y = pd.concat(y_data, ignore_index=True)
-    return X, y
+    return pd.concat(x_data, ignore_index=True), pd.concat(y_data, ignore_index=True)
 
 
 if __name__ == '__main__':
