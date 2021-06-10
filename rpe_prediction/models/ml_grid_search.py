@@ -2,6 +2,7 @@ from imblearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV, LeaveOneGroupOut
 
 import pandas as pd
+import logging
 
 scoring = {'R2': 'r2',
            'MSE': 'neg_mean_squared_error',
@@ -31,11 +32,12 @@ class GridSearching(object):
         self._groups = groups
         self._learner_name = learner_name
 
-    def perform_grid_search(self, input_data, ground_truth):
+    def perform_grid_search(self, input_data, ground_truth, result_file_name=None):
         """
         Perform a grid search on the given input data and ground truth data
         @param input_data: the input training data
         @param ground_truth: ground truth data
+        @param result_file_name: file name of the resulting csv file with combination results
         @return: Grid search object with best performing model
         """
         pipe = Pipeline(steps=self._steps)
@@ -49,11 +51,11 @@ class GridSearching(object):
                               scoring=scoring,
                               refit='MSE')
 
-        print(search)
+        logging.info(search)
         search.fit(input_data, ground_truth)
-        print("Best parameter (CV score=%0.3f):" % search.best_score_)
-        print(search.best_params_)
+        logging.info("Best parameter (CV score=%0.3f):" % search.best_score_)
+        logging.info(search.best_params_)
         results = pd.DataFrame(search.cv_results_)
         results = results.drop(['params'], axis=1)
-        results.to_csv(f"{self._learner_name}_results.csv", sep=';', index=False)
+        results.to_csv(result_file_name, sep=';', index=False)
         return search

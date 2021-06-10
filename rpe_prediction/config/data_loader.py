@@ -2,6 +2,7 @@ from os.path import join
 
 import os
 import json
+import logging
 
 
 class LoadingException(Exception):
@@ -119,7 +120,8 @@ class DataCollector(object):
         found_sets = list(map(lambda l: l.get_nr_of_sets(), self._file_loaders.values()))
         result = found_sets.count(found_sets[0]) == len(found_sets)
         if not result:
-            print(f"Set(s) are missing for subject: {subject_root_path}")
+            logging.warning(f"Set(s) are missing for subject: {subject_root_path}")
+
         self._sets = found_sets[0]
 
     def iterate_over_sets(self):
@@ -133,4 +135,4 @@ class DataCollector(object):
                 trial_dic['nr_set'] = current_set
                 yield trial_dic
             except LoadingException as e:
-                print(e)
+                logging.warning(e)

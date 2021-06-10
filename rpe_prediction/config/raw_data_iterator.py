@@ -2,6 +2,7 @@ from .data_loader import DataCollector, LoadingException, StereoAzureLoader, RPE
 from os.path import join
 
 import os
+import logging
 
 
 class RawDataLoaderSet(dict):
@@ -35,7 +36,7 @@ class SubjectDataIterator(object):
         self._base_path = base_path
         self._data_loaders_dict = data_loaders_dict
         self._subject_data_loaders = self.load_data_collectors()
-        print(f"Found {len(self._subject_data_loaders)} subject folders.")
+        logging.info(f"Found {len(self._subject_data_loaders)} subject folders.")
 
     def load_data_collectors(self):
         """
@@ -48,7 +49,7 @@ class SubjectDataIterator(object):
             try:
                 data_loaders[subject] = DataCollector(join(self._base_path, subject), self._data_loaders_dict)
             except LoadingException as e:
-                print(f"Could not load file loader for {subject} trial: {e}")
+                logging.warning(f"Data Loader failed for subject {subject}: {e}")
 
         return data_loaders
 
@@ -71,7 +72,7 @@ class SubjectDataIterator(object):
         """
         for subject in subjects:
             if subject not in self._subject_data_loaders:
-                print(f"Couldn't load data for subject: {subject}")
+                logging.warning(f"Couldn't load data for subject: {subject}")
                 continue
             for trial in self._subject_data_loaders[subject].iterate_over_sets():
                 yield trial
