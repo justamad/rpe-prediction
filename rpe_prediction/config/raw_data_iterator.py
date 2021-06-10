@@ -1,4 +1,4 @@
-from .data_loader import DataCollector, LoadingException, StereoAzureLoader, RPELoader, FusedAzureLoader
+from .data_loaders import DataCollector, LoadingException, StereoAzureLoader, RPELoader, FusedAzureLoader
 from os.path import join
 
 import os
