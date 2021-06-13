@@ -23,7 +23,7 @@ class BaseLoader(object):
 
 class RPELoader(BaseLoader):
 
-    def __init__(self, root_path):
+    def __init__(self, root_path, subject):
         super().__init__()
         json_file = join(root_path, "rpe.json")
         if not os.path.isfile(json_file):
@@ -32,7 +32,8 @@ class RPELoader(BaseLoader):
         with open(json_file) as f:
             rpe_values = json.load(f)
 
-        self._trials = rpe_values['rpe_ratings']
+        self._trials = {k: v for k, v in enumerate(rpe_values['rpe_ratings'])}
+        self._subject = subject
 
     def get_nr_of_sets(self):
         return len(self._trials)
@@ -43,12 +44,17 @@ class RPELoader(BaseLoader):
         @param trial_nr: the current set number, starts at 1
         @return: the current RPE value for given set number
         """
+        if trial_nr not in self._trials:
+            raise LoadingException(f"{str(self)}: Could not load trial {trial_nr}")
         return self._trials[trial_nr]
+
+    def __repr__(self):
+        return f"RPELoader {self._subject}"
 
 
 class StereoAzureLoader(BaseLoader):
 
-    def __init__(self, root_path):
+    def __init__(self, root_path, subject):
         super().__init__()
         self._azure_path = join(root_path, "azure")
         if not os.path.exists(self._azure_path):
@@ -60,9 +66,7 @@ class StereoAzureLoader(BaseLoader):
 
         self._sub_trials = {int(v[-6:-4]) - 1: v for v in filter(lambda x: 'sub' in x, all_trials)}
         self._master_trials = {int(v[-9:-7]) - 1: v for v in filter(lambda x: 'master' in x, all_trials)}
-
-        if self._sub_trials.keys() != self._master_trials.keys():
-            raise LoadingException(f"Trials found: sub={len(self._sub_trials)} master={len(self._master_trials)}")
+        self._subject = subject
 
     def get_trial_by_set_nr(self, trial_nr: int):
         """
@@ -71,50 +75,53 @@ class StereoAzureLoader(BaseLoader):
         @return: the current RPE value for given set number
         """
         if trial_nr not in self._sub_trials or trial_nr not in self._master_trials:
-            raise LoadingException(f"{str(self)}: Error when loading set: {trial_nr}")
+            raise LoadingException(f"{str(self)}: Error when loading set: {trial_nr} for subject {self._azure_path}")
         return self._sub_trials[trial_nr], self._master_trials[trial_nr]
 
     def get_nr_of_sets(self):
         return min(len(self._sub_trials), len(self._master_trials))
 
     def __repr__(self):
-        return "StereoAzureLoader"
+        return f"StereoAzureLoader {self._subject}"
 
 
 class FusedAzureLoader(BaseLoader):
 
-    def __init__(self, root_path):
+    def __init__(self, root_path, subject):
         super().__init__()
         if not os.path.exists(root_path):
             raise LoadingException(f"Azure file not present in {root_path}")
 
         # Load data into dictionary: {trial_n: absolute_path, ...}
         files = list(filter(lambda x: 'azure' in x, os.listdir(root_path)))
-        self.trials = {int(v.split('_')[0]): join(root_path, v) for v in files}
+        self._trials = {int(v.split('_')[0]): join(root_path, v) for v in files}
+        self._subject = subject
 
     def get_trial_by_set_nr(self, trial_nr: int):
-        if trial_nr not in self.trials:
+        if trial_nr not in self._trials:
             raise LoadingException(f"{str(self)}: Could not load trial: {trial_nr}")
-        return self.trials[trial_nr]
+        return self._trials[trial_nr]
 
     def get_nr_of_sets(self):
-        return len(self.trials)
+        return len(self._trials)
 
     def __repr__(self):
-        return "FusedAzureLoader"
+        return f"FusedAzureLoader {self._subject}"
 
 
-class DataCollector(object):
+class SubjectDataCollector(object):
 
-    def __init__(self, subject_root_path, data_loaders):
+    def __init__(self, subject_root_path, data_loaders, subject_name, nr_sets=12):
         """
-        Constructor for data collector that crawls and prepares all data
+        Constructor for data collector that crawls and prepares all data for one subject
         @param subject_root_path: the current path to subject folder
         @param data_loaders: a dictionary that defines the data to be loaded
+        @param subject_name: the name (pseudonym) of the current subject
+        @param nr_sets: the expected total number of sets
         """
         self._file_loaders = {}
         for loader_name, loader in data_loaders.items():
-            current_loader = loader(subject_root_path)
+            current_loader = loader(subject_root_path, subject_name)
             self._file_loaders[loader_name] = current_loader
 
         found_sets = list(map(lambda l: l.get_nr_of_sets(), self._file_loaders.values()))
@@ -122,14 +129,14 @@ class DataCollector(object):
         if not result:
             logging.warning(f"Set(s) are missing for subject: {subject_root_path}")
 
-        self._sets = found_sets[0]
+        self._nr_sets = nr_sets
 
     def iterate_over_sets(self):
         """
         Iterate over the entire set and collect data from individual trials
         @return: Iterator over entire training set
         """
-        for current_set in range(self._sets):
+        for current_set in range(self._nr_sets):
             try:
                 trial_dic = {k: v.get_trial_by_set_nr(current_set) for k, v in self._file_loaders.items()}
                 trial_dic['nr_set'] = current_set

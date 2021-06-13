@@ -1,4 +1,4 @@
-from rpe_prediction.config import SubjectDataIterator, ProcessedLoaderSet
+from rpe_prediction.config import SubjectDataIterator, FusedAzureLoader, RPELoader
 from rpe_prediction.features import calculate_features_sliding_window
 
 import argparse
@@ -70,7 +70,7 @@ def prepare_skeleton_data(iterator, window_size=30, step_size=2):
 
 
 if __name__ == '__main__':
-    file_iterator = SubjectDataIterator(args.src_path, ProcessedLoaderSet())
+    file_iterator = SubjectDataIterator(args.src_path).add_loader(RPELoader).add_loader(FusedAzureLoader)
     X, y = prepare_skeleton_data(file_iterator, window_size=60, step_size=5)
 
     X.to_csv("x.csv", index=False, sep=';')

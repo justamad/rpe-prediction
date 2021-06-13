@@ -1,4 +1,4 @@
-from rpe_prediction.config import SubjectDataIterator, ProcessedLoaderSet
+from rpe_prediction.config import SubjectDataIterator, FusedAzureLoader, RPELoader
 from rpe_prediction.models import GridSearching, SVRModelConfig, split_data_to_pseudonyms
 from datetime import datetime
 from os.path import join
@@ -29,7 +29,7 @@ if not os.path.exists(out_path):
 
 window_sizes = [30, 60, 90]
 step_sizes = [5, 10]
-file_iterator = SubjectDataIterator(args.src_path, ProcessedLoaderSet())
+file_iterator = SubjectDataIterator(args.src_path).add_loader(RPELoader).add_loader(FusedAzureLoader)
 
 models = [SVRModelConfig()]
 

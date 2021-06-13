@@ -1,4 +1,4 @@
-from rpe_prediction.config import SubjectDataIterator, KinectFusionLoaderSet
+from rpe_prediction.config import SubjectDataIterator, StereoAzureLoader
 from rpe_prediction.processing import segment_1d_joint_on_example
 from rpe_prediction.stereo_cam import StereoAzure
 from os.path import join
@@ -28,16 +28,20 @@ def fuse_kinect_data(iterator, show=False):
         sub_path, master_path = set_data['azure']
         azure = StereoAzure(master_path=master_path, sub_path=sub_path)
         azure.reduce_skeleton_joints()
-        print(f"Agreement initial: {azure.check_agreement_of_both_cameras()}")
+        # print(f"Agreement initial: {azure.check_agreement_of_both_cameras()}")
 
         # Segment data based on pelvis joint
-        sub = azure.sub_position['pelvis (y) '].to_numpy()
-        repetitions = segment_1d_joint_on_example(sub, example, min_duration=20, std_dev_percentage=0.5, show=show)
+        file_name = f"{set_data['nr_set']}_segment.png"
+        repetitions = segment_1d_joint_on_example(azure.sub_position['pelvis (y) '].to_numpy(), example,
+                                                  min_duration=20, std_dev_percentage=0.5, show=show, path=file_name)
+
+        # Cut Kinect data
         azure.cut_skeleton_data(repetitions[0][0], repetitions[-1][1])
         azure.calculate_affine_transform_based_on_data(show=show)
-        print(f"Agreement internal: {azure.check_agreement_of_both_cameras()}")
+        # print(f"Agreement internal: {azure.check_agreement_of_both_cameras()}")
 
-        avg_df = azure.fuse_sub_and_master_cameras(alpha=0.1, window_size=5, show=show, path=None, joint="knee_left (y) ")
+        avg_df = azure.fuse_sub_and_master_cameras(alpha=0.1, window_size=5, show=False, path=None,
+                                                   joint="knee_left (y) ")
 
         subject = set_data['subject_name']
         current_set = set_data['nr_set']
@@ -68,5 +72,5 @@ if __name__ == '__main__':
         import matplotlib
         matplotlib.use("TkAgg")
 
-    file_iterator = SubjectDataIterator(args.src_path, KinectFusionLoaderSet())
+    file_iterator = SubjectDataIterator(args.src_path).add_loader(StereoAzureLoader)
     fuse_kinect_data(file_iterator.iterate_over_all_subjects(), show=args.show_plots)
