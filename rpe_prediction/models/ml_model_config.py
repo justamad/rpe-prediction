@@ -31,11 +31,11 @@ class LearningModelBase(object):
 class SVRModelConfig(LearningModelBase):
 
     def __init__(self):
-        tuned_parameters = [{'svr__kernel': ['linear'],  # 'rbf'],
-                             'svr__gamma': [1e-3],  # 1e-4],
-                             'svr__C': [1e0],  # , 1e1]}]  # , 1e2, 1e3]}]
-                             'feature_selection__n_features_to_select': [.25],  # , .5, .75],
-                             'feature_selection__step': [.10]}]
+        tuned_parameters = [{'svr__kernel': ['linear', 'rbf'],
+                             'svr__gamma': [1e-3, 1e-4],
+                             'svr__C': [1e0, 1e1, 1e2, 1e3],
+                             'feature_selection__n_features_to_select': [.1, .25, .5, .75],
+                             'feature_selection__step': [.1]}]
 
         model = SVR()
         super().__init__(model=model, parameters=tuned_parameters)
