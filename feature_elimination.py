@@ -54,8 +54,7 @@ for window_size in window_sizes:
 
         rfecv_df = pd.DataFrame(rfecv.ranking_, index=X.columns, columns=['Rank']).sort_values(by='Rank',
                                                                                                ascending=True)
-
         rfecv_df.head()
-        rfecv_df.to_csv(f"win_{window_size}_step_{step_size}.csv", index=False)
+        rfecv_df.to_csv(f"win_{window_size}_step_{step_size}.csv")
         # print(selector.ranking_)
         # print(data.columns[selector.ranking_ == 1])
