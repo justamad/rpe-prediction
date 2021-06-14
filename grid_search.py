@@ -34,7 +34,7 @@ if not os.path.exists(out_path):
     os.makedirs(out_path)
 
 window_sizes = [30, 60, 90]  # 1s, 2s, 3s
-overlaps = [0.25, 0.5, 0.7]
+overlaps = [0.25, 0.5, 0.75]
 file_iterator = SubjectDataIterator(args.src_path).add_loader(RPELoader).add_loader(FusedAzureLoader)
 
 models = [SVRModelConfig()]
