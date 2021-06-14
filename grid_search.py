@@ -33,8 +33,8 @@ out_path = join(args.out_path, datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
 if not os.path.exists(out_path):
     os.makedirs(out_path)
 
-window_sizes = [30, 60, 90]
-step_sizes = [10, 15, 20]
+window_sizes = [30, 60, 90]  # 1s, 2s, 3s
+overlaps = [0.25, 0.5, 0.7]
 file_iterator = SubjectDataIterator(args.src_path).add_loader(RPELoader).add_loader(FusedAzureLoader)
 
 models = [SVRModelConfig()]
@@ -42,10 +42,10 @@ logo = LeaveOneGroupOut()
 
 # Iterate over non-sklearn hyperparameters
 for window_size in window_sizes:
-    for step_size in step_sizes:
+    for overlap in overlaps:
 
         # Generate new data
-        X, y = prepare_data.prepare_skeleton_data(file_iterator, window_size=window_size, step_size=step_size)
+        X, y = prepare_data.prepare_skeleton_data(file_iterator, window_size=window_size, overlap=overlap)
         X_train, y_train, X_test, y_test = split_data_to_pseudonyms(X, y, train_percentage=0.8, random_seed=True)
         y_train_rpe = y_train['rpe']
         y_train_group = y_train['group']
@@ -53,8 +53,8 @@ for window_size in window_sizes:
         y_test_group = y_test['group']
 
         # Save train and test subjects to file
-        np.savetxt(join(out_path, f"train_win_{window_size}_step_{step_size}.txt"), y_train['name'].unique(), fmt='%s')
-        np.savetxt(join(out_path, f"test_win_{window_size}_step_{step_size}.txt"), y_test['name'].unique(), fmt='%s')
+        np.savetxt(join(out_path, f"train_win_{window_size}_overlap_{overlap}.txt"), y_train['name'].unique(), fmt='%s')
+        np.savetxt(join(out_path, f"test_win_{window_size}_overlap_{overlap}.txt"), y_test['name'].unique(), fmt='%s')
 
         # Perform an initial recursive feature elimination
         rfecv = RFECV(SVR(kernel='linear'),
@@ -77,7 +77,7 @@ for window_size in window_sizes:
         # Save RFECV results for later
         rfecv_df = pd.DataFrame(rfecv.ranking_, index=X.columns, columns=['Rank']).sort_values(by='Rank', ascending=True)
         rfecv_df.head()
-        rfecv_df.to_csv(join(out_path, f"win_{window_size}_step_{step_size}.csv"))
+        rfecv_df.to_csv(join(out_path, f"win_{window_size}_overlap_{overlap}.csv"))
 
         # Only use the n most significant features
         X_train = X_train.loc[:, rfecv.support_]
@@ -88,7 +88,7 @@ for window_size in window_sizes:
             param_dict = model_config.get_trial_data_dict()
             param_dict['groups'] = y_train_group
             grid_search = GridSearching(**param_dict)
-            file_name = join(out_path, f"{str(model_config)}_win_{window_size}_step_{step_size}.csv")
+            file_name = join(out_path, f"{str(model_config)}_win_{window_size}_overlap_{overlap}.csv")
             best_model = grid_search.perform_grid_search(X_train, y_train_rpe, result_file_name=file_name)
             logging.info(best_model.predict(X_test))
             logging.info(best_model.score(X_test, y_test_rpe))

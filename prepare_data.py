@@ -41,12 +41,12 @@ def calculate_means_over_subjects(iterator):
     return means, std_devs
 
 
-def prepare_skeleton_data(iterator, window_size=30, step_size=2):
+def prepare_skeleton_data(iterator, window_size=30, overlap=0.5):
     """
     Prepare Kinect skeleton data using the RawFileIterator
     @param iterator: SubjectDataIterator that delivers all sets over all subjects
     @param window_size: The number of sampled in one window
-    @param step_size: the step size the window is moved over time series
+    @param overlap: The current overlap in percent
     @return: Tuple that contains input data and labels (input, labels)
     """
     means, std_dev = calculate_means_over_subjects(iterator)
@@ -59,7 +59,7 @@ def prepare_skeleton_data(iterator, window_size=30, step_size=2):
 
         # Normalize dataframe using the pre-calculated values
         data = (data - means[subject_name]) / std_dev[subject_name]
-        features = calculate_features_sliding_window(data.reset_index(), window_size=window_size, step_size=step_size)
+        features = calculate_features_sliding_window(data.reset_index(), window_size=window_size, overlap=overlap)
         x_data.append(features)
 
         # Construct y-data with pseudonyms, rpe values and groups
@@ -71,7 +71,7 @@ def prepare_skeleton_data(iterator, window_size=30, step_size=2):
 
 if __name__ == '__main__':
     file_iterator = SubjectDataIterator(args.src_path).add_loader(RPELoader).add_loader(FusedAzureLoader)
-    X, y = prepare_skeleton_data(file_iterator, window_size=60, step_size=5)
+    X, y = prepare_skeleton_data(file_iterator, window_size=60, overlap=0.5)
 
     X.to_csv("x.csv", index=False, sep=';')
     y.to_csv("y.csv", index=False, sep=';')
