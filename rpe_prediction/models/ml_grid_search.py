@@ -11,7 +11,7 @@ scoring = {'R2': 'r2',
 
 class GridSearching(object):
 
-    def __init__(self, model, scaler, parameters, groups, learner_name, balancer, selector, constant_remover):
+    def __init__(self, model, scaler, parameters, groups, learner_name, balancer):
         """
         Constructor for Grid Search class
         @param model: the current regression model to be optimized
@@ -21,9 +21,9 @@ class GridSearching(object):
         @param learner_name: the name of the learner
         """
         self._steps = [
-            ("remove_constants", constant_remover),
+            # ("remove_constants", constant_remover),
             ("scaler", scaler),
-            ("feature_selection", selector),
+            # ("feature_selection", selector),
             ('balance_sampling', balancer),
             (learner_name, model)
         ]
