@@ -80,8 +80,8 @@ for window_size in window_sizes:
         rfecv_df.to_csv(join(out_path, f"win_{window_size}_step_{step_size}.csv"))
 
         # Only use the n most significant features
-        X_train = X_train[:, rfecv.support_]
-        X_test = X_test[:, rfecv.support_]
+        X_train = X_train.loc[:, rfecv.support_]
+        X_test = X_test.loc[:, rfecv.support_]
 
         # Iterate over models and perform Grid Search
         for model_config in models:
