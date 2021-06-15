@@ -1,8 +1,8 @@
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVR
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.svm import SVR
 
 
 class LearningModelBase(object):
@@ -11,8 +11,6 @@ class LearningModelBase(object):
         self.scaler = StandardScaler()
         self.model = model
         self.parameters = parameters
-        # 'feature_selection__n_features_to_select': [.1, .25, .5, .75],
-        # 'feature_selection__step': [.1]}]
 
     def get_trial_data_dict(self):
         """

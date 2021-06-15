@@ -43,47 +43,41 @@ logo = LeaveOneGroupOut()
 # Iterate over non-sklearn hyperparameters
 for window_size in window_sizes:
     for overlap in overlaps:
-
         # Generate new train and test data
         X, y = prepare_data.prepare_skeleton_data(file_iterator, window_size=window_size, overlap=overlap)
         X_train, y_train, X_test, y_test = split_data_to_pseudonyms(X, y, train_percentage=0.8, random_seed=True)
-        y_train_rpe = y_train['rpe']
-        y_train_group = y_train['group']
-        y_test_rpe = y_test['rpe']
-        y_test_group = y_test['group']
 
         # Save train and test subjects to file
         np.savetxt(join(out_path, f"train_win_{window_size}_overlap_{overlap}.txt"), y_train['name'].unique(), fmt='%s')
         np.savetxt(join(out_path, f"test_win_{window_size}_overlap_{overlap}.txt"), y_test['name'].unique(), fmt='%s')
 
         # Perform an initial recursive feature elimination
-        rfecv = RFECV(SVR(kernel='linear'),
-                      min_features_to_select=args.nr_features,
-                      step=0.1,
-                      n_jobs=-1,
-                      verbose=10,
-                      cv=logo.get_n_splits(groups=y_train_group))
+        rfe = RFECV(SVR(kernel='linear'),
+                    min_features_to_select=args.nr_features,
+                    step=0.1,
+                    n_jobs=-1,
+                    verbose=10,
+                    cv=logo.get_n_splits(groups=y_train['group']))
 
         pipe = Pipeline([
             ('scaler', StandardScaler()),
-            ('rfecv', rfecv)
+            ('rfe', rfe)
         ])
-        pipe.fit(X_train, y_train_rpe)
+        pipe.fit(X_train, y_train['rpe'])
 
         # Save RFECV results for later
-        rfecv_df = pd.DataFrame(rfecv.ranking_, index=X.columns, columns=['Rank']).sort_values(by='Rank', ascending=True)
-        rfecv_df.to_csv(join(out_path, f"features_win_{window_size}_overlap_{overlap}.csv"))
+        rfe_df = pd.DataFrame(rfe.ranking_, index=X.columns, columns=['Rank']).sort_values(by='Rank', ascending=True)
+        rfe_df.to_csv(join(out_path, f"features_win_{window_size}_overlap_{overlap}.csv"), sep=';')
 
         # Only use the n most significant features
-        X_train = X_train.loc[:, rfecv.support_]
-        X_test = X_test.loc[:, rfecv.support_]
+        X_train = X_train.loc[:, rfe.support_]
+        X_test = X_test.loc[:, rfe.support_]
 
         # Iterate over models and perform Grid Search
         for model_config in models:
             param_dict = model_config.get_trial_data_dict()
-            param_dict['groups'] = y_train_group
-            grid_search = GridSearching(**param_dict)
+            grid_search = GridSearching(groups=y_train['groups'], **param_dict)
             file_name = join(out_path, f"{str(model_config)}_win_{window_size}_overlap_{overlap}.csv")
-            best_model = grid_search.perform_grid_search(X_train, y_train_rpe, result_file_name=file_name)
+            best_model = grid_search.perform_grid_search(X_train, y_train['rpe'], result_file_name=file_name)
             logging.info(best_model.predict(X_test))
-            logging.info(best_model.score(X_test, y_test_rpe))
+            logging.info(best_model.score(X_test, y_test['rpe']))

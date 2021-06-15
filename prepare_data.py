@@ -4,15 +4,6 @@ from rpe_prediction.features import calculate_features_sliding_window
 import argparse
 import numpy as np
 import pandas as pd
-import logging
-
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(asctime)s %(name)-8s %(levelname)-8s %(message)s',
-                    datefmt='%m-%d %H:%M:%S')
-
-console = logging.StreamHandler()
-console.setLevel(logging.INFO)
-logging.getLogger('my_logger').addHandler(console)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--src_path', type=str, dest='src_path', default="data/processed")

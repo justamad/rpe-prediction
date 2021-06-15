@@ -11,13 +11,13 @@ scoring = {'R2': 'r2',
 
 class GridSearching(object):
 
-    def __init__(self, model, scaler, parameters, groups, learner_name, balancer):
+    def __init__(self, groups, model, scaler, parameters, learner_name, balancer):
         """
         Constructor for Grid Search class
+        @param groups: the current groups for cross-validation
         @param model: the current regression model to be optimized
         @param scaler: the current scaler for input data
         @param parameters: the parameter search space
-        @param groups: the current groups for cross-validation
         @param learner_name: the name of the learner
         """
         self._steps = [
