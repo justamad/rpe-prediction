@@ -1,5 +1,5 @@
 from rpe_prediction.config import SubjectDataIterator, FusedAzureLoader, RPELoader
-from rpe_prediction.models import GridSearching, SVRModelConfig, split_data_to_pseudonyms
+from rpe_prediction.models import GridSearching, SVRModelConfig, KNNModelConfig, RFModelConfig, split_data_to_pseudonyms
 from sklearn.feature_selection import RFECV
 from sklearn.svm import SVR
 from sklearn.pipeline import Pipeline
@@ -33,18 +33,18 @@ out_path = join(args.out_path, datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
 if not os.path.exists(out_path):
     os.makedirs(out_path)
 
-window_sizes = [30, 60, 90]  # 1s, 2s, 3s
+window_sizes = [30, 60, 90, 120]  # 1s, 2s, 3s, 4s
 overlaps = [0.25, 0.5, 0.75]
 file_iterator = SubjectDataIterator(args.src_path).add_loader(RPELoader).add_loader(FusedAzureLoader)
 
-models = [SVRModelConfig()]
+models = [SVRModelConfig(), KNNModelConfig(), RFModelConfig()]
 logo = LeaveOneGroupOut()
 
 # Iterate over non-sklearn hyperparameters
 for window_size in window_sizes:
     for overlap in overlaps:
 
-        # Generate new data
+        # Generate new train and test data
         X, y = prepare_data.prepare_skeleton_data(file_iterator, window_size=window_size, overlap=overlap)
         X_train, y_train, X_test, y_test = split_data_to_pseudonyms(X, y, train_percentage=0.8, random_seed=True)
         y_train_rpe = y_train['rpe']
@@ -64,20 +64,15 @@ for window_size in window_sizes:
                       verbose=10,
                       cv=logo.get_n_splits(groups=y_train_group))
 
-        # selector = RFE(estimator, n_features_to_select=30, step=20, verbose=10)
         pipe = Pipeline([
             ('scaler', StandardScaler()),
             ('rfecv', rfecv)
         ])
-
         pipe.fit(X_train, y_train_rpe)
-        logging.info(pipe)
-        logging.info(pipe.score(X_test, y_test_rpe))
 
         # Save RFECV results for later
         rfecv_df = pd.DataFrame(rfecv.ranking_, index=X.columns, columns=['Rank']).sort_values(by='Rank', ascending=True)
-        rfecv_df.head()
-        rfecv_df.to_csv(join(out_path, f"win_{window_size}_overlap_{overlap}.csv"))
+        rfecv_df.to_csv(join(out_path, f"features_win_{window_size}_overlap_{overlap}.csv"))
 
         # Only use the n most significant features
         X_train = X_train.loc[:, rfecv.support_]
