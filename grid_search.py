@@ -38,6 +38,8 @@ overlaps = [0.25, 0.5, 0.75]
 file_iterator = SubjectDataIterator(args.src_path).add_loader(RPELoader).add_loader(FusedAzureLoader)
 
 models = [SVRModelConfig(), KNNModelConfig(), RFModelConfig()]
+# models = [KNNModelConfig(), RFModelConfig()]
+# models = [RFModelConfig()]
 logo = LeaveOneGroupOut()
 
 # Iterate over non-sklearn hyperparameters
@@ -76,7 +78,7 @@ for window_size in window_sizes:
         # Iterate over models and perform Grid Search
         for model_config in models:
             param_dict = model_config.get_trial_data_dict()
-            grid_search = GridSearching(groups=y_train['groups'], **param_dict)
+            grid_search = GridSearching(groups=y_train['group'], **param_dict)
             file_name = join(out_path, f"{str(model_config)}_win_{window_size}_overlap_{overlap}.csv")
             best_model = grid_search.perform_grid_search(X_train, y_train['rpe'], result_file_name=file_name)
             logging.info(best_model.predict(X_test))

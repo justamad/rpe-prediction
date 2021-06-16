@@ -43,9 +43,9 @@ class SVRModelConfig(LearningModelBase):
 class KNNModelConfig(LearningModelBase):
 
     def __init__(self):
-        tuned_parameters = {'knn__n_neighbors': (5, 10, 15),
-                            'knn_weights': ['uniform', 'distance'],
-                            'knn_algorithm': ['ball_tree', 'kd_tree']}
+        tuned_parameters = {'knn__n_neighbors': [5, 10, 15],
+                            'knn__weights': ['uniform', 'distance'],
+                            'knn__algorithm': ['ball_tree', 'kd_tree']}
 
         model = KNeighborsRegressor()
         super().__init__(model=model, parameters=tuned_parameters)
@@ -57,8 +57,8 @@ class KNNModelConfig(LearningModelBase):
 class RFModelConfig(LearningModelBase):
 
     def __init__(self):
-        tuned_parameters = {'rf_n_estimators': (50, 100, 150, 200),
-                            'rf_criterion': ('mse', 'mae')}
+        tuned_parameters = {'rf__n_estimators': [50, 100, 150, 200],
+                            'rf__criterion': ['mse', 'mae']}
 
         model = RandomForestRegressor()
         super().__init__(model=model, parameters=tuned_parameters)
