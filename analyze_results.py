@@ -1,12 +1,13 @@
-from rpe_prediction.config import SubjectDataIterator, FusedAzureLoader, RPELoader
-from rpe_prediction.models import split_data_to_pseudonyms
+from rpe_prediction.models import split_data_to_pseudonyms, evaluate_for_subject
+from imblearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
 from sklearn.svm import SVR
 from os.path import join
 
 import pandas as pd
 import os
 import argparse
-import prepare_data
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--src_path', type=str, dest='src_path', default="results/2021-06-14-13-15-57")
@@ -57,14 +58,46 @@ def analyze_svr_results(input_path):
 def test_model(input_path, win_size, overlap):
     file = join(input_path, f"features_win_{win_size}_overlap_{overlap}.csv")
     features = pd.read_csv(file, delimiter=',', index_col=False)
-    print(features)
+    feature_mask = features[features['Rank'] == 1].loc[:, 'Unnamed: 0']
 
-    file_iterator = SubjectDataIterator(args.data_path).add_loader(RPELoader).add_loader(FusedAzureLoader)
-    X, y = prepare_data.prepare_skeleton_data(file_iterator, window_size=win_size, overlap=overlap)
-    X_train, y_train, X_test, y_test = split_data_to_pseudonyms(X, y, train_percentage=0.8, random_seed=True)
+    X, y = pd.read_csv("data/X.csv", sep=';', index_col=False), pd.read_csv("data/y.csv", sep=';', index_col=False)
+    X_train, y_train, X_test, y_test = split_data_to_pseudonyms(X, y, train_percentage=0.5, random_seed=True)
+    X_train = X_train.loc[:, feature_mask]
+    X_test = X_test.loc[:, feature_mask]
 
-    model = SVR(kernel='linear', gamma=0.001, C=1.0)
+    pipe = Pipeline([
+        ('scaler', StandardScaler()),
+        ('svr', SVR(kernel='linear', gamma=0.001, C=1.0))
+    ])
+    pipe.fit(X_train, y_train['rpe'])
 
+    train_pred = pipe.predict(X_train)
+    test_pred = pipe.predict(X_test)
+    y_test['prediction'] = test_pred
+
+    print(f"MSE Train: {mean_squared_error(y_train['rpe'], train_pred)}")
+    print(f"MSE Test: {mean_squared_error(y_test['rpe'], test_pred)}")
+
+    print(f"MAE Train: {mean_absolute_error(y_train['rpe'], train_pred)}")
+    print(f"MAE Test: {mean_absolute_error(y_test['rpe'], test_pred)}")
+
+    print(f"MAPE Train: {mean_absolute_percentage_error(y_train['rpe'], train_pred)}")
+    print(f"MAPE Test: {mean_absolute_percentage_error(y_test['rpe'], test_pred)}")
+
+    print(f"R2 Train: {r2_score(y_train['rpe'], train_pred)}")
+    print(f"R2 Test: {r2_score(y_test['rpe'], test_pred)}")
+
+    subject_names = sorted(y_test['name'].unique())
+
+    # Iterate over all test subjects
+    for test_subject in subject_names:
+        mask = y_test['name'] == test_subject
+        s_test = y_test.loc[mask].copy()
+        evaluate_for_subject(s_test)
+
+    # plt.plot(test_pred)
+    # plt.plot(y_test['rpe'].to_numpy())
+    # plt.show()
 
 
 if __name__ == '__main__':
