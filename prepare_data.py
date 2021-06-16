@@ -56,7 +56,7 @@ def prepare_skeleton_data(iterator, window_size=30, overlap=0.5):
         x_data.append(features)
 
         # Construct y-data with pseudonyms, rpe values and groups
-        y = np.repeat([[set_data['subject_name'], set_data['rpe'], set_data['group']], set_data['nr_set']],
+        y = np.repeat([[set_data['subject_name'], set_data['rpe'], set_data['group'], set_data['nr_set']]],
                       len(features), axis=0)
         y_data.append(pd.DataFrame(y, columns=['name', 'rpe', 'group', 'set']))
 
