@@ -7,6 +7,8 @@ import pandas as pd
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--src_path', type=str, dest='src_path', default="data/processed")
+parser.add_argument('--win_size', type=int, dest='win_size', default=90)
+parser.add_argument('--overlap', type=float, dest='overlap', default=0.75)
 args = parser.parse_args()
 
 
@@ -62,9 +64,8 @@ def prepare_skeleton_data(iterator, window_size=30, overlap=0.5):
 
 if __name__ == '__main__':
     file_iterator = SubjectDataIterator(args.src_path).add_loader(RPELoader).add_loader(FusedAzureLoader)
-    X, y = prepare_skeleton_data(file_iterator, window_size=60, overlap=0.5)
-
-    X.to_csv("x.csv", index=False, sep=';')
+    X, y = prepare_skeleton_data(file_iterator, window_size=args.win_size, overlap=args.overlap)
+    X.to_csv("X.csv", index=False, sep=';')
     y.to_csv("y.csv", index=False, sep=';')
     print(X.shape)
     print(y.shape)
