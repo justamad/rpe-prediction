@@ -86,9 +86,10 @@ class GBRModelConfig(LearningModelBase):
 class MLPModelConfig(LearningModelBase):
 
     def __init__(self):
-        tuned_parameters = {f'{str(self)}__hidden_layer_size': [(10, 4), (100,), (100, 50), (100, 150)],
-                            f'{str(self)}__solver': ["lbfgs", "adam"],
-                            f'{str(self)}__alpha': [1e-2, 1e-3, 1e-4],
+        tuned_parameters = {f'{str(self)}__hidden_layer_sizes': [(10, 4), (100,), (100, 50), (100, 150)],
+                            f'{str(self)}__activation': ['logistic', 'relu'],
+                            f'{str(self)}__solver': ["sgd", "adam"],
+                            f'{str(self)}__learning_rate_init': [1e-1, 1e-2, 1e-3, 1e-4],
                             f'{str(self)}__learning_rate': ["constant", "adaptive"]}
 
         model = MLPRegressor()
