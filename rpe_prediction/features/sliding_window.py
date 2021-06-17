@@ -1,4 +1,5 @@
 from tsfresh.feature_extraction import MinimalFCParameters
+from tsfresh.utilities.dataframe_functions import impute
 
 import tsfresh
 import pandas as pd
@@ -28,4 +29,5 @@ def calculate_features_sliding_window(df: pd.DataFrame, window_size: int, overla
 
     df = pd.concat(windows, ignore_index=True)
     features = tsfresh.extract_features(df, column_id='id', column_sort='timestamp', default_fc_parameters=settings)
+    features = impute(features)  # Remove Nan and inf values by replacing it with extreme values (min, max)
     return features
