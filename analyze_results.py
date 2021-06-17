@@ -3,6 +3,8 @@ from imblearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
 from sklearn.svm import SVR
+from scipy.stats import spearmanr, pearsonr
+from sklearn.neighbors import KNeighborsRegressor
 from os.path import join
 
 import pandas as pd
@@ -61,13 +63,14 @@ def test_model(input_path, win_size, overlap):
     feature_mask = features[features['Rank'] == 1].loc[:, 'Unnamed: 0']
 
     X, y = pd.read_csv("data/X.csv", sep=';', index_col=False), pd.read_csv("data/y.csv", sep=';', index_col=False)
-    X_train, y_train, X_test, y_test = split_data_to_pseudonyms(X, y, train_percentage=0.5, random_seed=True)
+    X_train, y_train, X_test, y_test = split_data_to_pseudonyms(X, y, train_percentage=0.8, random_seed=19)
     X_train = X_train.loc[:, feature_mask]
     X_test = X_test.loc[:, feature_mask]
 
     pipe = Pipeline([
         ('scaler', StandardScaler()),
         ('svr', SVR(kernel='linear', gamma=0.001, C=1.0))
+        # ('knn', KNeighborsRegressor(n_neighbors=5, weights='distance', leaf_size=10))
     ])
     pipe.fit(X_train, y_train['rpe'])
 
@@ -86,6 +89,12 @@ def test_model(input_path, win_size, overlap):
 
     print(f"R2 Train: {r2_score(y_train['rpe'], train_pred)}")
     print(f"R2 Test: {r2_score(y_test['rpe'], test_pred)}")
+
+    print(f"Spearman Correlation Train: {spearmanr(y_train['rpe'], train_pred)}")
+    print(f"Spearman Correlation Test: {spearmanr(y_test['rpe'], test_pred)}")
+
+    print(f"Pearson Correlation Train: {pearsonr(y_train['rpe'], train_pred)}")
+    print(f"Pearson Correlation Test: {pearsonr(y_test['rpe'], test_pred)}")
 
     subject_names = sorted(y_test['name'].unique())
 
