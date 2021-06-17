@@ -39,7 +39,7 @@ file_iterator = SubjectDataIterator(args.src_path).add_loader(RPELoader).add_loa
 
 # models = [SVRModelConfig(), KNNModelConfig(), RFModelConfig()]
 # models = [KNNModelConfig(), RFModelConfig()]
-models = [RFModelConfig(), MLPModelConfig(), GBRModelConfig()]
+models = [GBRModelConfig(), RFModelConfig(), MLPModelConfig()]
 logo = LeaveOneGroupOut()
 
 # Iterate over non-sklearn hyperparameters
