@@ -1,7 +1,8 @@
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsRegressor
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.neural_network import MLPRegressor
 from sklearn.svm import SVR
 
 
@@ -29,9 +30,9 @@ class LearningModelBase(object):
 class SVRModelConfig(LearningModelBase):
 
     def __init__(self):
-        tuned_parameters = {'svr__kernel': ('linear', 'rbf'),
-                            'svr__gamma': [1e-3, 1e-4],
-                            'svr__C': [1e0, 1e1, 1e2, 1e3], }
+        tuned_parameters = {f'{str(self)}__kernel': ('linear', 'rbf'),
+                            f'{str(self)}__gamma': [1e-3, 1e-4],
+                            f'{str(self)}__C': [1e0, 1e1, 1e2, 1e3], }
 
         model = SVR()
         super().__init__(model=model, parameters=tuned_parameters)
@@ -43,9 +44,9 @@ class SVRModelConfig(LearningModelBase):
 class KNNModelConfig(LearningModelBase):
 
     def __init__(self):
-        tuned_parameters = {'knn__n_neighbors': [5, 10, 15],
-                            'knn__weights': ['uniform', 'distance'],
-                            'knn__algorithm': ['ball_tree', 'kd_tree']}
+        tuned_parameters = {f'{str(self)}__n_neighbors': [5, 10, 15],
+                            f'{str(self)}__weights': ['uniform', 'distance'],
+                            f'{str(self)}__leaf_size': [10, 30, 60, 120]}
 
         model = KNeighborsRegressor()
         super().__init__(model=model, parameters=tuned_parameters)
@@ -57,11 +58,41 @@ class KNNModelConfig(LearningModelBase):
 class RFModelConfig(LearningModelBase):
 
     def __init__(self):
-        tuned_parameters = {'rf__n_estimators': [50, 100, 150, 200],
-                            'rf__criterion': ['mse', 'mae']}
+        tuned_parameters = {f'{str(self)}__n_estimators': [50, 100, 150, 200],
+                            f'{str(self)}__criterion': ['mse', 'mae']}
 
         model = RandomForestRegressor()
         super().__init__(model=model, parameters=tuned_parameters)
 
     def __repr__(self):
         return "rf"
+
+
+class GBRModelConfig(LearningModelBase):
+
+    def __init__(self):
+        tuned_parameters = {f'f{str(self)}__n_estimators': [15, 50, 150, 500],
+                            f'{str(self)}__learning_rate': [0.05, 0.1, 0.2],
+                            f'{str(self)}__loss': ["ls", "huber", "lad"],
+                            f'{str(self)}__n_iter_no_change': [None, 5, 50, 100]}
+
+        model = GradientBoostingRegressor()
+        super().__init__(model=model, parameters=tuned_parameters)
+
+    def __repr__(self):
+        return "gbr"
+
+
+class MLPModelConfig(LearningModelBase):
+
+    def __init__(self):
+        tuned_parameters = {f'{str(self)}__hidden_layer_size': [(10, 4), (100,), (100, 50), (100, 150)],
+                            f'{str(self)}__solver': ["lbfgs", "adam"],
+                            f'{str(self)}__alpha': [1e-2, 1e-3, 1e-4],
+                            f'{str(self)}__learning_rate': ["constant", "adaptive"]}
+
+        model = MLPRegressor()
+        super().__init__(model=model, parameters=tuned_parameters)
+
+    def __repr__(self):
+        return "mlp"
