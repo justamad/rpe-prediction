@@ -21,9 +21,7 @@ class GridSearching(object):
         @param learner_name: the name of the learner
         """
         self._steps = [
-            # ("remove_constants", constant_remover),
             ("scaler", scaler),
-            # ("feature_selection", selector),
             ('balance_sampling', balancer),
             (learner_name, model)
         ]

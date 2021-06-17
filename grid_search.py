@@ -1,5 +1,6 @@
 from rpe_prediction.config import SubjectDataIterator, FusedAzureLoader, RPELoader
-from rpe_prediction.models import GridSearching, SVRModelConfig, KNNModelConfig, RFModelConfig, split_data_to_pseudonyms, MLPModelConfig, GBRModelConfig
+from rpe_prediction.models import GridSearching, SVRModelConfig, RFModelConfig, split_data_to_pseudonyms, \
+    MLPModelConfig, GBRModelConfig
 from sklearn.feature_selection import RFECV
 from sklearn.svm import SVR
 from sklearn.pipeline import Pipeline
@@ -34,12 +35,10 @@ if not os.path.exists(out_path):
     os.makedirs(out_path)
 
 window_sizes = [30, 60, 90, 120]  # 1s, 2s, 3s, 4s
-overlaps = [0.25, 0.5, 0.75]
+overlaps = [0.5, 0.7, 0.9]
 file_iterator = SubjectDataIterator(args.src_path).add_loader(RPELoader).add_loader(FusedAzureLoader)
 
-# models = [SVRModelConfig(), KNNModelConfig(), RFModelConfig()]
-# models = [KNNModelConfig(), RFModelConfig()]
-models = [GBRModelConfig(), RFModelConfig(), MLPModelConfig()]
+models = [SVRModelConfig(), GBRModelConfig(), RFModelConfig(), MLPModelConfig()]
 logo = LeaveOneGroupOut()
 
 # Iterate over non-sklearn hyperparameters

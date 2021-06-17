@@ -8,7 +8,7 @@ import pandas as pd
 parser = argparse.ArgumentParser()
 parser.add_argument('--src_path', type=str, dest='src_path', default="data/processed")
 parser.add_argument('--win_size', type=int, dest='win_size', default=90)
-parser.add_argument('--overlap', type=float, dest='overlap', default=0.75)
+parser.add_argument('--overlap', type=float, dest='overlap', default=0.9)
 args = parser.parse_args()
 
 
