@@ -22,3 +22,26 @@ def split_data_to_pseudonyms(x: pd.DataFrame, y: pd.DataFrame, train_percentage:
     train_indices = y['name'].isin(train_subjects)
     return x.loc[train_indices].copy(), y.loc[train_indices].copy(), \
            x.loc[~train_indices].copy(), y.loc[~train_indices].copy()
+
+
+def normalize_rpe_values(df_ground_truth):
+    """
+    Normalize the RPE values according to Pernek et al. by applying min-max scaling
+    :param df_ground_truth: data frame that contains y-output format
+    :return: data frame with normalized RPE values per subject
+    """
+    subjects = df_ground_truth['group'].unique()
+    for subject_id in subjects:
+        mask = df_ground_truth['group'] == subject_id
+        df_subject = df_ground_truth[mask]
+        mini, maxi = df_subject['rpe'].min(), df_subject['rpe'].max()
+        df_ground_truth.loc[mask, 'rpe'] = (df_subject['rpe'] - mini) / (maxi - mini)
+
+    return df_ground_truth
+
+
+if __name__ == '__main__':
+    X = pd.read_csv("../../data/X.csv", sep=';', index_col=False)
+    y = pd.read_csv("../../data/y.csv", sep=';', index_col=False)
+    y = normalize_rpe_values(y)
+    print(y)
