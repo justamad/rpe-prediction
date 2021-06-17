@@ -49,8 +49,8 @@ for window_size in window_sizes:
         X, y = prepare_data.prepare_skeleton_data(file_iterator, window_size=window_size, overlap=overlap)
         X_train, y_train, X_test, y_test = split_data_to_pseudonyms(X, y, train_percentage=0.8, random_seed=42)
 
-        logging.info("It contains " + str(np.isinf(X_train).values.sum()) + " infinite values")
-        logging.info("It contains " + str(np.isnan(X_train).values.sum()) + " nan values")
+        logging.info("X contains " + str(np.isinf(X).values.sum()) + " infinite values")
+        logging.info("y contains " + str(np.isnan(y).values.sum()) + " nan values")
 
         # Save train and test subjects to file
         np.savetxt(join(out_path, f"train_win_{window_size}_overlap_{overlap}.txt"), y_train['name'].unique(), fmt='%s')
