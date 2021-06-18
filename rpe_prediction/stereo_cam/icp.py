@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import logging
 
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -36,24 +37,26 @@ def find_rigid_transformation_svd(points_a: np.ndarray, points_b: np.ndarray, we
     centroid_a = (np.sum(weights * points_a, axis=0, keepdims=True) / np.sum(weights)).T
     centroid_b = (np.sum(weights * points_b, axis=0, keepdims=True) / np.sum(weights)).T
 
-    # Subtract mean
+    # Subtract centroids from point clouds
     a_mean = matrix_a - np.tile(centroid_a, (1, num_cols))
     b_mean = matrix_b - np.tile(centroid_b, (1, num_cols))
 
-    # Dot is matrix multiplication for array
-    covariance = a_mean * b_mean.T
+    # Calculate covariance matrix
+    W = np.diag(weights.flatten())
+    covariance = a_mean * W * b_mean.T
 
-    # Find the rotation
+    # Find the rotation using SVD
     U, S, Vt = np.linalg.svd(covariance)
-    R = Vt.T * U.T
+    D = np.diag([1.0, 1.0, np.linalg.det(Vt.T * U.T)])
+    R = Vt.T * D * U.T
 
     # Special reflection case
     if np.linalg.det(R) < 0:
-        # print("det(R) < R, reflection detected!, correcting for it ...")
+        logging.info("det(R) < R, reflection detected!, correcting for it ...")
         Vt[2, :] *= -1
         R = Vt.T * U.T
 
-    t = -R * centroid_a + centroid_b
+    t = centroid_b - R * centroid_a
 
     if show:
         # Check the RMSE of the transformation

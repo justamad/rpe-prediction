@@ -14,7 +14,7 @@ parser.add_argument('--dst_path', type=str, dest='dst_path', default="data/proce
 parser.add_argument('--show_plots', type=bool, dest='show_plots', default=False)
 args = parser.parse_args()
 
-example = np.loadtxt("example.np")
+example = np.loadtxt("data/example.np")
 
 
 def fuse_kinect_data(iterator, show=False):
@@ -28,37 +28,25 @@ def fuse_kinect_data(iterator, show=False):
         sub_path, master_path = set_data['azure']
         azure = StereoAzure(master_path=master_path, sub_path=sub_path)
         azure.reduce_skeleton_joints()
-        # print(f"Agreement initial: {azure.check_agreement_of_both_cameras()}")
+        print(f"Agreement initial: {azure.check_agreement_of_both_cameras()}")
 
         # Segment data based on pelvis joint
         file_name = f"{set_data['nr_set']}_segment.png"
-        repetitions = segment_1d_joint_on_example(azure.sub_position['pelvis (y) '].to_numpy(), example,
-                                                  min_duration=20, std_dev_percentage=0.5, show=show, path=file_name)
+        repetitions = segment_1d_joint_on_example(joint_data=azure.sub_position['pelvis (y) '].to_numpy(),
+                                                  exemplar=example, min_duration=20, std_dev_percentage=0.5,
+                                                  show=show, path=file_name)
 
         # Cut Kinect data
         azure.cut_skeleton_data(repetitions[0][0], repetitions[-1][1])
-        azure.calculate_affine_transform_based_on_data(show=show)
-        # print(f"Agreement internal: {azure.check_agreement_of_both_cameras()}")
+        azure.calculate_affine_transform_based_on_data(show=True)
+        print(f"Agreement internal: {azure.check_agreement_of_both_cameras()}")
+        avg_df = azure.fuse_cameras(alpha=0.1, window_size=5, show=show, path=None, joint="knee_left (y) ")
 
-        avg_df = azure.fuse_sub_and_master_cameras(alpha=0.1, window_size=5, show=False, path=None,
-                                                   joint="knee_left (y) ")
-
-        subject = set_data['subject_name']
-        current_set = set_data['nr_set']
-
-        cur_path = join(args.dst_path, subject)
+        # Create output folder to save averaged skeleton
+        cur_path = join(args.dst_path, set_data['subject_name'])
         if not os.path.exists(cur_path):
             os.makedirs(cur_path)
-
-        avg_df.to_csv(f"{os.path.join(cur_path, str(current_set))}_azure.csv", sep=';', index=True)
-
-        # plt.plot(avg_df['pelvis (y) '])
-        # plt.plot(apply_butterworth_df(avg_df, order=4, sampling_frequency=30, fc=2)['pelvis (y) '], label="fc 2")
-        # plt.plot(apply_butterworth_df(avg_df, order=4, sampling_frequency=30, fc=4)['pelvis (y) '], label="fc 4")
-        # plt.plot(apply_butterworth_df(avg_df, order=4, sampling_frequency=30, fc=6)['pelvis (y) '], label="fc 6")
-        # plt.plot(apply_butterworth_df(avg_df, order=4, sampling_frequency=30, fc=8)['pelvis (y) '], label="fc 8")
-        # plt.legend()
-        # plt.show()
+        # avg_df.to_csv(f"{os.path.join(cur_path, str(set_data['nr_set']))}_azure.csv", sep=';', index=True)
 
         # viewer = SkeletonViewer()
         # viewer.add_skeleton(azure.sub_position)

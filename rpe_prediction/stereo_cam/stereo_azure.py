@@ -67,7 +67,7 @@ class StereoAzure(object):
 
         self.master.multiply_matrix(rotation, translation)
 
-    def fuse_sub_and_master_cameras(self, alpha, window_size=5, show=False, path=None, joint='pelvis (y) '):
+    def fuse_cameras(self, alpha, window_size=5, show=False, path=None, joint='pelvis (y) '):
         """
         Calculate the fusion of sub and master cameras. Data should be calibrated as good as possible
         @param alpha: coefficient for dominant skeleton side
