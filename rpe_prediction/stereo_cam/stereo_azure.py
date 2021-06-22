@@ -1,9 +1,9 @@
+from rpe_prediction.devices import AzureKinect
+from .icp import find_rigid_transformation_svd
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
-from rpe_prediction.devices import AzureKinect
-from .icp import find_rigid_transformation_svd
 
 
 class StereoAzure(object):
@@ -105,17 +105,19 @@ class StereoAzure(object):
         weight_sub = pd.DataFrame(weight_sub_nd, columns=df_sub.columns)
         weight_master = pd.DataFrame(weight_master_nd, columns=df_master.columns)
         fused_skeleton = weight_sub * df_sub + weight_master * df_master
-        fused_skeleton['timestamp'] = self.sub_position.index
-        fused_skeleton = fused_skeleton.set_index('timestamp')
 
         if show:
-            plt.plot(df_sub[joint], label="Sub Camera")
-            plt.plot(df_master[joint], label="Master Camera")
-            plt.plot(fused_skeleton[joint], label="Fused Camera")
-            plt.plot(weight_sub[joint], label="Weights Sub")
-            plt.plot(weight_master[joint], label="Weights Master")
+            moving_average = (df_sub + df_master) / 2  # Regular moving average for comparison
+            plt.plot(df_sub[joint], label="Left Camera")
+            plt.plot(df_master[joint], label="Right Camera")
+            plt.plot(fused_skeleton[joint], label="Fusion Approach")
+            plt.plot(moving_average[joint], label="Moving Average")
+            # plt.plot(weight_sub[joint], label="Weights Sub")
+            # plt.plot(weight_master[joint], label="Weights Master")
             plt.legend()
-            plt.title(f"Current joint: {joint}")
+            plt.xlabel("Frames (30Hz)")
+            plt.ylabel("Distance (mm)")
+            plt.title(f"{joint.title().replace('_', ' ')}")
             plt.tight_layout()
 
             if path is not None:
@@ -129,15 +131,17 @@ class StereoAzure(object):
 
         return fused_skeleton
 
-    def check_agreement_of_both_cameras(self):
+    def check_agreement_of_both_cameras(self, show):
         """
         Calculate the agreement between sub and master camera
-        :return: TBD
+        :return: TODO: Calculate Euclidean distance of joints instead of separate axes
         """
         data_a = self.sub.position_data
         data_b = self.master.position_data
         differences = (data_a - data_b).abs().mean(axis=0)
-        differences.plot.bar(x="joints", y="error", rot=90)
+        if show:
+            differences.plot.bar(x="joints", y="error", rot=90)
+
         return differences.mean()
 
     @staticmethod

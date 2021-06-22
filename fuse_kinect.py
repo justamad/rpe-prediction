@@ -3,10 +3,16 @@ from rpe_prediction.processing import segment_1d_joint_on_example
 from rpe_prediction.stereo_cam import StereoAzure
 from os.path import join
 
+import matplotlib
 import numpy as np
 import argparse
 import os
 
+font = {'family': 'Times New Roman',
+        'weight': 'bold',
+        'size': 22}
+
+matplotlib.rc('font', **font)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--src_path', type=str, dest='src_path', default="data/raw")
@@ -28,7 +34,7 @@ def fuse_kinect_data(iterator, show=False):
         sub_path, master_path = set_data['azure']
         azure = StereoAzure(master_path=master_path, sub_path=sub_path)
         azure.reduce_skeleton_joints()
-        print(f"Agreement initial: {azure.check_agreement_of_both_cameras()}")
+        print(f"Agreement initial: {azure.check_agreement_of_both_cameras(show=show)}")
 
         # Segment data based on pelvis joint
         file_name = f"{set_data['nr_set']}_segment.png"
@@ -38,9 +44,9 @@ def fuse_kinect_data(iterator, show=False):
 
         # Cut Kinect data
         azure.cut_skeleton_data(repetitions[0][0], repetitions[-1][1])
-        azure.calculate_affine_transform_based_on_data(show=True)
-        print(f"Agreement internal: {azure.check_agreement_of_both_cameras()}")
-        avg_df = azure.fuse_cameras(alpha=0.1, window_size=5, show=show, path=None, joint="knee_left (y) ")
+        azure.calculate_affine_transform_based_on_data(show=show)
+        print(f"Agreement internal: {azure.check_agreement_of_both_cameras(show=show)}")
+        avg_df = azure.fuse_cameras(alpha=0.1, window_size=5, show=True, path=None, joint="knee_left (y) ")
 
         # Create output folder to save averaged skeleton
         cur_path = join(args.dst_path, set_data['subject_name'])
@@ -56,9 +62,10 @@ def fuse_kinect_data(iterator, show=False):
 
 
 if __name__ == '__main__':
-    if args.show_plots:  # Quick fix for running script on server
-        import matplotlib
-        matplotlib.use("TkAgg")
+    # if args.show_plots:  # Quick fix for running script on server
+    import matplotlib
+
+    matplotlib.use("TkAgg")
 
     file_iterator = SubjectDataIterator(args.src_path).add_loader(StereoAzureLoader)
     fuse_kinect_data(file_iterator.iterate_over_all_subjects(), show=args.show_plots)

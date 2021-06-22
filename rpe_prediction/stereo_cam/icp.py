@@ -62,7 +62,7 @@ def find_rigid_transformation_svd(points_a: np.ndarray, points_b: np.ndarray, we
         # Check the RMSE of the transformation
         transformed = (R @ matrix_a + t).T
         rmse = np.sqrt(np.sum(np.square(points_b - transformed), axis=1))
-        rmse_s = "RMSE transformation: mean: {:4f} mm, std: {:4f}".format(np.mean(rmse), np.std(rmse))
+        rmse_s = f'RMSE transformation: mean={np.mean(rmse):.2f} mm, std={np.std(rmse):.2f}'
 
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
@@ -73,5 +73,10 @@ def find_rigid_transformation_svd(points_a: np.ndarray, points_b: np.ndarray, we
         plt.legend()
         if path is None:
             plt.show()
+
+        # Clean up resources
+        plt.close()
+        plt.clf()
+        plt.cla()
 
     return R, t
