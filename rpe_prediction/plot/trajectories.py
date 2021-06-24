@@ -1,7 +1,7 @@
 from rpe_prediction.processing import get_joints_as_list
 
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
 import math
 
 colors = ['red', 'green', 'blue', 'yellow']

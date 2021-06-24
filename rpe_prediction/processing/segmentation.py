@@ -1,20 +1,17 @@
 from fastdtw import fastdtw
 from scipy import signal
+from .utils import get_hsv_color_interpolation
 
-import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.colors
+import numpy as np
+import pandas as pd
 
 
-def segment_1d_joint_on_example(joint_data: np.array,
-                                exemplar: np.array,
-                                min_duration: int,
-                                std_dev_percentage: float,
-                                show: bool = False,
-                                path: str = None):
+def segment_1d_joint_on_example(joint_data: pd.Series, exemplar: np.array, min_duration: int, std_dev_percentage: float,
+                                show: bool = False, path: str = None):
     """
     Segment data based on a given joint and a given example
-    @param joint_data: 1D-trajectory of the target axis
+    @param joint_data: 1D-trajectory of the target axis, pandas series
     @param exemplar: exemplar repetition
     @param min_duration: the minimum duration of a single repetition
     @param std_dev_percentage: the percentage value multiplied by std dev for example as threshold
@@ -32,42 +29,46 @@ def segment_1d_joint_on_example(joint_data: np.array,
     dtw_costs = []
     exemplar_std_threshold = np.std(exemplar) * std_dev_percentage
 
-    fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(15, 10))
-    ax1.plot(joint_data, label="Position data")
-    ax1.scatter(peaks, joint_data[peaks])
-
-    ax4.plot(exemplar, label="Exemplar")
+    if show:
+        fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(15, 10))
+        ax1.plot(joint_data, label="Position data")
+        ax1.scatter(peaks, joint_data.to_numpy()[peaks])
+        ax4.plot(exemplar, label="Exemplar")
 
     # Calculate costs for segmentation candidates
-    for t1, t2 in zip(peaks, peaks[1:]):
-        observation = joint_data[t1:t2]
+    for p1, p2 in zip(peaks, peaks[1:]):
+        observation = joint_data[p1:p2]
 
         # Step 1: first check basic statistics
         if np.std(observation) < exemplar_std_threshold:
-            ax2.plot(np.arange(t1, t2), observation, '--', color="gray")
+            if show:
+                ax2.plot(np.arange(p1, p2), observation, '--', color="gray")
             continue
-        ax2.plot(np.arange(t1, t2), observation)
+
+        if show:
+            ax2.plot(np.arange(p1, p2), observation)
 
         # Step 2: check DTW cost
-        dtw_cost = calculate_fast_dtw_cost(exemplar, observation)
-        dtw_costs.append(dtw_cost)
+        dtw_costs.append(calculate_fast_dtw_cost(exemplar, observation))
+        t1, t2 = joint_data.index[p1], joint_data.index[p2]
         candidates.append((t1, t2))
 
-    fig.suptitle(f'DTW Costs: mean: {np.mean(dtw_costs):.2f}, std: {np.std(dtw_costs):.2f}')
-    for counter, ((t1, t2), dtw_cost) in enumerate(zip(candidates, dtw_costs)):
-        hsv_color = matplotlib.colors.hsv_to_rgb([counter / len(candidates) * 0.75, 1, 1])
-        ax3.plot(joint_data[t1:t2], label=f"{counter + 1}: {t1}-{t2}, c={dtw_cost:.1f}", color=hsv_color)
-    ax3.legend()
-
     if show:
+        fig.suptitle(f'DTW Costs: mean: {np.mean(dtw_costs):.2f}, std: {np.std(dtw_costs):.2f}')
+        for counter, ((t1, t2), dtw_cost) in enumerate(zip(candidates, dtw_costs)):
+            hsv_color = get_hsv_color_interpolation(counter, len(candidates))
+            ax3.plot(joint_data.loc[t1:t2], label=f"{counter + 1}: {t1}-{t2}, c={dtw_cost:.1f}", color=hsv_color)
+        ax3.legend()
+
         if path is not None:
             plt.savefig(path)
         else:
             plt.show()
 
-    plt.close()
-    plt.cla()
-    plt.clf()
+        plt.close()
+        plt.cla()
+        plt.clf()
+
     return candidates
 
 

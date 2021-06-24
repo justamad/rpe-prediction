@@ -8,7 +8,7 @@ import json
 import os
 
 
-excluded_joints = ["eye", "ear", "nose", "handtip", "thumb"]
+excluded_joints = ["eye", "ear", "nose", "handtip", "thumb", "clavicle"]
 
 
 class AzureKinect(SensorBase):

@@ -108,12 +108,11 @@ class StereoAzure(object):
 
         if show:
             moving_average = (df_sub + df_master) / 2  # Regular moving average for comparison
+
             plt.plot(df_sub[joint], label="Left Camera")
             plt.plot(df_master[joint], label="Right Camera")
             plt.plot(fused_skeleton[joint], label="Fusion Approach")
             plt.plot(moving_average[joint], label="Moving Average")
-            # plt.plot(weight_sub[joint], label="Weights Sub")
-            # plt.plot(weight_master[joint], label="Weights Master")
             plt.legend()
             plt.xlabel("Frames (30Hz)")
             plt.ylabel("Distance (mm)")
@@ -129,6 +128,7 @@ class StereoAzure(object):
             plt.clf()
             plt.cla()
 
+        fused_skeleton = fused_skeleton.set_index(self.sub_position.index)
         return fused_skeleton
 
     def check_agreement_of_both_cameras(self, show):
@@ -161,8 +161,8 @@ class StereoAzure(object):
         @param end_index: end index for cutting
         @return: None
         """
-        self.sub.cut_data_by_index(start_index, end_index)
-        self.master.cut_data_by_index(start_index, end_index)
+        self.sub.cut_data_by_label(start_index, end_index)
+        self.master.cut_data_by_label(start_index, end_index)
 
     def reduce_skeleton_joints(self):
         self.sub.remove_unnecessary_joints()

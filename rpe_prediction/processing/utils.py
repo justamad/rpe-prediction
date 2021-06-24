@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import matplotlib.colors
 
 
 def calculate_magnitude(df, axis_suffix=' (x)'):
@@ -69,3 +70,14 @@ def get_joints_as_list(df, joints):
     @return: list of filtered joint names in alphabetical order
     """
     return list(filter(lambda x: any([c for c in df.columns if x in c]), joints))
+
+
+def get_hsv_color_interpolation(cur_value, total_values):
+    """
+    Returns an interpolated HSV color value based on given value and total range
+    :param cur_value: the current value for interpolation
+    :param total_values: the total of values
+    :return: current hsv color
+    """
+    hsv_color = matplotlib.colors.hsv_to_rgb([cur_value / total_values * 0.75, 1, 1])
+    return hsv_color

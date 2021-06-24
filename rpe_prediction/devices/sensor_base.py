@@ -52,6 +52,14 @@ class SensorBase(object):
         """
         self._data = self._data.iloc[start:end]
 
+    def cut_data_by_label(self, start, end):
+        """
+        Cut the data by a given label using the index of data frame
+        :param start: start label index
+        :param end: end label index
+        """
+        self._data = self._data.loc[start:end]
+
     @property
     def timestamps(self):
         return self._data.index.to_numpy()
