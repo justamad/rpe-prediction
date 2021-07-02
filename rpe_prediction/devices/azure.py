@@ -53,7 +53,6 @@ class AzureKinect(SensorBase):
         """
         self._data.loc[:, self._data.columns == 'timestamp'] *= 1e-6
         self._data = fill_missing_data(self._data, self.sampling_frequency, log=log)
-        # self._data = self._data.set_index('timestamp')
 
     def multiply_matrix(self, matrix, translation=np.array([0, 0, 0])):
         """
@@ -129,7 +128,7 @@ class AzureKinect(SensorBase):
     @property
     def position_data(self):
         data = self._data.filter(regex='pos').copy()
-        new_names = [(i, i.replace('pos', '')) for i in data.columns.values]
+        new_names = [(i, i.replace(' pos', '')) for i in data.columns.values]
         data.rename(columns=dict(new_names), inplace=True)
         return data
 

@@ -1,14 +1,16 @@
 from rpe_prediction.config import SubjectDataIterator, StereoAzureLoader, RPELoader
 from rpe_prediction.processing import segment_1d_joint_on_example, get_hsv_color_interpolation
 from rpe_prediction.stereo_cam import StereoAzure
-from os.path import join
+from matplotlib.backends.backend_pdf import PdfPages
+from os.path import join, isdir
 
 import matplotlib.pyplot as plt
+import pandas as pd
 import numpy as np
 import argparse
 import os
 
-plt.rcParams["figure.figsize"] = (20, 20)
+plt.rcParams["figure.figsize"] = (20, 10)
 plt.rcParams["font.family"] = 'Times New Roman'
 plt.rcParams["font.weight"] = 'bold'
 plt.rcParams["font.size"] = 22
@@ -16,18 +18,42 @@ plt.rcParams["font.size"] = 22
 parser = argparse.ArgumentParser()
 parser.add_argument('--src_path', type=str, dest='src_path', default="data/raw")
 parser.add_argument('--dst_path', type=str, dest='dst_path', default="data/processed")
-parser.add_argument('--log_path', type=str, dest='log_path', default="results/fusion_log")
+parser.add_argument('--log_path', type=str, dest='log_path', default="results/segmentation")
 parser.add_argument('--show_plots', type=bool, dest='show_plots', default=False)
 args = parser.parse_args()
 
 example = np.loadtxt("data/example.np")
 
 
-def plot_repetition_data():
-    pass
-    # plt.plot(avg_df['pelvis (y) '].loc[r1:r2].to_numpy() * -1,
-    #          color=get_hsv_color_interpolation(set_data['rpe'], 20),
-    #          label=set_data['rpe'] if count == 0 else None)
+def plot_repetition_data(output_path, file_name):
+    """
+    Plot the resulting joints into a single
+    :param output_path:
+    :param file_name:
+    :return:
+    """
+    subjects = list(filter(lambda x: isdir(x), map(lambda x: join(args.log_path, x), os.listdir(args.log_path))))
+    figures = []
+
+    for subject in subjects:
+        sub_path = join(subject, "csv")
+        files = list(filter(lambda f: f.endswith('.csv'), os.listdir(sub_path)))
+        files = list(map(lambda x: join(sub_path, x), files))
+        files = list(map(lambda f: (pd.read_csv(f, sep=';', index_col=False), int(f.split('_')[2][:2])), files))
+
+        fig = plt.figure()
+        for df, rpe in files:
+            plt.plot(-df['ankle_left (y)'], color=get_hsv_color_interpolation(rpe, 20))
+
+        plt.title(subject)
+        plt.xlabel("Frames [1/30s]")
+        plt.ylabel("Distance [mm]")
+        figures.append(fig)
+
+    pp = PdfPages(file_name)
+    for fig in figures:
+        pp.savefig(fig)
+    pp.close()
 
 
 def fuse_kinect_data(iterator, show=False):
@@ -50,9 +76,9 @@ def fuse_kinect_data(iterator, show=False):
         print(f"Agreement initial: {azure.check_agreement_of_both_cameras(show=show)}")
 
         # Segment data based on pelvis joint
-        repetitions = segment_1d_joint_on_example(joint_data=azure.mas_position['pelvis (y) '],
-                                                  exemplar=example, min_duration=10, std_dev_percentage=0.5,
-                                                  show=show, path=join(log_path, f"{set_data['nr_set']}_segment.png"))
+        repetitions = segment_1d_joint_on_example(joint_data=azure.sub_position['pelvis (y)'],
+                                                  exemplar=example, std_dev_percentage=0.5,
+                                                  show=True, path=join(log_path, f"{set_data['nr_set']}_segment.png"))
 
         # Cut Kinect data
         azure.cut_skeleton_data(repetitions[0][0], repetitions[-1][1])
@@ -60,12 +86,15 @@ def fuse_kinect_data(iterator, show=False):
         print(f"Agreement internal: {azure.check_agreement_of_both_cameras(show=show)}")
 
         # Fuse the Kinect data
-        avg_df = azure.fuse_cameras(alpha=0.1, window_size=5, show=show,
-                                    path=join(log_path, f"{set_data['nr_set']}_fusion.png"), joint="pelvis (y) ")
+        avg_df = azure.fuse_cameras(alpha=0.1, window_size=5, show=True,
+                                    path=join(log_path, f"{set_data['nr_set']}_fusion.png"), joint="pelvis (y)")
 
         # Save individual repetitions
         for count, (r1, r2) in enumerate(repetitions):
-            avg_df.loc[r1:r2].to_csv(join(log_path, f"{set_data['nr_set']}_{count}_{set_data['rpe']}.csv"),
+            csv_dir = join(log_path, "csv")
+            if not os.path.exists(csv_dir):
+                os.makedirs(csv_dir)
+            avg_df.loc[r1:r2].to_csv(join(csv_dir, f"{set_data['nr_set']}_{count}_{set_data['rpe']}.csv"),
                                      sep=';', index=False)
 
         # Create output folder to save averaged skeleton
@@ -82,10 +111,11 @@ def fuse_kinect_data(iterator, show=False):
 
 
 if __name__ == '__main__':
-    if args.show_plots:  # Quick fix for running script on server
-        import matplotlib
+    # if args.show_plots:  # Quick fix for running script on server
+    import matplotlib
+    matplotlib.use("TkAgg")
 
-        matplotlib.use("TkAgg")
-
-    file_iterator = SubjectDataIterator(args.src_path).add_loader(StereoAzureLoader).add_loader(RPELoader)
-    fuse_kinect_data(file_iterator.iterate_over_all_subjects(), show=args.show_plots)
+    # file_iterator = SubjectDataIterator(args.src_path).add_loader(StereoAzureLoader).add_loader(RPELoader)
+    # fuse_kinect_data(file_iterator.iterate_over_all_subjects(), show=args.show_plots)
+    # fuse_kinect_data(file_iterator.iterate_over_specific_subjects("C47EFC", "339F94", "857F1E"), show=args.show_plots)
+    plot_repetition_data(args.log_path, 'report.pdf')
