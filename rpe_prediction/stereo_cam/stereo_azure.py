@@ -67,13 +67,13 @@ class StereoAzure(object):
 
         self.master.multiply_matrix(rotation, translation)
 
-    def fuse_cameras(self, alpha, window_size=5, show=False, joint='pelvis (y) '):
+    def fuse_cameras(self, alpha, window_size=5, show=False, pp=None):
         """
         Calculate the fusion of sub and master cameras. Data should be calibrated as good as possible
         @param alpha: coefficient for dominant skeleton side
         @param window_size: a window size of gradient averages
         @param show: Flag whether results should be plotted
-        @param joint: joint name that should be plotted
+        @param pp: PDF file saver instance
         @return: Fused skeleton data in a pandas array
         """
         df_sub = self.sub_position.reset_index(drop=True)
@@ -104,29 +104,23 @@ class StereoAzure(object):
         weight_sub = pd.DataFrame(weight_sub_nd, columns=df_sub.columns)
         weight_master = pd.DataFrame(weight_master_nd, columns=df_master.columns)
         fused_skeleton = weight_sub * df_sub + weight_master * df_master
+        moving_average = (df_sub + df_master) / 2  # Regular moving average for comparison
 
         if show:
-            moving_average = (df_sub + df_master) / 2  # Regular moving average for comparison
-            plt.figure()
-            plt.clf()
-            plt.plot(df_sub[joint], label="Left Camera")
-            plt.plot(df_master[joint], label="Right Camera")
-            plt.plot(fused_skeleton[joint], label="Fusion Approach")
-            plt.plot(moving_average[joint], label="Moving Average")
-            plt.legend()
-            plt.xlabel("Frames (30Hz)")
-            plt.ylabel("Distance (mm)")
-            plt.title(f"{joint.title().replace('_', ' ')}")
-            plt.tight_layout()
-
-            # if path is not None:
-            #     plt.savefig(path)
-            # else:
-            #     plt.show()
-            #
-            # plt.close()
-            # plt.clf()
-            # plt.cla()
+            for joint in fused_skeleton.columns:
+                plt.close()
+                plt.figure()
+                plt.clf()
+                plt.plot(df_sub[joint], label="Left Camera")
+                plt.plot(df_master[joint], label="Right Camera")
+                plt.plot(fused_skeleton[joint], label="Fusion Approach")
+                plt.plot(moving_average[joint], label="Moving Average")
+                plt.legend()
+                plt.xlabel("Frames (30Hz)")
+                plt.ylabel("Distance (mm)")
+                plt.title(f"{joint.title().replace('_', ' ')}")
+                plt.tight_layout()
+                pp.savefig()
 
         fused_skeleton = fused_skeleton.set_index(self.sub_position.index)
         return fused_skeleton

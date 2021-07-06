@@ -62,7 +62,7 @@ def fuse_kinect_data(iterator, pdf_file, show=False):
     """
     Fuse Kinect data from sub and master camera and calculate features
     @param iterator: iterator that crawls through raw data
-    :param pdf_file: output name of current pdf file
+    @param pdf_file: output name of current pdf file
     @param show: A flag whether to show the plots or not
     """
     pdf_buffer = io.BytesIO()
@@ -81,7 +81,6 @@ def fuse_kinect_data(iterator, pdf_file, show=False):
         sub_path, master_path = set_data['azure']
         azure = StereoAzure(master_path=master_path, sub_path=sub_path)
         azure.reduce_skeleton_joints()
-        print(f"Agreement initial: {azure.check_agreement_of_both_cameras(show=show)}")
 
         # Segment data based on pelvis joint
         repetitions = segment_1d_joint_on_example(joint_data=azure.sub_position['pelvis (y)'],
@@ -92,11 +91,8 @@ def fuse_kinect_data(iterator, pdf_file, show=False):
         azure.cut_skeleton_data(repetitions[0][0], repetitions[-1][1])
         azure.calculate_affine_transform_based_on_data(show=show)
         print(f"Agreement internal: {azure.check_agreement_of_both_cameras(show=show)}")
-
-        # Fuse the Kinect data
-        avg_df = azure.fuse_cameras(alpha=0.1, window_size=5, show=True, joint="pelvis (y)")
+        avg_df = azure.fuse_cameras(alpha=0.1, window_size=5, show=True, pp=pp)
         # path=join(log_path, f"{set_data['nr_set']}_fusion.png")
-        pp.savefig()
 
         # Save individual repetitions
         for count, (r1, r2) in enumerate(repetitions):
@@ -111,7 +107,10 @@ def fuse_kinect_data(iterator, pdf_file, show=False):
         dst_path = join(args.dst_path, set_data['subject_name'])
         if not os.path.exists(dst_path):
             os.makedirs(dst_path)
-        bookmarks.append((set_data['subject_name'], f"Set: {set_data['nr_set']}"))
+
+        # Add data for bookmarks
+        for joint in avg_df.columns:
+            bookmarks.append((set_data['subject_name'], set_data['nr_set'], joint))
         # avg_df.to_csv(f"{os.path.join(cur_path, str(set_data['nr_set']))}_azure.csv", sep=';', index=True)
 
     # Write the final PDF file
@@ -119,21 +118,25 @@ def fuse_kinect_data(iterator, pdf_file, show=False):
     output_file = PdfFileWriter()
     input_file = PdfFileReader(pdf_buffer)
 
-    subject_cache = {}
+    bookmark_cache = {}
     for nr_page in range(input_file.getNumPages()):
         output_file.addPage(input_file.getPage(nr_page))
 
         # Determine the parent bookmark
-        subject_name, nr_set = bookmarks[nr_page]
-        if subject_name in subject_cache:
-            par = subject_cache[subject_name]
-        else:
-            par = output_file.addBookmark(subject_name, nr_page, parent=None)
-            subject_cache[subject_name] = par
+        subject_name, nr_set, joint = bookmarks[nr_page]
+        if subject_name not in bookmark_cache:
+            bookmark_cache[subject_name] = output_file.addBookmark(subject_name, nr_page, parent=None)
+        subject_bookmark = bookmark_cache[subject_name]
 
-        output_file.addBookmark(nr_set, nr_page, parent=par)
+        # Determine set bookmark
+        key = subject_name + str(nr_set)
+        if key not in bookmark_cache:
+            bookmark_cache[key] = output_file.addBookmark(f"Set {nr_set}", nr_page, parent=subject_bookmark)
+        set_bookmark = bookmark_cache[key]
 
-    outputStream = open('result.pdf', 'wb')
+        output_file.addBookmark(joint, nr_page, parent=set_bookmark)
+
+    outputStream = open(pdf_file, 'wb')
     output_file.write(outputStream)
     outputStream.close()
 
@@ -145,5 +148,6 @@ if __name__ == '__main__':
 
     file_iterator = SubjectDataIterator(args.src_path).add_loader(StereoAzureLoader).add_loader(RPELoader)
     # fuse_kinect_data(file_iterator.iterate_over_all_subjects(), show=args.show_plots)
-    fuse_kinect_data(file_iterator.iterate_over_specific_subjects("C47EFC", "339F94", "857F1E"), "output.pdf", show=args.show_plots)
+    # fuse_kinect_data(file_iterator.iterate_over_specific_subjects("C47EFC", "339F94", "857F1E"), "output.pdf", show=args.show_plots)
+    fuse_kinect_data(file_iterator.iterate_over_specific_subjects("C47EFC", "339F94"), "output.pdf", show=args.show_plots)
     # plot_repetition_data(args.log_path, 'report.pdf')
