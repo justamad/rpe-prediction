@@ -2,6 +2,7 @@ from rpe_prediction.config import SubjectDataIterator, StereoAzureLoader, RPELoa
 from rpe_prediction.processing import segment_1d_joint_on_example, get_hsv_color_interpolation
 from rpe_prediction.stereo_cam import StereoAzure
 from matplotlib.backends.backend_pdf import PdfPages
+from PyPDF2 import PdfFileWriter, PdfFileReader
 from os.path import join, isdir
 
 import matplotlib.pyplot as plt
@@ -9,6 +10,7 @@ import pandas as pd
 import numpy as np
 import argparse
 import os
+import io
 
 plt.rcParams["figure.figsize"] = (20, 10)
 plt.rcParams["font.family"] = 'Times New Roman'
@@ -56,12 +58,18 @@ def plot_repetition_data(output_path, file_name):
     pp.close()
 
 
-def fuse_kinect_data(iterator, show=False):
+def fuse_kinect_data(iterator, pdf_file, show=False):
     """
     Fuse Kinect data from sub and master camera and calculate features
     @param iterator: iterator that crawls through raw data
+    :param pdf_file: output name of current pdf file
     @param show: A flag whether to show the plots or not
     """
+    pdf_buffer = io.BytesIO()
+    pp = PdfPages(pdf_buffer)
+
+    bookmarks = []
+
     for set_data in iterator:
         # Create output folder to save averaged skeleton
         dst_path = join(args.dst_path, set_data['subject_name'])
@@ -78,7 +86,7 @@ def fuse_kinect_data(iterator, show=False):
         # Segment data based on pelvis joint
         repetitions = segment_1d_joint_on_example(joint_data=azure.sub_position['pelvis (y)'],
                                                   exemplar=example, std_dev_percentage=0.5,
-                                                  show=True, path=join(log_path, f"{set_data['nr_set']}_segment.png"))
+                                                  show=False)  # , path=join(log_path, f"{set_data['nr_set']}_segment.png"))
 
         # Cut Kinect data
         azure.cut_skeleton_data(repetitions[0][0], repetitions[-1][1])
@@ -86,8 +94,9 @@ def fuse_kinect_data(iterator, show=False):
         print(f"Agreement internal: {azure.check_agreement_of_both_cameras(show=show)}")
 
         # Fuse the Kinect data
-        avg_df = azure.fuse_cameras(alpha=0.1, window_size=5, show=True,
-                                    path=join(log_path, f"{set_data['nr_set']}_fusion.png"), joint="pelvis (y)")
+        avg_df = azure.fuse_cameras(alpha=0.1, window_size=5, show=True, joint="pelvis (y)")
+        # path=join(log_path, f"{set_data['nr_set']}_fusion.png")
+        pp.savefig()
 
         # Save individual repetitions
         for count, (r1, r2) in enumerate(repetitions):
@@ -95,19 +104,38 @@ def fuse_kinect_data(iterator, show=False):
             if not os.path.exists(csv_dir):
                 os.makedirs(csv_dir)
             avg_df.loc[r1:r2].to_csv(join(csv_dir, f"{set_data['nr_set']}_{count}_{set_data['rpe']}.csv"),
-                                     sep=';', index=False)
+                                     sep=';',
+                                     index=False)
 
         # Create output folder to save averaged skeleton
         dst_path = join(args.dst_path, set_data['subject_name'])
         if not os.path.exists(dst_path):
             os.makedirs(dst_path)
+        bookmarks.append((set_data['subject_name'], f"Set: {set_data['nr_set']}"))
         # avg_df.to_csv(f"{os.path.join(cur_path, str(set_data['nr_set']))}_azure.csv", sep=';', index=True)
 
-        # viewer = SkeletonViewer()
-        # viewer.add_skeleton(azure.sub_position)
-        # viewer.add_skeleton(azure.mas_position)
-        # viewer.add_skeleton(avg_df)
-        # viewer.show_window()
+    # Write the final PDF file
+    pp.close()
+    output_file = PdfFileWriter()
+    input_file = PdfFileReader(pdf_buffer)
+
+    subject_cache = {}
+    for nr_page in range(input_file.getNumPages()):
+        output_file.addPage(input_file.getPage(nr_page))
+
+        # Determine the parent bookmark
+        subject_name, nr_set = bookmarks[nr_page]
+        if subject_name in subject_cache:
+            par = subject_cache[subject_name]
+        else:
+            par = output_file.addBookmark(subject_name, nr_page, parent=None)
+            subject_cache[subject_name] = par
+
+        output_file.addBookmark(nr_set, nr_page, parent=par)
+
+    outputStream = open('result.pdf', 'wb')
+    output_file.write(outputStream)
+    outputStream.close()
 
 
 if __name__ == '__main__':
@@ -115,7 +143,7 @@ if __name__ == '__main__':
     import matplotlib
     matplotlib.use("TkAgg")
 
-    # file_iterator = SubjectDataIterator(args.src_path).add_loader(StereoAzureLoader).add_loader(RPELoader)
+    file_iterator = SubjectDataIterator(args.src_path).add_loader(StereoAzureLoader).add_loader(RPELoader)
     # fuse_kinect_data(file_iterator.iterate_over_all_subjects(), show=args.show_plots)
-    # fuse_kinect_data(file_iterator.iterate_over_specific_subjects("C47EFC", "339F94", "857F1E"), show=args.show_plots)
-    plot_repetition_data(args.log_path, 'report.pdf')
+    fuse_kinect_data(file_iterator.iterate_over_specific_subjects("C47EFC", "339F94", "857F1E"), "output.pdf", show=args.show_plots)
+    # plot_repetition_data(args.log_path, 'report.pdf')

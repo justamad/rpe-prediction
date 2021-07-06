@@ -65,8 +65,8 @@ class SubjectDataIterator(object):
     def iterate_over_specific_subjects(self, *subjects):
         """
         Method returns an iterator for given specific subject
-        @param subjects:
-        @return:
+        @param subjects: dynamic list of individual subject names
+        @return: iterator over all sets
         """
         subject_data_loaders = self.load_data_collectors()
         logging.info(f"Found {len(subject_data_loaders)} subject folders.")

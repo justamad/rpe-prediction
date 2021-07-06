@@ -16,3 +16,4 @@ pyarrow
 fastparquet
 tsfresh
 imblearn
+PyPDF2

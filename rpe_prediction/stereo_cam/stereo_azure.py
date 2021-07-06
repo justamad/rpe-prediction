@@ -67,13 +67,12 @@ class StereoAzure(object):
 
         self.master.multiply_matrix(rotation, translation)
 
-    def fuse_cameras(self, alpha, window_size=5, show=False, path=None, joint='pelvis (y) '):
+    def fuse_cameras(self, alpha, window_size=5, show=False, joint='pelvis (y) '):
         """
         Calculate the fusion of sub and master cameras. Data should be calibrated as good as possible
         @param alpha: coefficient for dominant skeleton side
         @param window_size: a window size of gradient averages
         @param show: Flag whether results should be plotted
-        @param path: Path if result should be plotted
         @param joint: joint name that should be plotted
         @return: Fused skeleton data in a pandas array
         """
@@ -108,7 +107,8 @@ class StereoAzure(object):
 
         if show:
             moving_average = (df_sub + df_master) / 2  # Regular moving average for comparison
-
+            plt.figure()
+            plt.clf()
             plt.plot(df_sub[joint], label="Left Camera")
             plt.plot(df_master[joint], label="Right Camera")
             plt.plot(fused_skeleton[joint], label="Fusion Approach")
@@ -119,14 +119,14 @@ class StereoAzure(object):
             plt.title(f"{joint.title().replace('_', ' ')}")
             plt.tight_layout()
 
-            if path is not None:
-                plt.savefig(path)
-            else:
-                plt.show()
-
-            plt.close()
-            plt.clf()
-            plt.cla()
+            # if path is not None:
+            #     plt.savefig(path)
+            # else:
+            #     plt.show()
+            #
+            # plt.close()
+            # plt.clf()
+            # plt.cla()
 
         fused_skeleton = fused_skeleton.set_index(self.sub_position.index)
         return fused_skeleton

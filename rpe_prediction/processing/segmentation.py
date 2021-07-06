@@ -8,7 +8,7 @@ import pandas as pd
 
 
 def segment_1d_joint_on_example(joint_data: pd.Series, exemplar: np.array, std_dev_percentage: float,
-                                show: bool = False, path: str = None):
+                                show: bool = False):  # , path: str = None):
     """
     Segment data based on a given joint and a given example
     @param joint_data: 1D-trajectory of the target axis, pandas series
@@ -64,14 +64,15 @@ def segment_1d_joint_on_example(joint_data: pd.Series, exemplar: np.array, std_d
         for counter, (t1, t2) in enumerate(final_segments):
             ax4.plot(joint_data.loc[t1:t2], color=get_hsv_color_interpolation(counter, len(final_segments)))
 
-        plt.tight_layout()
-        if path is not None:
-            plt.savefig(path)
-        else:
-            plt.show()
+        # plt.tight_layout()
+        # if path is not None:
+        #     plt.savefig(path)
+        # else:
+        #     plt.show()
 
-        plt.close()
-        plt.cla()
-        plt.clf()
+        # plt.close()
+        # plt.cla()
+        # plt.clf()
+        return final_segments, fig
 
     return final_segments
