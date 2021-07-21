@@ -1,11 +1,11 @@
-from scipy import signal
+from scipy.signal import butter, sosfiltfilt, medfilt
 from scipy import interpolate
 
 import numpy as np
 import pandas as pd
 
 
-def upsample_data(data, old_sampling_rate, new_sampling_rate, mode="cubic"):
+def upsample_data(data, old_sampling_rate, new_sampling_rate, mode='cubic'):
     x = np.arange(len(data)) / old_sampling_rate
     num = int(x[-1] * new_sampling_rate)  # Define new constant sampling points
     xx = np.linspace(x[0], x[-1], num)
@@ -13,9 +13,22 @@ def upsample_data(data, old_sampling_rate, new_sampling_rate, mode="cubic"):
     return f(xx)
 
 
-def apply_butterworth_filter(data, order=4, cut_off=0.1):
-    sos = signal.butter(order, cut_off, output='sos')
-    return signal.sosfiltfilt(sos, data)
+def calculate_gradients(df: pd.DataFrame):
+    result = []
+    for column in range(df.shape[1]):
+        result.append(np.gradient(df.iloc[:, column]))
+    return pd.DataFrame(np.array(result).T, columns=df.columns)
+
+
+def butter_bandpass(fc, fs, order=5):
+    w = fc / fs / 2
+    sos = butter(order, w, btype='lowpass', analog=False, output='sos')
+    return sos
+
+
+def butterworth_filter_1d(data: np.ndarray, fs, fc, order=4):
+    sos = butter_bandpass(fc=fc, fs=fs, order=order)
+    return sosfiltfilt(sos, data)
 
 
 def normalize_signal(data):
@@ -27,28 +40,22 @@ def find_closest_timestamp(timestamps, point):
     return np.argmin(differences)
 
 
-def apply_butterworth_df(data_frame, sampling_frequency, order=4, fc=6):
+def butterworth_filter(df: pd.DataFrame, fc, fs, order=4):
     """
     Applies a Butterworth filter to the given dataframe
-    @param data_frame: data frame that contains positional, orientation or acceleration data
-    @param sampling_frequency: the current sampling frequency
+    @param df: data frame that contains positional, orientation or acceleration data
+    @param fc: the cut-off frequency of the filter
+    @param fs: the current sampling rate
     @param order: The order of the Butterworth filter
-    @param fc: the cut-off frequency used in Butterworth filter
     @return: data frame with filtered data
     """
-    w = fc / (sampling_frequency / 2)  # Normalize the frequency
-    b, a = signal.butter(order, w, 'lp', analog=False)
-
-    data = data_frame.to_numpy()
-    rows, cols = data.shape
+    sos = butter_bandpass(fc, fs, order)
     result = []
 
-    for column in range(cols):
-        raw_signal = data[:, column]
-        filtered_signal = signal.lfilter(b, a, raw_signal)
-        result.append(filtered_signal)
+    for column in range(df.shape[1]):
+        result.append(sosfiltfilt(sos, df.iloc[:, column]))
 
-    return pd.DataFrame(data=np.array(result).T, columns=data_frame.columns)
+    return pd.DataFrame(data=np.array(result).T, columns=df.columns)
 
 
 def sample_data_uniformly(data_frame, sampling_rate, mode="cubic"):
@@ -76,19 +83,19 @@ def sample_data_uniformly(data_frame, sampling_rate, mode="cubic"):
     return pd.DataFrame(data=np.array(uniform_sampled_data).T, columns=data_frame.columns)
 
 
-def fill_missing_data(data: pd.DataFrame, sampling_frequency: int, method: str = "quadratic", log: bool = False):
+def fill_missing_data(df: pd.DataFrame, sampling_frequency: int, method: str = "quadratic", log: bool = False):
     """
     Identifies missing data points ina given data frame and fills it using interpolation
-    @param data: the dataframe
+    @param df: the dataframe
     @param sampling_frequency: the current sampling frequency
     @param method: interpolation methods, such as quadratic
     @param log: flag if missing points should be printed
     @return: data frame with filled gaps
     """
-    _, cols = data.shape
-    data_body = data.to_numpy()
+    _, cols = df.shape
+    data_body = df.to_numpy()
     delta = 1 / sampling_frequency
-    diffs = np.diff(data["timestamp"]) / delta
+    diffs = np.diff(df["timestamp"]) / delta
     diffs = (np.round(diffs) - 1).astype(np.uint32)
     if log:
         print(f'Number of missing data points: {np.sum(diffs)}')
@@ -103,5 +110,4 @@ def fill_missing_data(data: pd.DataFrame, sampling_frequency: int, method: str =
 
         inc += missing_frames
 
-    data = pd.DataFrame(data_body, columns=data.columns).interpolate(method=method)
-    return data
+    return pd.DataFrame(data_body, columns=df.columns).interpolate(method=method)

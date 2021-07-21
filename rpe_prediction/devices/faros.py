@@ -1,4 +1,4 @@
-from rpe_prediction.processing import apply_butterworth_filter, normalize_signal, sample_data_uniformly, find_closest_timestamp
+from rpe_prediction.processing import butterworth_filter_1d, normalize_signal, sample_data_uniformly, find_closest_timestamp
 from .sensor_base import SensorBase
 from pyedflib import highlevel
 from biosppy.signals import ecg
@@ -74,7 +74,7 @@ class Faros(SensorBase):
         return self._data['acc (x)'].to_numpy()
 
     def get_synchronization_data(self):
-        raw_signal = apply_butterworth_filter(self.get_synchronization_signal())
+        raw_signal = butterworth_filter_1d(self.get_synchronization_signal())
         raw_signal = normalize_signal(raw_signal)
         processed_signal = -raw_signal  # Inversion of coordinate system
         return self.timestamps, raw_signal, processed_signal

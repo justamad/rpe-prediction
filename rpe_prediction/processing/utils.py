@@ -28,17 +28,6 @@ def calculate_and_append_magnitude(df, column_prefix="ACCELERATION"):
     return df
 
 
-def calculate_gradient(df):
-    """
-    Calculate the first gradient using central differences in given data frame
-    :param df: origin data frame that contains time series data
-    :return: data frame that contains gradients
-    """
-    data = df.to_numpy()
-    grad = np.gradient(data, axis=0)
-    return pd.DataFrame(grad, columns=df.columns)
-
-
 def calculate_second_gradient(df):
     """
     Calculate a second gradient using central differences for data in given data frame

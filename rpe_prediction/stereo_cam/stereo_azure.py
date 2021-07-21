@@ -1,3 +1,4 @@
+from rpe_prediction.processing import calculate_gradients, butterworth_filter
 from rpe_prediction.devices import AzureKinect
 from .icp import find_rigid_transformation_svd
 
@@ -8,7 +9,13 @@ import pandas as pd
 
 class StereoAzure(object):
 
-    def __init__(self, master_path, sub_path, delay=0.001):
+    def __init__(self, master_path, sub_path, delay: float = 0.001):
+        """
+        Constructor for Azure Kinect stereo camera
+        @param master_path:
+        @param sub_path:
+        @param delay:
+        """
         # Read in master device
         self.master = AzureKinect(master_path)
         self.master.process_raw_data()
@@ -22,7 +29,7 @@ class StereoAzure(object):
 
     def synchronize_temporal(self):
         """
-        Synchronize the two camera stream temporally
+        Synchronize the two camera streams temporally
         @return: None
         """
         # Synchronize master and sub devices
@@ -67,7 +74,49 @@ class StereoAzure(object):
 
         self.master.multiply_matrix(rotation, translation)
 
-    def fuse_cameras(self, alpha, window_size=5, show=False, pp=None):
+    def fuse_cameras(self, filter_size=11, gradient_filter=7, show=False, pp=None):
+        """
+        Fusing both Kinect data frames into a single one using a moving-average filter
+        @param filter_size:
+        @param gradient_filter:
+        @param show:
+        @param pp:
+        @return:
+        """
+        df_sub = self.sub_position.reset_index(drop=True)
+        df_master = self.mas_position.reset_index(drop=True)
+
+        sub_avg = df_sub.rolling(window=filter_size, win_type=None, center=True, min_periods=1).mean()
+        sub_g = calculate_gradients(df_sub).abs()
+        sub_gm = sub_g.rolling(window=gradient_filter, center=True, win_type='hamming', min_periods=1).mean()
+
+        mas_avg = df_master.rolling(window=filter_size, center=True, win_type=None, min_periods=1).mean()
+        mas_g = calculate_gradients(df_master).abs()
+        mas_gm = mas_g.rolling(window=gradient_filter, center=True, win_type='hamming', min_periods=1).mean()
+
+        weighted = sub_gm / (sub_gm + mas_gm)
+        average = weighted * mas_avg + (1 - weighted) * sub_avg
+        average_f = butterworth_filter(average, fc=6, fs=30, order=4)
+
+        if show:
+            for joint in average_f.columns:
+                plt.close()
+                plt.figure()
+                plt.clf()
+                plt.plot(df_sub[joint], color="red", label="Left Sensor")
+                plt.plot(df_master[joint], color="blue", label="Right Sensor")
+                plt.plot(average[joint], color='green', label="Average A+B")
+                plt.plot(average_f[joint], color='orange', label="Butterworth (A+B)")
+                plt.legend()
+                plt.xlabel("Frames (30Hz)")
+                plt.ylabel("Distance (mm)")
+                plt.title(f"{joint.title().replace('_', ' ')}")
+                plt.tight_layout()
+                pp.savefig()
+
+        return average_f.set_index(self.sub_position.index)
+
+    def fuse_cameras_old(self, alpha, window_size=5, show=False, pp=None):
         """
         Calculate the fusion of sub and master cameras. Data should be calibrated as good as possible
         @param alpha: coefficient for dominant skeleton side

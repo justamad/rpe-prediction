@@ -91,8 +91,7 @@ def fuse_kinect_data(iterator, pdf_file, show=False):
         azure.cut_skeleton_data(repetitions[0][0], repetitions[-1][1])
         azure.calculate_affine_transform_based_on_data(show=show)
         print(f"Agreement internal: {azure.check_agreement_of_both_cameras(show=show)}")
-        avg_df = azure.fuse_cameras(alpha=0.1, window_size=5, show=True, pp=pp)
-        # path=join(log_path, f"{set_data['nr_set']}_fusion.png")
+        avg_df = azure.fuse_cameras(show=True, pp=pp)
 
         # Save individual repetitions
         for count, (r1, r2) in enumerate(repetitions):
@@ -149,5 +148,5 @@ if __name__ == '__main__':
     file_iterator = SubjectDataIterator(args.src_path).add_loader(StereoAzureLoader).add_loader(RPELoader)
     # fuse_kinect_data(file_iterator.iterate_over_all_subjects(), show=args.show_plots)
     # fuse_kinect_data(file_iterator.iterate_over_specific_subjects("C47EFC", "339F94", "857F1E"), "output.pdf", show=args.show_plots)
-    fuse_kinect_data(file_iterator.iterate_over_specific_subjects("C47EFC", "339F94"), "output.pdf", show=args.show_plots)
+    fuse_kinect_data(file_iterator.iterate_over_specific_subjects("C47EFC", "339F94"), "raw_output.pdf", show=args.show_plots)
     # plot_repetition_data(args.log_path, 'report.pdf')

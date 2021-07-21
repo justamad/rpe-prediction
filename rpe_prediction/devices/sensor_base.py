@@ -1,4 +1,4 @@
-from rpe_prediction.processing import apply_butterworth_df, sample_data_uniformly
+from rpe_prediction.processing import butterworth_filter, sample_data_uniformly
 
 import pandas as pd
 
@@ -22,7 +22,7 @@ class SensorBase(object):
         @param fc: the cut-off frequency used in Butterworth filter
         """
         data = self._data[[c for c in self._data.columns if c != 'timestamp']].copy()
-        data = apply_butterworth_df(data, self._sampling_frequency, order, fc)
+        data = butterworth_filter(data, self._sampling_frequency, order, fc)
         self._data.update(data)
         self._data = self._data.iloc[10:-10]  # Cut off the edge effects of filtering
 
