@@ -45,7 +45,7 @@ def plot_repetition_data(output_path, file_name):
 
         fig = plt.figure()
         for df, rpe in files:
-            plt.plot(-df['ankle_left (y)'], color=get_hsv_color_interpolation(rpe, 20))
+            plt.plot(-df['pelvis (y)'], color=get_hsv_color_interpolation(rpe, 20))
 
         plt.title(subject)
         plt.xlabel("Frames [1/30s]")
@@ -92,6 +92,7 @@ def fuse_kinect_data(iterator, pdf_file, show=False):
         azure.calculate_affine_transform_based_on_data(show=show)
         print(f"Agreement internal: {azure.check_agreement_of_both_cameras(show=show)}")
         avg_df = azure.fuse_cameras(show=True, pp=pp)
+        avg_df.to_csv(f"{os.path.join(dst_path, str(set_data['nr_set']))}_azure.csv", sep=';', index=True)
 
         # Save individual repetitions
         for count, (r1, r2) in enumerate(repetitions):
@@ -110,7 +111,6 @@ def fuse_kinect_data(iterator, pdf_file, show=False):
         # Add data for bookmarks
         for joint in avg_df.columns:
             bookmarks.append((set_data['subject_name'], set_data['nr_set'], joint))
-        # avg_df.to_csv(f"{os.path.join(cur_path, str(set_data['nr_set']))}_azure.csv", sep=';', index=True)
 
     # Write the final PDF file
     pp.close()
@@ -146,7 +146,6 @@ if __name__ == '__main__':
     matplotlib.use("TkAgg")
 
     file_iterator = SubjectDataIterator(args.src_path).add_loader(StereoAzureLoader).add_loader(RPELoader)
-    # fuse_kinect_data(file_iterator.iterate_over_all_subjects(), show=args.show_plots)
-    # fuse_kinect_data(file_iterator.iterate_over_specific_subjects("C47EFC", "339F94", "857F1E"), "output.pdf", show=args.show_plots)
-    fuse_kinect_data(file_iterator.iterate_over_specific_subjects("C47EFC", "339F94"), "raw_output.pdf", show=args.show_plots)
+    iterator = file_iterator.iterate_over_specific_subjects("C47EFC")
+    fuse_kinect_data(iterator, pdf_file='raw_output.pdf', show=False)
     # plot_repetition_data(args.log_path, 'report.pdf')
