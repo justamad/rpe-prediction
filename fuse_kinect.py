@@ -1,8 +1,8 @@
 from rpe_prediction.config import SubjectDataIterator, StereoAzureLoader, RPELoader
 from rpe_prediction.processing import segment_1d_joint_on_example, get_hsv_color_interpolation
 from rpe_prediction.stereo_cam import StereoAzure
+from rpe_prediction.plot import PDFWriter
 from matplotlib.backends.backend_pdf import PdfPages
-from PyPDF2 import PdfFileWriter, PdfFileReader
 from os.path import join, isdir
 
 import matplotlib.pyplot as plt
@@ -10,7 +10,6 @@ import pandas as pd
 import numpy as np
 import argparse
 import os
-import io
 
 plt.rcParams["figure.figsize"] = (20, 10)
 plt.rcParams["font.family"] = 'Times New Roman'
@@ -65,10 +64,7 @@ def fuse_kinect_data(iterator, pdf_file, show=False):
     @param pdf_file: output name of current pdf file
     @param show: A flag whether to show the plots or not
     """
-    pdf_buffer = io.BytesIO()
-    pp = PdfPages(pdf_buffer)
-
-    bookmarks = []
+    pdf_writer = PDFWriter(pdf_file)
 
     for set_data in iterator:
         # Create output folder to save averaged skeleton
@@ -91,7 +87,7 @@ def fuse_kinect_data(iterator, pdf_file, show=False):
         azure.cut_skeleton_data(repetitions[0][0], repetitions[-1][1])
         azure.calculate_affine_transform_based_on_data(show=show)
         print(f"Agreement internal {sub_path}: {azure.check_agreement_of_both_cameras(show=show)}")
-        avg_df = azure.fuse_cameras(show=True, pp=pp)
+        avg_df = azure.fuse_cameras(show=True, pp=pdf_writer)
         avg_df.to_csv(f"{os.path.join(dst_path, str(set_data['nr_set']))}_azure.csv", sep=';', index=True)
 
         # Save individual repetitions
@@ -108,36 +104,9 @@ def fuse_kinect_data(iterator, pdf_file, show=False):
         if not os.path.exists(dst_path):
             os.makedirs(dst_path)
 
-        # Add data for bookmarks
-        for joint in avg_df.columns:
-            bookmarks.append((set_data['subject_name'], set_data['nr_set'], joint))
+        pdf_writer.add_booklet(set_data['subject_name'], set_data['nr_set'], avg_df)
 
-    # Write the final PDF file
-    pp.close()
-    output_file = PdfFileWriter()
-    input_file = PdfFileReader(pdf_buffer)
-
-    bookmark_cache = {}
-    for nr_page in range(input_file.getNumPages()):
-        output_file.addPage(input_file.getPage(nr_page))
-
-        # Determine the parent bookmark
-        subject_name, nr_set, joint = bookmarks[nr_page]
-        if subject_name not in bookmark_cache:
-            bookmark_cache[subject_name] = output_file.addBookmark(subject_name, nr_page, parent=None)
-        subject_bookmark = bookmark_cache[subject_name]
-
-        # Determine set bookmark
-        key = subject_name + str(nr_set)
-        if key not in bookmark_cache:
-            bookmark_cache[key] = output_file.addBookmark(f"Set {nr_set}", nr_page, parent=subject_bookmark)
-        set_bookmark = bookmark_cache[key]
-
-        output_file.addBookmark(joint, nr_page, parent=set_bookmark)
-
-    output_stream = open(pdf_file, 'wb')
-    output_file.write(output_stream)
-    output_stream.close()
+    pdf_writer.close_file()
 
 
 if __name__ == '__main__':
@@ -147,5 +116,5 @@ if __name__ == '__main__':
 
     file_iterator = SubjectDataIterator(args.src_path).add_loader(StereoAzureLoader).add_loader(RPELoader)
     iterator = file_iterator.iterate_over_specific_subjects("C47EFC")
-    fuse_kinect_data(file_iterator.iterate_over_all_subjects(), pdf_file='raw_output.pdf', show=False)
+    fuse_kinect_data(iterator, pdf_file='raw_output.pdf', show=False)
     # plot_repetition_data(args.log_path, 'report.pdf')
