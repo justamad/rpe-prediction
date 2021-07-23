@@ -51,7 +51,7 @@ class SubjectDataIterator(object):
     def iterate_over_all_subjects(self):
         """
         Method returns an iterator over all sets of the entire loaded datasets
-        @return: iterator that yields an data dictionary
+        @return: iterator that yields a data dictionary
         """
         subject_data_loaders = self.load_data_collectors()
         logging.info(f"Found {len(subject_data_loaders)} subject folders.")

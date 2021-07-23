@@ -90,7 +90,7 @@ def fuse_kinect_data(iterator, pdf_file, show=False):
         # Cut Kinect data
         azure.cut_skeleton_data(repetitions[0][0], repetitions[-1][1])
         azure.calculate_affine_transform_based_on_data(show=show)
-        print(f"Agreement internal: {azure.check_agreement_of_both_cameras(show=show)}")
+        print(f"Agreement internal {sub_path}: {azure.check_agreement_of_both_cameras(show=show)}")
         avg_df = azure.fuse_cameras(show=True, pp=pp)
         avg_df.to_csv(f"{os.path.join(dst_path, str(set_data['nr_set']))}_azure.csv", sep=';', index=True)
 
@@ -135,9 +135,9 @@ def fuse_kinect_data(iterator, pdf_file, show=False):
 
         output_file.addBookmark(joint, nr_page, parent=set_bookmark)
 
-    outputStream = open(pdf_file, 'wb')
-    output_file.write(outputStream)
-    outputStream.close()
+    output_stream = open(pdf_file, 'wb')
+    output_file.write(output_stream)
+    output_stream.close()
 
 
 if __name__ == '__main__':
@@ -147,5 +147,5 @@ if __name__ == '__main__':
 
     file_iterator = SubjectDataIterator(args.src_path).add_loader(StereoAzureLoader).add_loader(RPELoader)
     iterator = file_iterator.iterate_over_specific_subjects("C47EFC")
-    fuse_kinect_data(iterator, pdf_file='raw_output.pdf', show=False)
+    fuse_kinect_data(file_iterator.iterate_over_all_subjects(), pdf_file='raw_output.pdf', show=False)
     # plot_repetition_data(args.log_path, 'report.pdf')

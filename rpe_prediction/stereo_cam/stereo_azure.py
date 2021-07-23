@@ -91,20 +91,20 @@ class StereoAzure(object):
         average_f4 = butterworth_filter(average_var, fc=4, fs=30, order=4)
 
         if show:
+            plt.close()
+            plt.figure()
+            plt.xlabel("Frames (30Hz)")
+            plt.ylabel("Distance (mm)")
+
             for joint in df_sub.columns:
-                plt.close()
-                plt.figure()
-                plt.clf()
                 plt.plot(df_sub[joint], color="red", label="Left Sensor")
                 plt.plot(df_master[joint], color="blue", label="Right Sensor")
-                # plt.plot(average_var[joint], label="Average Var")
                 plt.plot(average_f4[joint], label="Butterworth 4 Hz")
-                plt.legend()
-                plt.xlabel("Frames (30Hz)")
-                plt.ylabel("Distance (mm)")
                 plt.title(f"{joint.title().replace('_', ' ')}")
+                plt.legend()
                 plt.tight_layout()
                 pp.savefig()
+                plt.clf()
 
         return average_f4.set_index(self.sub_position.index)
 
