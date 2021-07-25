@@ -103,7 +103,6 @@ class StereoAzure(object):
                 plt.title(f"{joint.title().replace('_', ' ')}")
                 plt.legend()
                 plt.tight_layout()
-                # pp.savefig()
                 pp.save_figure()
                 plt.clf()
 

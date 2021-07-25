@@ -2,7 +2,6 @@ from rpe_prediction.config import SubjectDataIterator, StereoAzureLoader, RPELoa
 from rpe_prediction.processing import segment_1d_joint_on_example, get_hsv_color_interpolation
 from rpe_prediction.stereo_cam import StereoAzure
 from rpe_prediction.plot import PDFWriter
-from matplotlib.backends.backend_pdf import PdfPages
 from os.path import join, isdir
 
 import matplotlib.pyplot as plt
@@ -33,28 +32,33 @@ def plot_repetition_data(output_path, file_name):
     :param file_name:
     :return:
     """
+    pdf_render = PDFWriter(file_name)
     subjects = list(filter(lambda x: isdir(x), map(lambda x: join(args.log_path, x), os.listdir(args.log_path))))
-    figures = []
-
+    print(subjects)
     for subject in subjects:
         sub_path = join(subject, "csv")
         files = list(filter(lambda f: f.endswith('.csv'), os.listdir(sub_path)))
         files = list(map(lambda x: join(sub_path, x), files))
         files = list(map(lambda f: (pd.read_csv(f, sep=';', index_col=False), int(f.split('_')[2][:2])), files))
 
-        fig = plt.figure()
-        for df, rpe in files:
-            plt.plot(-df['pelvis (y)'], color=get_hsv_color_interpolation(rpe, 20))
-
-        plt.title(subject)
+        subject_name = str(subject.split("/")[-1])
+        plt.close()
+        plt.figure()
         plt.xlabel("Frames [1/30s]")
         plt.ylabel("Distance [mm]")
-        figures.append(fig)
+        cols = files[0][0].columns
+        for col in cols:
+            for df, rpe in files:
+                plt.plot(df[col], color=get_hsv_color_interpolation(rpe, 20))
 
-    pp = PdfPages(file_name)
-    for fig in figures:
-        pp.savefig(fig)
-    pp.close()
+            plt.title(f"{subject_name}_{col}")
+            plt.tight_layout()
+            pdf_render.save_figure()
+            plt.clf()
+
+        pdf_render.add_booklet(subject_name, 0, cols)
+
+    pdf_render.close_file()
 
 
 def fuse_kinect_data(iterator, pdf_file, show=False):
@@ -104,7 +108,7 @@ def fuse_kinect_data(iterator, pdf_file, show=False):
         if not os.path.exists(dst_path):
             os.makedirs(dst_path)
 
-        pdf_writer.add_booklet(set_data['subject_name'], set_data['nr_set'], avg_df)
+        pdf_writer.add_booklet(set_data['subject_name'], set_data['nr_set'], avg_df.columns)
 
     pdf_writer.close_file()
 
@@ -112,9 +116,10 @@ def fuse_kinect_data(iterator, pdf_file, show=False):
 if __name__ == '__main__':
     # if args.show_plots:  # Quick fix for running script on server
     import matplotlib
+
     matplotlib.use("TkAgg")
 
     file_iterator = SubjectDataIterator(args.src_path).add_loader(StereoAzureLoader).add_loader(RPELoader)
-    iterator = file_iterator.iterate_over_specific_subjects("C47EFC")
-    fuse_kinect_data(iterator, pdf_file='raw_output.pdf', show=False)
-    # plot_repetition_data(args.log_path, 'report.pdf')
+    # iterator = file_iterator.iterate_over_specific_subjects("C47EFC")
+    # fuse_kinect_data(iterator, pdf_file='raw_output.pdf', show=False)
+    plot_repetition_data(args.log_path, 'report.pdf')

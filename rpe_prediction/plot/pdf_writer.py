@@ -16,7 +16,7 @@ class PDFWriter(object):
     def save_figure(self):
         self.__pp.savefig()
 
-    def add_booklet(self, subject_name: str, set_nr: str, joints: pd.DataFrame):
+    def add_booklet(self, subject_name: str, set_nr: int, joints: list):
         """
         Add the current data
         @param subject_name:
@@ -24,7 +24,7 @@ class PDFWriter(object):
         @param joints:
         @return: None
         """
-        for joint in joints.columns:
+        for joint in joints:
             self.__bookmarks.append((subject_name, set_nr, joint))
 
     def close_file(self):
@@ -32,7 +32,6 @@ class PDFWriter(object):
         Close the current stream and write PDF to file
         @return: None
         """
-        # Write the final PDF file
         self.__pp.close()
         output_file = PdfFileWriter()
         input_file = PdfFileReader(self.__pdf_buffer)
