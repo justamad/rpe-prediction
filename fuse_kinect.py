@@ -1,5 +1,5 @@
 from rpe_prediction.config import SubjectDataIterator, StereoAzureLoader, RPELoader, FusedAzureLoader
-from rpe_prediction.processing import segment_1d_joint_on_example, get_hsv_color_interpolation, compute_statistics_for_subjects
+from rpe_prediction.processing import segment_1d_joint_on_example, compute_statistics_for_subjects
 from rpe_prediction.stereo_cam import StereoAzure
 from rpe_prediction.plot import PDFWriter
 from os.path import join, isdir
@@ -33,6 +33,7 @@ def fuse_kinect_data(pdf_file):
     """
     pdf_writer = PDFWriter(pdf_file)
     file_iterator = SubjectDataIterator(args.src_path).add_loader(StereoAzureLoader).add_loader(RPELoader)
+    sum_repetitions = 0
 
     for set_data in file_iterator.iterate_over_specific_subjects("4AD6F3"):
         # Create output folder to save averaged skeleton
@@ -50,6 +51,7 @@ def fuse_kinect_data(pdf_file):
         repetitions = segment_1d_joint_on_example(joint_data=azure.sub_position['pelvis (y)'],
                                                   exemplar=example, std_dev_percentage=0.5,
                                                   show=False)
+        sum_repetitions += len(repetitions)
 
         # Cut Kinect data before first and right after last repetition
         azure.cut_skeleton_data(repetitions[0][0], repetitions[-1][1])
@@ -75,6 +77,7 @@ def fuse_kinect_data(pdf_file):
         pdf_writer.add_booklet(set_data['subject_name'], set_data['nr_set'], avg_df.columns)
 
     pdf_writer.close_file()
+    print(f'Found in total {sum_repetitions} repetitions.')
 
 
 def plot_repetition_data(pdf_file):
@@ -88,9 +91,9 @@ def plot_repetition_data(pdf_file):
     file_iterator = SubjectDataIterator(args.dst_path).add_loader(FusedAzureLoader)
     means, std = compute_statistics_for_subjects(file_iterator.iterate_over_all_subjects())
 
+    # Utils for colorbar
     cmap = plt.cm.get_cmap("jet")
     norm = matplotlib.colors.Normalize(vmin=10, vmax=20)
-
     sm = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
     sm.set_array([])
 
@@ -165,6 +168,6 @@ if __name__ == '__main__':
     import matplotlib
     matplotlib.use("TkAgg")
 
-    # fuse_kinect_data(pdf_file='raw_output.pdf')
-    # normalize_data_plot("normalized.pdf")
-    plot_repetition_data('report.pdf')
+    fuse_kinect_data(pdf_file='raw_fusion.pdf')
+    normalize_data_plot(pdf_file="fusion_norm.pdf")
+    plot_repetition_data(pdf_file='fusion_segmented.pdf')
