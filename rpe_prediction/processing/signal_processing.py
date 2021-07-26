@@ -13,13 +13,6 @@ def upsample_data(data, old_sampling_rate, new_sampling_rate, mode='cubic'):
     return f(xx)
 
 
-def calculate_gradients(df: pd.DataFrame):
-    result = []
-    for column in range(df.shape[1]):
-        result.append(np.gradient(df.iloc[:, column]))
-    return pd.DataFrame(np.array(result).T, columns=df.columns)
-
-
 def butter_bandpass(fc, fs, order=5):
     w = fc / fs / 2
     sos = butter(order, w, btype='lowpass', analog=False, output='sos')

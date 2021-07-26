@@ -1,10 +1,9 @@
-from rpe_prediction.processing import calculate_gradients, butterworth_filter
+from rpe_prediction.processing import butterworth_filter
 from rpe_prediction.devices import AzureKinect
 from .icp import find_rigid_transformation_svd
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 
 
 class StereoAzure(object):
@@ -108,64 +107,6 @@ class StereoAzure(object):
 
         return average_f4.set_index(self.sub_position.index)
 
-    def fuse_cameras_old(self, alpha, window_size=5, show=False, pp=None):
-        """
-        Calculate the fusion of sub and master cameras. Data should be calibrated as good as possible
-        @param alpha: coefficient for dominant skeleton side
-        @param window_size: a window size of gradient averages
-        @param show: Flag whether results should be plotted
-        @param pp: PDF file saver instance
-        @return: Fused skeleton data in a pandas array
-        """
-        df_sub = self.sub_position.reset_index(drop=True)
-        df_master = self.mas_position.reset_index(drop=True)
-
-        grad_a = pd.DataFrame(np.square(np.gradient(df_sub.to_numpy(), axis=0)), columns=df_sub.columns)
-        grad_b = pd.DataFrame(np.square(np.gradient(df_master.to_numpy(), axis=0)), columns=df_master.columns)
-        grad_a = grad_a.rolling(window=window_size, min_periods=1, center=True).mean()
-        grad_b = grad_b.rolling(window=window_size, min_periods=1, center=True).mean()
-        weights_sub, weights_master = self.calculate_percentage(grad_a, grad_b)
-
-        alpha_weights_sub = pd.DataFrame(np.zeros(df_sub.shape), columns=df_sub.columns)
-        alpha_weights_sub[alpha_weights_sub.filter(like='left').columns] += alpha
-        alpha_weights_sub[alpha_weights_sub.filter(like='right').columns] -= alpha
-
-        alpha_weights_master = pd.DataFrame(np.zeros(df_sub.shape), columns=df_sub.columns)
-        alpha_weights_master[alpha_weights_master.filter(like='right').columns] += alpha
-        alpha_weights_master[alpha_weights_master.filter(like='left').columns] -= alpha
-
-        weight_sub_nd = (1 - weights_sub + alpha_weights_sub)
-        weight_sub_nd[weight_sub_nd > 1] = 1
-        weight_sub_nd[weight_sub_nd < 0] = 0
-
-        weight_master_nd = (1 - weights_master + alpha_weights_master)
-        weight_master_nd[weight_master_nd > 1] = 1
-        weight_master_nd[weight_master_nd < 0] = 0
-
-        weight_sub = pd.DataFrame(weight_sub_nd, columns=df_sub.columns)
-        weight_master = pd.DataFrame(weight_master_nd, columns=df_master.columns)
-        fused_skeleton = weight_sub * df_sub + weight_master * df_master
-        moving_average = (df_sub + df_master) / 2  # Regular moving average for comparison
-
-        if show:
-            for joint in fused_skeleton.columns:
-                plt.close()
-                plt.figure()
-                plt.clf()
-                plt.plot(df_sub[joint], label="Left Camera")
-                plt.plot(df_master[joint], label="Right Camera")
-                plt.plot(fused_skeleton[joint], label="Fusion Approach")
-                plt.plot(moving_average[joint], label="Moving Average")
-                plt.legend()
-                plt.xlabel("Frames (30Hz)")
-                plt.ylabel("Distance (mm)")
-                plt.title(f"{joint.title().replace('_', ' ')}")
-                plt.tight_layout()
-                pp.savefig()
-
-        fused_skeleton = fused_skeleton.set_index(self.sub_position.index)
-        return fused_skeleton
-
     def check_agreement_of_both_cameras(self, show):
         """
         Calculate the agreement between sub and master camera
@@ -178,16 +119,6 @@ class StereoAzure(object):
             differences.plot.bar(x="joints", y="error", rot=90)
 
         return differences.mean()
-
-    @staticmethod
-    def calculate_percentage(grad_a, grad_b):
-        rows, cols = grad_a.shape
-        gradient_stack = np.stack([grad_a, grad_b], axis=2)
-        sums = np.sum(gradient_stack, axis=2).reshape((rows, cols, 1))
-        weights = gradient_stack / sums
-        weights_a = pd.DataFrame(weights[:, :, 0], columns=grad_a.columns)
-        weights_b = pd.DataFrame(weights[:, :, 1], columns=grad_b.columns)
-        return weights_a, weights_b
 
     def cut_skeleton_data(self, start_index: int, end_index: int):
         """
