@@ -15,17 +15,6 @@ class SensorBase(object):
         self._data = data
         self._sampling_frequency = sampling_frequency
 
-    def filter_data(self, order: int = 4, fc: int = 6):
-        """
-        Apply a butterworth filter to the data frame
-        @param order: the order of the Butterworth filter
-        @param fc: the cut-off frequency used in Butterworth filter
-        """
-        data = self._data[[c for c in self._data.columns if c != 'timestamp']].copy()
-        data = butterworth_filter(data, self._sampling_frequency, order, fc)
-        self._data.update(data)
-        self._data = self._data.iloc[10:-10]  # Cut off the edge effects of filtering
-
     def resample_data(self, sampling_frequency):
         self._data = sample_data_uniformly(self._data, sampling_rate=sampling_frequency)
         self._sampling_frequency = sampling_frequency
@@ -59,10 +48,6 @@ class SensorBase(object):
         :param end: end label index
         """
         self._data = self._data.loc[start:end]
-
-    @property
-    def timestamps(self):
-        return self._data.index.to_numpy()
 
     @property
     def sampling_frequency(self):

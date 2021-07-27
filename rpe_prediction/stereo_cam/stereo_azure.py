@@ -15,13 +15,9 @@ class StereoAzure(object):
         @param sub_path:
         @param delay:
         """
-        # Read in master device
+        # Read in master and subordinate devices
         self.master = AzureKinect(master_path)
-        self.master.process_raw_data()
-
-        # Read in sub device
         self.sub = AzureKinect(sub_path)
-        self.sub.process_raw_data()
 
         self.delay = delay
         self.synchronize_temporal()

@@ -8,7 +8,7 @@ import json
 import os
 
 
-excluded_joints = ["eye", "ear", "nose", "handtip", "thumb", "clavicle"]
+excluded_joints = ["EYE", "EAR", "NOSE", "HANDTIP", "THUMB", "CLAVICLE"]
 
 
 class AzureKinect(SensorBase):
@@ -19,40 +19,33 @@ class AzureKinect(SensorBase):
         @param data_path: path where the csv file resides in
         """
         position_file = join(data_path, "positions_3d.csv")
-        orientation_file = join(data_path, "orientations_3d.csv")
-
-        if not os.path.exists(position_file) or not os.path.exists(orientation_file):
+        if not os.path.exists(position_file):
             raise FileNotFoundError(f"File {position_file} does not exist.")
 
-        # Read in csv files for position and orientation
-        pos_data = pd.read_csv(position_file, delimiter=';')
-        ori_data = pd.read_csv(orientation_file, delimiter=';')
+        df = pd.read_csv(position_file, delimiter=';')
+        df.set_index('timestamp', drop=True, inplace=True)
 
-        # Remove all other bodies found in the images
-        body_idx_counts = pos_data['body_idx'].value_counts()
-        most_often_body_idx = body_idx_counts.index[body_idx_counts.argmax()]
-        pos_data = pos_data[pos_data['body_idx'] == most_often_body_idx]
-        ori_data = ori_data[ori_data['body_idx'] == most_often_body_idx]
+        # Remove body idx
+        body_idx_c = df['body_idx'].value_counts()
+        df = df[df['body_idx'] == body_idx_c.index[body_idx_c.argmax()]]
+        df = df.drop('body_idx', axis=1)
 
-        # Remove unnecessary data from data frames
-        pos_data = pos_data[[c for c in pos_data.columns if "(c)" not in c and "body_idx" not in c]].copy()
-        new_names = [(i, i.lower() + " pos") for i in pos_data.iloc[:, 1:].columns.values]
-        pos_data.rename(columns=dict(new_names), inplace=True)
+        # Exclude unnecessary joints
+        df = filter_dataframe(df, excluded_joints)
 
-        ori_data = ori_data[[c for c in ori_data.columns if "body_idx" not in c and "timestamp" not in c]].copy()
-        new_names = [(i, i.lower() + " ori") for i in ori_data.columns.values]
-        ori_data.rename(columns=dict(new_names), inplace=True)
-        data = pd.concat([pos_data, ori_data], axis=1)
+        # Count confidence values
+        conf = df.filter(like='(c)')
+        conf_c = conf.apply(conf.value_counts)
 
-        super().__init__(data, 30)
+        # Remove confidence values that are lower than 2
+        mask = conf >= 2
+        df = df[[c for c in df.columns if "(c)" not in c]]
+        l_mask = pd.DataFrame(np.repeat(mask.to_numpy(), 3, axis=1), columns=df.columns, index=df.index)
+        df = df.where(l_mask, np.NAN)
 
-    def process_raw_data(self, log=False):
-        """
-        Processing the raw data
-        This consists of timestamps and filling missing data
-        """
-        self._data.loc[:, self._data.columns == 'timestamp'] *= 1e-6
-        self._data = fill_missing_data(self._data, self.sampling_frequency, log=log)
+        df.index *= 1e-6  # Convert microseconds to seconds
+        df = fill_missing_data(df, 30, log=True, method='linear')
+        super().__init__(df, 30)
 
     def multiply_matrix(self, matrix, translation=np.array([0, 0, 0])):
         """
@@ -124,13 +117,6 @@ class AzureKinect(SensorBase):
         @return: None
         """
         self._data.index = timestamps
-
-    @property
-    def position_data(self):
-        data = self._data.filter(regex='pos').copy()
-        new_names = [(i, i.replace(' pos', '')) for i in data.columns.values]
-        data.rename(columns=dict(new_names), inplace=True)
-        return data
 
     def __repr__(self):
         """

@@ -79,28 +79,26 @@ def sample_data_uniformly(data_frame, sampling_rate, mode="cubic"):
 def fill_missing_data(df: pd.DataFrame, sampling_frequency: int, method: str = "quadratic", log: bool = False):
     """
     Identifies missing data points ina given data frame and fills it using interpolation
-    @param df: the dataframe
+    @param df: dataframe that holds measurements and index with timestamps in seconds
     @param sampling_frequency: the current sampling frequency
     @param method: interpolation methods, such as quadratic
     @param log: flag if missing points should be printed
     @return: data frame with filled gaps
     """
     _, cols = df.shape
-    data_body = df.to_numpy()
     delta = 1 / sampling_frequency
-    diffs = np.diff(df["timestamp"]) / delta
+    diffs = np.diff(df.index) / delta
     diffs = (np.round(diffs) - 1).astype(np.uint32)
     if log:
         print(f'Number of missing data points: {np.sum(diffs)}')
 
-    inc = 0
+    df.reset_index(drop=False, inplace=True)
+    df_new = pd.DataFrame(columns=df.columns)
     for idx, missing_frames in enumerate(diffs):
-        if missing_frames <= 0:
-            continue
+        df_new = df_new.append(df.iloc[idx])
 
-        for j in range(missing_frames):
-            data_body = np.insert(data_body, idx + inc + j + 1, np.full(cols, np.nan), axis=0)
+        for _ in range(missing_frames):
+            df_new = df_new.append(pd.Series(), ignore_index=True)
 
-        inc += missing_frames
-
-    return pd.DataFrame(data_body, columns=df.columns).interpolate(method=method)
+    df_new = df_new.interpolate(method=method)
+    return df_new.set_index('timestamp', drop=True)
