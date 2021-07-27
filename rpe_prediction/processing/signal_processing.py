@@ -53,6 +53,7 @@ def butterworth_filter(df: pd.DataFrame, fc, fs, order=4):
 
 def sample_data_uniformly(data_frame, sampling_rate, mode="cubic"):
     """
+    TODO: Optimize this method using pandas idiom
     Applies a uniform sampling to given data frame
     :param data_frame: data frame consisting the data
     :param sampling_rate: desired sampling frequency in frames per seconds (or Hz)
@@ -85,9 +86,7 @@ def fill_missing_data(df: pd.DataFrame, sampling_frequency: int, method: str = "
     @param log: flag if missing points should be printed
     @return: data frame with filled gaps
     """
-    _, cols = df.shape
-    delta = 1 / sampling_frequency
-    diffs = np.diff(df.index) / delta
+    diffs = np.diff(df.index) / (1 / sampling_frequency)
     diffs = (np.round(diffs) - 1).astype(np.uint32)
     if log:
         print(f'Number of missing data points: {np.sum(diffs)}')

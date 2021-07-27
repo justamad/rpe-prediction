@@ -27,7 +27,7 @@ def segment_1d_joint_on_example(joint_data: pd.Series, exemplar: np.array, std_d
 
     # Check conditions for new candidates
     for p1, p2 in zip(peaks, peaks[1:]):
-        observation = joint_data[p1:p2]
+        observation = joint_data.iloc[p1:p2]
 
         if np.std(observation) < exemplar_std_threshold:
             continue
@@ -50,7 +50,7 @@ def segment_1d_joint_on_example(joint_data: pd.Series, exemplar: np.array, std_d
         ax1.plot(exemplar, label="Exemplar")
 
         # Second plot - peaks
-        ax2.plot(joint_data, label="Position data")
+        ax2.plot(joint_data.to_numpy(), label="Position data")
         ax2.scatter(peaks, joint_data.to_numpy()[peaks])
 
         # Third plot - candidates
@@ -63,15 +63,10 @@ def segment_1d_joint_on_example(joint_data: pd.Series, exemplar: np.array, std_d
         for counter, (t1, t2) in enumerate(final_segments):
             ax4.plot(joint_data.loc[t1:t2], color=get_hsv_color_interpolation(counter, len(final_segments)))
 
-        # plt.tight_layout()
-        # if path is not None:
-        #     plt.savefig(path)
-        # else:
-        #     plt.show()
-
-        # plt.close()
-        # plt.cla()
-        # plt.clf()
-        return final_segments, fig
+        plt.tight_layout()
+        plt.show()
+        plt.close()
+        plt.cla()
+        plt.clf()
 
     return final_segments

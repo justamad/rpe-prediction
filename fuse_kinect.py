@@ -45,13 +45,13 @@ def fuse_kinect_data(pdf_file):
 
         sub_path, master_path = set_data['azure']
         azure = StereoAzure(master_path=master_path, sub_path=sub_path)
-        azure.reduce_skeleton_joints()
 
         # Segment data based on pelvis joint
-        repetitions = segment_1d_joint_on_example(joint_data=azure.sub_position['pelvis (y)'],
+        repetitions = segment_1d_joint_on_example(joint_data=azure.sub_position['PELVIS (y)'],
                                                   exemplar=example, std_dev_percentage=0.5,
                                                   show=False)
         sum_repetitions += len(repetitions)
+        print(f"reps: {len(repetitions)}")
 
         # Cut Kinect data before first and right after last repetition
         azure.cut_skeleton_data(repetitions[0][0], repetitions[-1][1])

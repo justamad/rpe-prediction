@@ -15,10 +15,6 @@ class SensorBase(object):
         self._data = data
         self._sampling_frequency = sampling_frequency
 
-    def resample_data(self, sampling_frequency):
-        self._data = sample_data_uniformly(self._data, sampling_rate=sampling_frequency)
-        self._sampling_frequency = sampling_frequency
-
     def save_data_as_csv(self, file_name: str):
         """
         Save the current data frame as csv file

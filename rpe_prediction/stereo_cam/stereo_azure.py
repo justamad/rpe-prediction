@@ -11,9 +11,9 @@ class StereoAzure(object):
     def __init__(self, master_path, sub_path, delay: float = 0.001):
         """
         Constructor for Azure Kinect stereo camera
-        @param master_path:
-        @param sub_path:
-        @param delay:
+        @param master_path: path to master camera
+        @param sub_path: path to subordinate camera
+        @param delay: the IR-camera offset between both cameras with respect to the master device
         """
         # Read in master and subordinate devices
         self.master = AzureKinect(master_path)
@@ -27,7 +27,6 @@ class StereoAzure(object):
         Synchronize the two camera streams temporally
         @return: None
         """
-        # Synchronize master and sub devices
         self.sub.shift_clock(-self.delay)
         start_point = self.master.timestamps[0]
         self.master.shift_clock(-start_point)
@@ -54,8 +53,8 @@ class StereoAzure(object):
         @param show: flag if the result should be shown
         @return: None
         """
-        points_a = self.master.position_data.to_numpy()
-        points_b = self.sub.position_data.to_numpy()
+        points_a = self.master.data.to_numpy()
+        points_b = self.sub.data.to_numpy()
 
         gradients_master = np.sum(np.abs(np.gradient(points_a, axis=0)).reshape(-1, 3), axis=1)
         gradients_sub = np.sum(np.abs(np.gradient(points_b, axis=0)).reshape(-1, 3), axis=1)
@@ -108,8 +107,8 @@ class StereoAzure(object):
         Calculate the agreement between sub and master camera
         :return: TODO: Calculate Euclidean distance of joints instead of separate axes
         """
-        data_a = self.sub.position_data
-        data_b = self.master.position_data
+        data_a = self.sub.data
+        data_b = self.master.data
         differences = (data_a - data_b).abs().mean(axis=0)
         if show:
             differences.plot.bar(x="joints", y="error", rot=90)
@@ -132,8 +131,8 @@ class StereoAzure(object):
 
     @property
     def sub_position(self):
-        return self.sub.position_data
+        return self.sub.data
 
     @property
     def mas_position(self):
-        return self.master.position_data
+        return self.master.data

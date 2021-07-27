@@ -42,9 +42,10 @@ class AzureKinect(SensorBase):
         df = df[[c for c in df.columns if "(c)" not in c]]
         l_mask = pd.DataFrame(np.repeat(mask.to_numpy(), 3, axis=1), columns=df.columns, index=df.index)
         df = df.where(l_mask, np.NAN)
+        df = df.interpolate(method='quadratic', order=4).bfill()
 
         df.index *= 1e-6  # Convert microseconds to seconds
-        df = fill_missing_data(df, 30, log=True, method='linear')
+        df = fill_missing_data(df, 30, method='linear', log=True)
         super().__init__(df, 30)
 
     def multiply_matrix(self, matrix, translation=np.array([0, 0, 0])):
@@ -53,12 +54,11 @@ class AzureKinect(SensorBase):
         @param matrix: the rotation matrix
         @param translation: a translation vector
         """
-        df = self._data.filter(regex='pos').copy()
-        data = df.to_numpy()
+        data = self._data.to_numpy()
         samples, features = data.shape
         result = matrix * data.reshape(-1, 3).T + translation.reshape(3, 1)
         final_result = result.T.reshape(samples, features)
-        data = pd.DataFrame(data=final_result, columns=df.columns, index=df.index)
+        data = pd.DataFrame(data=final_result, columns=self._data.columns, index=self._data.index)
         self._data.update(data)
 
     def __getitem__(self, item: str):
@@ -91,7 +91,7 @@ class AzureKinect(SensorBase):
         """
         raw_data = normalize_signal(self.get_synchronization_signal())
         acc_data = normalize_signal(np.gradient(np.gradient(raw_data)))  # Calculate 2nd derivative
-        return self.timestamps, raw_data, acc_data
+        return self._data.index, raw_data, acc_data
 
     def cut_data_based_on_time(self, start_time, end_time):
         """
@@ -99,8 +99,8 @@ class AzureKinect(SensorBase):
         @param start_time: start time in seconds
         @param end_time: end time in seconds
         """
-        start_idx = find_closest_timestamp(self.timestamps, start_time)
-        end_idx = find_closest_timestamp(self.timestamps, end_time)
+        start_idx = find_closest_timestamp(self._data.index, start_time)
+        end_idx = find_closest_timestamp(self._data.index, end_time)
         self._data = self._data.iloc[start_idx:end_idx]
 
     def remove_unnecessary_joints(self):
@@ -124,3 +124,11 @@ class AzureKinect(SensorBase):
         @return: camera name
         """
         return "Azure Kinect"
+
+    @property
+    def data(self):
+        return self._data
+
+    @property
+    def timestamps(self):
+        return self._data.index
