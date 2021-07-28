@@ -50,20 +50,11 @@ class StereoAzure(object):
     def calculate_affine_transform_based_on_data(self, show=False):
         """
         Calculate an affine transformation to register one skeleton to the other
-        @param show: flag if the result should be shown
+        @param show: Flag if the calibration result should be shown
         @return: None
         """
-        points_a = self.master.data.to_numpy()
-        points_b = self.sub.data.to_numpy()
-
-        gradients_master = np.sum(np.abs(np.gradient(points_a, axis=0)).reshape(-1, 3), axis=1)
-        gradients_sub = np.sum(np.abs(np.gradient(points_b, axis=0)).reshape(-1, 3), axis=1)
-        weights_total = 1 / (gradients_master + gradients_sub)
-
-        # Find the best affine transformation
-        rotation, translation = find_rigid_transformation_svd(points_a.reshape(-1, 3),
-                                                              points_b.reshape(-1, 3),
-                                                              weights_total.reshape(-1, 1),
+        rotation, translation = find_rigid_transformation_svd(self.master.data.to_numpy().reshape(-1, 3),
+                                                              self.sub.data.to_numpy().reshape(-1, 3),
                                                               show=show)
 
         self.master.multiply_matrix(rotation, translation)
@@ -87,13 +78,13 @@ class StereoAzure(object):
         if show:
             plt.close()
             plt.figure()
-            plt.xlabel("Frames (30Hz)")
-            plt.ylabel("Distance (mm)")
 
             for joint in df_sub.columns:
                 plt.plot(df_sub[joint], color="red", label="Left Sensor")
                 plt.plot(df_master[joint], color="blue", label="Right Sensor")
                 plt.plot(average_f4[joint], label="Butterworth 4 Hz")
+                plt.xlabel("Frames [1/30 s]")
+                plt.ylabel("Distance [mm]")
                 plt.title(f"{joint.title().replace('_', ' ')}")
                 plt.legend()
                 plt.tight_layout()
@@ -107,9 +98,7 @@ class StereoAzure(object):
         Calculate the agreement between sub and master camera
         :return: TODO: Calculate Euclidean distance of joints instead of separate axes
         """
-        data_a = self.sub.data
-        data_b = self.master.data
-        differences = (data_a - data_b).abs().mean(axis=0)
+        differences = (self.sub.data - self.master.data).abs().mean(axis=0)
         if show:
             differences.plot.bar(x="joints", y="error", rot=90)
 

@@ -1,8 +1,10 @@
 from rpe_prediction.config import SubjectDataIterator, StereoAzureLoader, RPELoader, FusedAzureLoader
+from rpe_prediction.devices import AzureKinect
 from rpe_prediction.processing import segment_1d_joint_on_example, compute_statistics_for_subjects
 from rpe_prediction.stereo_cam import StereoAzure
 from rpe_prediction.plot import PDFWriter
 from os.path import join, isdir
+from functools import reduce
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -35,7 +37,7 @@ def fuse_kinect_data(pdf_file):
     file_iterator = SubjectDataIterator(args.src_path).add_loader(StereoAzureLoader).add_loader(RPELoader)
     sum_repetitions = 0
 
-    for set_data in file_iterator.iterate_over_specific_subjects("4AD6F3"):
+    for set_data in file_iterator.iterate_over_all_subjects():
         # Create output folder to save averaged skeleton
         dst_path = join(args.dst_path, set_data['subject_name'])
         log_path = join(args.log_path, set_data['subject_name'])
@@ -78,6 +80,11 @@ def fuse_kinect_data(pdf_file):
 
     pdf_writer.close_file()
     print(f'Found in total {sum_repetitions} repetitions.')
+    conf = AzureKinect.conf_values
+    subs = reduce(lambda df1, df2: df1 + df2, ([value for key, value in conf.items() if "sub" in key]))
+    master = reduce(lambda df1, df2: df1 + df2, ([value for key, value in conf.items() if "master" in key]))
+    subs.to_csv(join("results", "conf_sub.csv"), sep=';', index=False)
+    master.to_csv(join("results", "conf_master.csv"), sep=';', index=False)
 
 
 def plot_repetition_data(pdf_file):

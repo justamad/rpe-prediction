@@ -178,19 +178,24 @@ def get_skeleton_connections(position_data):
     skeleton = []
 
     for j1, j2 in connections:
-        j1, j2 = j1.lower(), j2.lower()
         if j1 not in joints or j2 not in joints:
             continue
         skeleton.append((joints.index(j1), joints.index(j2)))
 
-    # connection = [(joints.index(j1.lower()), joints.index(j2.lower())) for j1, j2 in connections]
     return skeleton
 
 
 def get_joints_as_list(df):
+    """
+    Get the names of the joints
+    @param df: dataframe that contains the joints
+    @return: list with unique joint data
+    """
     columns = []
     for column in df.columns:
-        column = column[:-5]
+        ending = column[column.find(" ("):column.find(")") + 1]
+        column = column.removesuffix(ending)
+
         if column not in columns:
             columns.append(column)
 

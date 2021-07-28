@@ -1,6 +1,7 @@
 from rpe_prediction.processing import normalize_signal, find_closest_timestamp, fill_missing_data, filter_dataframe
 from .sensor_base import SensorBase
 from os.path import join
+from enum import Enum
 
 import numpy as np
 import pandas as pd
@@ -11,7 +12,16 @@ import os
 excluded_joints = ["EYE", "EAR", "NOSE", "HANDTIP", "THUMB", "CLAVICLE"]
 
 
+class JointConfidenceLevel(Enum):
+    NONE = 0
+    LOW = 1
+    MEDIUM = 2  # Current SDK only goes up to here
+    HIGH = 3  # Placeholder for future SDK
+
+
 class AzureKinect(SensorBase):
+
+    conf_values = {}
 
     def __init__(self, data_path):
         """
@@ -25,24 +35,21 @@ class AzureKinect(SensorBase):
         df = pd.read_csv(position_file, delimiter=';')
         df.set_index('timestamp', drop=True, inplace=True)
 
-        # Remove body idx
         body_idx_c = df['body_idx'].value_counts()
         df = df[df['body_idx'] == body_idx_c.index[body_idx_c.argmax()]]
         df = df.drop('body_idx', axis=1)
 
-        # Exclude unnecessary joints
-        df = filter_dataframe(df, excluded_joints)
-
-        # Count confidence values
         conf = df.filter(like='(c)')
-        conf_c = conf.apply(conf.value_counts)
+        conf_c = conf.apply(conf.value_counts).fillna(0)
+        AzureKinect.conf_values[data_path] = conf_c
 
-        # Remove confidence values that are lower than 2
-        mask = conf >= 2
+        mask = conf >= JointConfidenceLevel.MEDIUM.value
         df = df[[c for c in df.columns if "(c)" not in c]]
         l_mask = pd.DataFrame(np.repeat(mask.to_numpy(), 3, axis=1), columns=df.columns, index=df.index)
         df = df.where(l_mask, np.NAN)
         df = df.interpolate(method='quadratic', order=4).bfill()
+
+        df = filter_dataframe(df, excluded_joints)
 
         df.index *= 1e-6  # Convert microseconds to seconds
         df = fill_missing_data(df, 30, method='linear', log=True)
