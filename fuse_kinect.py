@@ -58,7 +58,8 @@ def fuse_kinect_data(pdf_file):
         # Cut Kinect data before first and right after last repetition
         azure.cut_skeleton_data(repetitions[0][0], repetitions[-1][1])
         azure.calculate_affine_transform_based_on_data(show=False)
-        print(f"Agreement internal {sub_path}: {azure.check_agreement_of_both_cameras(show=False)}")
+        mean, std = azure.check_agreement_of_both_cameras()
+        print(f"Agreement internal {sub_path}: Mean: {mean:.2f} mm, std: {std:.2f} mm")
         avg_df = azure.fuse_cameras(show=True, pp=pdf_writer)
         avg_df.to_csv(f"{os.path.join(dst_path, str(set_data['nr_set']))}_azure.csv", sep=';', index=False)
 

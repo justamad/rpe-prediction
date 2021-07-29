@@ -28,17 +28,6 @@ def calculate_and_append_magnitude(df, column_prefix="ACCELERATION"):
     return df
 
 
-def calculate_second_gradient(df):
-    """
-    Calculate a second gradient using central differences for data in given data frame
-    :param df: origin data frame
-    :return: data frame that contains second gradient over rows
-    """
-    data = df.to_numpy()
-    second_grad = np.gradient(np.gradient(data, axis=0), axis=0)
-    return pd.DataFrame(second_grad, columns=df.columns)
-
-
 def filter_dataframe(df: pd.DataFrame, excluded_matches: list):
     """
     Filters out columns in dataframe that contain partial string given in the list

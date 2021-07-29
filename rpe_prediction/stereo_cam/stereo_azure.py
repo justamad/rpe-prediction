@@ -93,16 +93,14 @@ class StereoAzure(object):
 
         return average_f4.set_index(self.sub_position.index)
 
-    def check_agreement_of_both_cameras(self, show):
+    def check_agreement_of_both_cameras(self):
         """
-        Calculate the agreement between sub and master camera
-        :return: TODO: Calculate Euclidean distance of joints instead of separate axes
+        Calculate the euclidean distance between left and right camera
+        :return: Tuple of of (mean, std) of euclidean distance
         """
-        differences = (self.sub.data - self.master.data).abs().mean(axis=0)
-        if show:
-            differences.plot.bar(x="joints", y="error", rot=90)
-
-        return differences.mean()
+        diff = (self.sub.data.to_numpy() - self.master.data.to_numpy()) ** 2
+        distances = np.sqrt(diff.reshape(-1, 3).sum(axis=1))
+        return np.mean(distances), np.std(distances)
 
     def cut_skeleton_data(self, start_index: int, end_index: int):
         """
