@@ -126,10 +126,6 @@ class AzureKinect(SensorBase):
         self._data.index = timestamps
 
     def __repr__(self):
-        """
-        String representation of Azure Kinect camera class
-        @return: camera name
-        """
         return "Azure Kinect"
 
     @property
@@ -139,3 +135,35 @@ class AzureKinect(SensorBase):
     @property
     def timestamps(self):
         return self._data.index
+
+    @staticmethod
+    def read_skeleton_definition_as_tuple(position_data):
+        """
+        Returns the joint connections from given json file accordingly to the current joints
+        @return: list that holds tuples (j1, j2) for joint connections (bones)
+        """
+        json_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "azure.json")
+        joints = AzureKinect.get_joints_as_list(position_data)
+        with open(json_file) as f:
+            connections = json.load(f)
+
+        skeleton = []
+
+        for j1, j2 in connections:
+            if j1 not in joints or j2 not in joints:
+                continue
+            skeleton.append((joints.index(j1), joints.index(j2)))
+
+        return skeleton
+
+    @staticmethod
+    def get_joints_as_list(df):
+        columns = []
+        for column in df.columns:
+            ending = column[column.find(" ("):column.find(")") + 1]
+            column = column.removesuffix(ending)
+
+            if column not in columns:
+                columns.append(column)
+
+        return columns

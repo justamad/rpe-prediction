@@ -1,1 +1,2 @@
 from .sliding_window import calculate_features_sliding_window
+from .skeleton_features import calculate_3d_joint_velocities, calculate_joint_angles
