@@ -1,11 +1,23 @@
 import pandas as pd
 import numpy as np
 
-reference = "PELVIS"
-joints = [("HIP_RIGHT", "KNEE_RIGHT")]
+joints_with_reference = [("HIP_RIGHT", "KNEE_RIGHT"),
+                         ("HIP_LEFT", "KNEE_LEFT"),
+                         ("KNEE_RIGHT", "ANKLE_RIGHT"),
+                         ("KNEE_LEFT", "ANKLE_LEFT"),
+                         ("SHOULDER_RIGHT", "ELBOW_RIGHT"),
+                         ("SHOULDER_LEFT", "ELBOW_LEFT"),
+                         ("SHOULDER_LEFT", "SHOULDER_RIGHT"),
+                         ("HIP_LEFT", "HIP_RIGHT"),
+                         ("KNEE_LEFT", "KNEE_RIGHT"),
+                         ("ELBOW_LEFT", "ELBOW_RIGHT")]
 
-
-# ("KNEE_RIGHT","ANKLE_RIGHT")
+joints_with_first_joint_as_origin = [("SPINE_CHEST", "NECK", "SPINE_NAVEL"),
+                                     ("SPINE_NAVEL", "SPINE_CHEST", "PELVIS"),
+                                     ("HIP_LEFT", "PELVIS", "KNEE_LEFT"),
+                                     ("HIP_RIGHT", "PELVIS", "KNEE_RIGHT"),
+                                     ("KNEE_RIGHT", "HIP_RIGHT", "ANKLE_RIGHT"),
+                                     ("KNEE_LEFT", "HIP_LEFT", "ANKLE_LEFT")]
 
 
 def calculate_3d_joint_velocities(df):
@@ -15,16 +27,33 @@ def calculate_3d_joint_velocities(df):
     return pd.DataFrame(data=grad, columns=list(map(lambda x: x[:-4], df.columns[::3])))
 
 
-def calculate_joint_angles(df):
+def calculate_joint_angles_with_reference_joint(df, reference="PELVIS"):
     r = df[[c for c in df.columns if reference in c]].to_numpy()
+    result = []
+    columns = []
 
-    for j1, j2 in joints:
+    for j1, j2 in joints_with_reference:
         p1 = df[[c for c in df.columns if j1 in c]].to_numpy()
         p2 = df[[c for c in df.columns if j2 in c]].to_numpy()
+        angles = calculate_angle_in_radians_between_vectors(r - p1, p2 - r)
+        result.append(angles)
+        columns.append(f"{j1}_{j2}")
 
-        v1 = r - p1
-        v2 = p2 - r
-        angle = (180 / np.pi) * calculate_angle_in_radians_between_vectors(v1, v2)
+    return pd.DataFrame(data=np.stack(result, axis=-1), columns=columns)
+
+
+def calculate_joint_angles_from_same_origin(df):
+    result = []
+    columns = []
+    for j1, j2, j3 in joints_with_first_joint_as_origin:
+        p1 = df[[c for c in df.columns if j1 in c]].to_numpy()
+        p2 = df[[c for c in df.columns if j2 in c]].to_numpy()
+        p3 = df[[c for c in df.columns if j3 in c]].to_numpy()
+        columns.append(f"{j1}->{j2}_{j1}->{j3}")
+        angles = calculate_angle_in_radians_between_vectors(p2 - p1, p3 - p1)
+        result.append(angles)
+
+    return pd.DataFrame(data=np.stack(result, axis=-1), columns=columns)
 
 
 def calculate_angle_in_radians_between_vectors(v1, v2):
