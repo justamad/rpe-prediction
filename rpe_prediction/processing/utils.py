@@ -72,11 +72,11 @@ def compute_statistics_for_subjects(generator):
     # Iterate over all trials to determine mean and std dev
     for set_data in generator:
         subject_name = set_data['subject_name']
-        data = pd.read_csv(set_data['azure'], sep=';')  # .set_index('timestamp')
+        df = pd.read_csv(set_data['azure'], sep=';').set_index('timestamp', drop=True)
         if subject_name not in trials:
-            trials[subject_name] = [data]
+            trials[subject_name] = [df]
         else:
-            trials[subject_name].append(data)
+            trials[subject_name].append(df)
 
     means = {k: pd.concat(v, ignore_index=True).mean(axis=0) for k, v in trials.items()}
     std_devs = {k: pd.concat(v, ignore_index=True).std(axis=0) for k, v in trials.items()}

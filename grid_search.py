@@ -11,7 +11,7 @@ from os.path import join
 
 import numpy as np
 import pandas as pd
-import prepare_data
+import calculate_skeleton_features
 import argparse
 import logging
 import os
@@ -45,7 +45,7 @@ logo = LeaveOneGroupOut()
 for window_size in window_sizes:
     for overlap in overlaps:
         # Generate new train and test data
-        X, y = prepare_data.prepare_skeleton_data(file_iterator, window_size=window_size, overlap=overlap)
+        X, y = calculate_skeleton_features.prepare_skeleton_data(file_iterator, window_size=window_size, overlap=overlap)
         X_train, y_train, X_test, y_test = split_data_to_pseudonyms(X, y, train_percentage=0.8, random_seed=42)
 
         # Save train and test subjects to file

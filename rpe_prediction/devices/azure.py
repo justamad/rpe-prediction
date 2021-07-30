@@ -9,7 +9,7 @@ import json
 import os
 
 
-excluded_joints = ["EYE", "EAR", "NOSE", "HANDTIP", "THUMB", "CLAVICLE"]
+excluded_joints = ["EYE", "EAR", "NOSE", "HANDTIP", "THUMB", "CLAVICLE", "HAND"]
 
 
 class JointConfidenceLevel(Enum):

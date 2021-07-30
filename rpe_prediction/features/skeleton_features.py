@@ -21,10 +21,14 @@ joints_with_first_joint_as_origin = [("SPINE_CHEST", "NECK", "SPINE_NAVEL"),
 
 
 def calculate_3d_joint_velocities(df):
-    diff = (df[0:-1].to_numpy() - df[1:].to_numpy()) ** 2
+    a = df.iloc[0:-1]
+    b = df.iloc[1:]
+    diff = (a.to_numpy() - b.to_numpy()) ** 2
     grad = np.sqrt(np.sum(diff.reshape(-1, 3), axis=1))
     grad = grad.reshape(diff.shape[0], diff.shape[1] // 3)
-    return pd.DataFrame(data=grad, columns=list(map(lambda x: x[:-4], df.columns[::3])))
+    return pd.DataFrame(data=grad,
+                        columns=list(map(lambda x: x[:-4] + "_VELOCITY", df.columns[::3])),
+                        index=df.index[1:])
 
 
 def calculate_joint_angles_with_reference_joint(df, reference="PELVIS"):
@@ -39,10 +43,10 @@ def calculate_joint_angles_with_reference_joint(df, reference="PELVIS"):
         result.append(angles)
         columns.append(f"{j1}_{j2}")
 
-    return pd.DataFrame(data=np.stack(result, axis=-1), columns=columns)
+    return pd.DataFrame(data=np.stack(result, axis=-1), columns=columns, index=df.index)
 
 
-def calculate_joint_angles_from_same_origin(df):
+def calculate_angles_between_3_joints(df):
     result = []
     columns = []
     for j1, j2, j3 in joints_with_first_joint_as_origin:
@@ -53,7 +57,7 @@ def calculate_joint_angles_from_same_origin(df):
         angles = calculate_angle_in_radians_between_vectors(p2 - p1, p3 - p1)
         result.append(angles)
 
-    return pd.DataFrame(data=np.stack(result, axis=-1), columns=columns)
+    return pd.DataFrame(data=np.stack(result, axis=-1), columns=columns, index=df.index)
 
 
 def calculate_angle_in_radians_between_vectors(v1, v2):

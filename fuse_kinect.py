@@ -61,7 +61,7 @@ def fuse_kinect_data(pdf_file):
         mean, std = azure.check_agreement_of_both_cameras()
         print(f"Agreement internal {sub_path}: Mean: {mean:.2f} mm, std: {std:.2f} mm")
         avg_df = azure.fuse_cameras(show=True, pp=pdf_writer)
-        avg_df.to_csv(f"{os.path.join(dst_path, str(set_data['nr_set']))}_azure.csv", sep=';', index=False)
+        avg_df.to_csv(f"{os.path.join(dst_path, str(set_data['nr_set']))}_azure.csv", sep=';', index=True)
 
         # Save individual repetitions
         for count, (r1, r2) in enumerate(repetitions):
