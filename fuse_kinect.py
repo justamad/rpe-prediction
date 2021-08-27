@@ -6,12 +6,15 @@ from rpe_prediction.plot import PDFWriter
 from os.path import join, isdir
 from functools import reduce
 
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import pandas as pd
 import numpy as np
 import argparse
 import os
+
+matplotlib.use("TkAgg")
 
 plt.rcParams["figure.figsize"] = (20, 10)
 plt.rcParams["font.family"] = 'Times New Roman'
@@ -86,6 +89,8 @@ def fuse_kinect_data(pdf_file):
     master = reduce(lambda df1, df2: df1 + df2, ([value for key, value in conf.items() if "master" in key]))
     subs.to_csv(join("results", "conf_sub.csv"), sep=';', index=False)
     master.to_csv(join("results", "conf_master.csv"), sep=';', index=False)
+
+    os.system('cd data/raw;find . -type f -name "*.json" -exec install -v {} ../processed/{} \\;')
 
 
 def plot_repetition_data(pdf_file):
@@ -172,10 +177,6 @@ def normalize_data_plot(pdf_file):
 
 
 if __name__ == '__main__':
-    # if args.show_plots:  # Quick fix for running script on server
-    import matplotlib
-    matplotlib.use("TkAgg")
-
-    fuse_kinect_data(pdf_file='raw_fusion.pdf')
-    normalize_data_plot(pdf_file="fusion_norm.pdf")
-    plot_repetition_data(pdf_file='fusion_segmented.pdf')
+    fuse_kinect_data(pdf_file='results/raw_fusion.pdf')
+    normalize_data_plot(pdf_file="results/fusion_norm.pdf")
+    plot_repetition_data(pdf_file='results/fusion_segmented.pdf')
