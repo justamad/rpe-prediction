@@ -1,6 +1,6 @@
-from rpe_prediction.config import SubjectDataIterator, FusedAzureLoader, RPELoader
 from rpe_prediction.models import GridSearching, SVRModelConfig, RFModelConfig, split_data_to_pseudonyms, \
     MLPModelConfig, GBRModelConfig
+from rpe_prediction.features import prepare_skeleton_data
 from sklearn.feature_selection import RFECV
 from sklearn.svm import SVR
 from sklearn.pipeline import Pipeline
@@ -11,7 +11,6 @@ from os.path import join
 
 import numpy as np
 import pandas as pd
-import calculate_skeleton_features
 import argparse
 import logging
 import os
@@ -36,16 +35,15 @@ if not os.path.exists(out_path):
 
 window_sizes = [30, 60, 90, 120]  # 1s, 2s, 3s, 4s
 overlaps = [0.5, 0.7, 0.9]
-file_iterator = SubjectDataIterator(args.src_path).add_loader(RPELoader).add_loader(FusedAzureLoader)
 
 models = [SVRModelConfig(), GBRModelConfig(), RFModelConfig(), MLPModelConfig()]
 logo = LeaveOneGroupOut()
 
 # Iterate over non-sklearn hyperparameters
-for window_size in window_sizes:
-    for overlap in overlaps:
+for window_size in reversed(window_sizes):
+    for overlap in reversed(overlaps):
         # Generate new train and test data
-        X, y = calculate_skeleton_features.prepare_skeleton_data(file_iterator, window_size=window_size, overlap=overlap)
+        X, y = prepare_skeleton_data(input_path=args.src_path, window_size=window_size, overlap=overlap)
         X_train, y_train, X_test, y_test = split_data_to_pseudonyms(X, y, train_percentage=0.8, random_seed=42)
 
         # Save train and test subjects to file
@@ -73,6 +71,8 @@ for window_size in window_sizes:
         # Only use the n most significant features
         X_train = X_train.loc[:, rfe.support_]
         X_test = X_test.loc[:, rfe.support_]
+        X_train.to_csv(join(out_path, f"X_train_win_{window_size}_overlap_{overlap}.csv"), index=False, sep=';')
+        X_test.to_csv(join(out_path, f"X_test_win_{window_size}_overlap_{overlap}.csv"), index=False, sep=';')
 
         # Iterate over models and perform Grid Search
         for model_config in models:

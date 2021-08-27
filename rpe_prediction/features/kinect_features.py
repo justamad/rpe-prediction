@@ -1,29 +1,22 @@
-from rpe_prediction.config import SubjectDataIterator, FusedAzureLoader, RPELoader
-from rpe_prediction.features import calculate_features_sliding_window, calculate_3d_joint_velocities, \
-    calculate_angles_between_3_joints, calculate_joint_angles_with_reference_joint
+from rpe_prediction.config import SubjectDataIterator, RPELoader, FusedAzureLoader
 from rpe_prediction.processing import compute_statistics_for_subjects
+from .skeleton_features import calculate_3d_joint_velocities, calculate_joint_angles_with_reference_joint, \
+    calculate_angles_between_3_joints
+from .sliding_window import calculate_features_sliding_window
 
-import argparse
 import pandas as pd
 import numpy as np
 
-# find . -type f -name "*.json" -exec install -v {} ../processed/{} \;
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--src_path', type=str, dest='src_path', default="data/processed")
-parser.add_argument('--win_size', type=int, dest='win_size', default=90)
-parser.add_argument('--overlap', type=float, dest='overlap', default=0.9)
-args = parser.parse_args()
-
-
-def prepare_skeleton_data(window_size=30, overlap=0.5):
+def prepare_skeleton_data(input_path, window_size=30, overlap=0.5):
     """
     Prepare Kinect skeleton data using the RawFileIterator
+    @param input_path: the current path where data resides in
     @param window_size: The number of sampled in one window
     @param overlap: The current overlap in percent
     @return: Tuple that contains input data and labels (input, labels)
     """
-    file_iterator = SubjectDataIterator(args.src_path).add_loader(RPELoader).add_loader(FusedAzureLoader)
+    file_iterator = SubjectDataIterator(input_path).add_loader(RPELoader).add_loader(FusedAzureLoader)
     means, std_dev = compute_statistics_for_subjects(file_iterator.iterate_over_all_subjects())
     x_data = []
     y_data = []
@@ -52,11 +45,3 @@ def prepare_skeleton_data(window_size=30, overlap=0.5):
         y_data.append(pd.DataFrame(y, columns=['name', 'rpe', 'group', 'set']))
 
     return pd.concat(x_data, ignore_index=True), pd.concat(y_data, ignore_index=True)
-
-
-if __name__ == '__main__':
-    X, y = prepare_skeleton_data(window_size=args.win_size, overlap=args.overlap)
-    X.to_csv("X.csv", index=False, sep=';')
-    y.to_csv("y.csv", index=False, sep=';')
-    print(X.shape)
-    print(y.shape)
