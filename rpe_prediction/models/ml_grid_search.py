@@ -12,14 +12,6 @@ scoring = {'R2': 'r2',
 class GridSearching(object):
 
     def __init__(self, groups, model, scaler, parameters, learner_name, balancer):
-        """
-        Constructor for Grid Search class
-        @param groups: the current groups for cross-validation
-        @param model: the current regression model to be optimized
-        @param scaler: the current scaler for input data
-        @param parameters: the parameter search space
-        @param learner_name: the name of the learner
-        """
         self._steps = [
             ("scaler", scaler),
             ('balance_sampling', balancer),
@@ -30,14 +22,7 @@ class GridSearching(object):
         self._groups = groups
         self._learner_name = learner_name
 
-    def perform_grid_search(self, input_data, ground_truth, result_file_name=None):
-        """
-        Perform a grid search on the given input data and ground truth data
-        @param input_data: the input training data
-        @param ground_truth: ground truth data
-        @param result_file_name: file name of the resulting csv file with combination results
-        @return: Grid search object with best performing model
-        """
+    def perform_grid_search(self, input_data: pd.DataFrame, ground_truth: pd.DataFrame, output_file: str = None):
         pipe = Pipeline(steps=self._steps)
         logo = LeaveOneGroupOut()
 
@@ -55,5 +40,5 @@ class GridSearching(object):
         logging.info(search.best_params_)
         results = pd.DataFrame(search.cv_results_)
         results = results.drop(['params'], axis=1)
-        results.to_csv(result_file_name, sep=';', index=False)
+        results.to_csv(output_file, sep=';', index=False)
         return search

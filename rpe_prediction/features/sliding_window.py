@@ -8,6 +8,8 @@ import math
 settings = MinimalFCParameters()
 del settings['variance']  # Variance and standard deviation are highly correlated but std integrates nr of samples
 del settings['length']  # Length is constant for all windows
+del settings['sum_values']  # Highly correlated with RMS and Mean
+del settings['mean']  # Highly correlated with RMS and Sum
 
 
 def calculate_features_sliding_window(df: pd.DataFrame, window_size: int, overlap: float = 0.25):

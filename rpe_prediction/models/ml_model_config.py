@@ -1,4 +1,5 @@
 from imblearn.over_sampling import RandomOverSampler
+from xgboost import XGBRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
@@ -12,18 +13,15 @@ class LearningModelBase(object):
         self.scaler = StandardScaler()
         self.model = model
         self.parameters = parameters
+        self.balancer = RandomOverSampler()
 
     def get_trial_data_dict(self):
-        """
-        Returns the collection of parameters for grid search
-        @return: dictionary that holds collection of parameters for grid search
-        """
         return {
             'model': self.model,
             'scaler': self.scaler,
             'parameters': self.parameters,
             'learner_name': str(self),
-            'balancer': RandomOverSampler(),
+            'balancer': self.balancer,
         }
 
 
@@ -97,3 +95,21 @@ class MLPModelConfig(LearningModelBase):
 
     def __repr__(self):
         return "mlp"
+
+
+class XGBoostRegressor(LearningModelBase):
+
+    def __init__(self):
+        tuned_parameters = {
+            f'{str(self)}__n_estimators': [400, 700, 1000],
+            f'{str(self)}__colsample_bytree': [0.7, 0.8],
+            f'{str(self)}__max_depth': [15, 20, 25],
+            f'{str(self)}__reg_alpha': [1.1, 1.2, 1.3],
+            f'{str(self)}__reg_lambda': [1.1, 1.2, 1.3],
+            f'{str(self)}__subsample': [0.7, 0.8, 0.9]
+        }
+        model = XGBRegressor()
+        super().__init__(model=model, parameters=tuned_parameters)
+
+    def __repr__(self):
+        return "XGBoost"

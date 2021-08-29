@@ -1,3 +1,4 @@
+from .pdf_writer import PDFWriter
 from rpe_prediction.processing import get_joint_names_from_columns_as_list
 
 import matplotlib.pyplot as plt
@@ -70,3 +71,16 @@ def plot_sensor_data_for_single_axis(df: pd.DataFrame, title: str, file_name: st
         plt.savefig(file_name)
     else:
         plt.show()
+
+
+def plot_data_frame_column_wise_as_pdf(df: pd.DataFrame, file_name: str):
+    pp = PDFWriter(file_name)
+    for column in df:
+        plt.close()
+        plt.figure()
+        plt.title(column)
+        plt.plot(df[column])
+        pp.save_figure()
+        plt.clf()
+
+    pp.close_and_save_file()

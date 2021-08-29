@@ -82,7 +82,7 @@ def fuse_kinect_data(pdf_file):
 
         pdf_writer.add_booklet(set_data['subject_name'], set_data['nr_set'], avg_df.columns)
 
-    pdf_writer.close_file()
+    pdf_writer.close_and_save_file()
     print(f'Found in total {sum_repetitions} repetitions.')
     conf = AzureKinect.conf_values
     subs = reduce(lambda df1, df2: df1 + df2, ([value for key, value in conf.items() if "sub" in key]))
@@ -139,7 +139,7 @@ def plot_repetition_data(pdf_file):
 
         pdf_render.add_booklet(subject_name, 0, cols)
 
-    pdf_render.close_file()
+    pdf_render.close_and_save_file()
 
 
 def normalize_data_plot(pdf_file):
@@ -173,7 +173,7 @@ def normalize_data_plot(pdf_file):
 
         pdf_writer.add_booklet(subject, set_data['nr_set'], df.columns)
 
-    pdf_writer.close_file()
+    pdf_writer.close_and_save_file()
 
 
 if __name__ == '__main__':
