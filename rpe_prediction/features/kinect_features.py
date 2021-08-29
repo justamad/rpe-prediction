@@ -1,14 +1,14 @@
 from rpe_prediction.config import SubjectDataIterator, RPELoader, FusedAzureLoader
-from rpe_prediction.processing import compute_statistics_for_subjects
+from rpe_prediction.processing import compute_mean_and_std_of_joint_for_subjects
 from .skeleton_features import calculate_3d_joint_velocities, calculate_joint_angles_with_reference_joint, \
-    calculate_angles_between_3_joints
+    calculate_angles_between_3_joints, calculate_individual_axes_joint_velocities
 from .sliding_window import calculate_features_sliding_window
 
 import pandas as pd
 import numpy as np
 
 
-def prepare_skeleton_data(input_path, window_size=30, overlap=0.5):
+def calculate_kinect_feature_set(input_path, window_size=30, overlap=0.5):
     """
     Prepare Kinect skeleton data using the RawFileIterator
     @param input_path: the current path where data resides in
@@ -17,26 +17,28 @@ def prepare_skeleton_data(input_path, window_size=30, overlap=0.5):
     @return: Tuple that contains input data and labels (input, labels)
     """
     file_iterator = SubjectDataIterator(input_path).add_loader(RPELoader).add_loader(FusedAzureLoader)
-    means, std_dev = compute_statistics_for_subjects(file_iterator.iterate_over_all_subjects())
+    # means, std_dev = compute_mean_and_std_of_joint_for_subjects(file_iterator.iterate_over_all_subjects())
     x_data = []
     y_data = []
 
     for set_data in file_iterator.iterate_over_all_subjects():
-        subject_name = set_data['subject_name']
-        kinect_data = pd.read_csv(set_data['azure'], sep=';', index_col=False).set_index('timestamp', drop=True)
-        kinect_data = (kinect_data - means[subject_name]) / std_dev[subject_name]
+        kinect_df = pd.read_csv(set_data['azure'], sep=';', index_col=False).set_index('timestamp', drop=True)
+
+        # subject_name = set_data['subject_name']
+        # kinect_data = (kinect_data - means[subject_name]) / std_dev[subject_name] TODO: Evaluate this step!!!
 
         # Calculate and concatenate features
-        velocity = calculate_3d_joint_velocities(kinect_data)
-        angle_three = calculate_angles_between_3_joints(kinect_data)
-        angle_origin = calculate_joint_angles_with_reference_joint(kinect_data)
+        velocities = calculate_individual_axes_joint_velocities(kinect_df)
+        velocity_3d = calculate_3d_joint_velocities(kinect_df)
+        angle_three = calculate_angles_between_3_joints(kinect_df)
+        angle_origin = calculate_joint_angles_with_reference_joint(kinect_df)
         angle = pd.concat([angle_three, angle_origin], axis=1)
 
         angles_velocity = angle.diff(axis=0).dropna(axis='index')
         angles_velocity.rename(lambda x: x + "_SPEED", axis='columns', inplace=True)
-        features = pd.concat([velocity, angle.iloc[1:], angles_velocity], axis=1)
 
-        features = calculate_features_sliding_window(features.reset_index(), window_size=window_size, overlap=overlap)
+        features = pd.concat([velocities, velocity_3d, angle.iloc[1:], angles_velocity], axis=1).reset_index()
+        features = calculate_features_sliding_window(features, window_size=window_size, overlap=overlap)
         x_data.append(features)
 
         # Construct y-data with pseudonyms, rpe values and groups

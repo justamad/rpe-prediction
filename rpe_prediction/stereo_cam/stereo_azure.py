@@ -1,4 +1,4 @@
-from rpe_prediction.processing import butterworth_filter
+from rpe_prediction.processing import apply_butterworth_filter
 from rpe_prediction.devices import AzureKinect
 from .icp import find_rigid_transformation_svd
 
@@ -73,7 +73,7 @@ class StereoAzure(object):
         var_sub = df_sub.var()
         var_mas = df_master.var()
         average_var = (var_sub * df_master + var_mas * df_sub) / (var_sub + var_mas)
-        average_f4 = butterworth_filter(average_var, fc=4, fs=30, order=4)
+        average_f4 = apply_butterworth_filter(average_var, cutoff=4, sampling_rate=30, order=4)
 
         if show:
             plt.close()

@@ -33,16 +33,8 @@ def find_closest_timestamp(timestamps, point):
     return np.argmin(differences)
 
 
-def butterworth_filter(df: pd.DataFrame, fc, fs, order=4):
-    """
-    Applies a Butterworth filter to the given dataframe
-    @param df: data frame that contains positional, orientation or acceleration data
-    @param fc: the cut-off frequency of the filter
-    @param fs: the current sampling rate
-    @param order: The order of the Butterworth filter
-    @return: data frame with filtered data
-    """
-    sos = butter_bandpass(fc, fs, order)
+def apply_butterworth_filter(df: pd.DataFrame, cutoff, sampling_rate, order=4):
+    sos = butter_bandpass(cutoff, sampling_rate, order)
     result = []
 
     for column in range(df.shape[1]):
@@ -51,21 +43,13 @@ def butterworth_filter(df: pd.DataFrame, fc, fs, order=4):
     return pd.DataFrame(data=np.array(result).T, columns=df.columns)
 
 
-def sample_data_uniformly(data_frame, sampling_rate, mode="cubic"):
-    """
-    TODO: Optimize this method using pandas idiom
-    Applies a uniform sampling to given data frame
-    :param data_frame: data frame consisting the data
-    :param sampling_rate: desired sampling frequency in frames per seconds (or Hz)
-    :param mode: the way of interpolating the data [linear, quadratic, cubic, ..]
-    :return: data frame with filtered data
-    """
-    timestamps = data_frame['timestamp'].to_numpy()
+def sample_data_uniformly(df: pd.DataFrame, sampling_rate: int, mode: str = "cubic"):
+    timestamps = df['timestamp'].to_numpy()
     nr_samples = int(timestamps[-1] - timestamps[0]) * sampling_rate  # The new number of samples after upsampling
     upsampled_timestamps = np.linspace(timestamps[0], timestamps[-1], nr_samples)
 
-    frames, features = data_frame.shape
-    data = data_frame.to_numpy()
+    frames, features = df.shape
+    data = df.to_numpy()
 
     uniform_sampled_data = [upsampled_timestamps]
     for feature in range(1, features):
@@ -74,19 +58,11 @@ def sample_data_uniformly(data_frame, sampling_rate, mode="cubic"):
         yy = f(upsampled_timestamps)
         uniform_sampled_data.append(yy)
 
-    return pd.DataFrame(data=np.array(uniform_sampled_data).T, columns=data_frame.columns)
+    return pd.DataFrame(data=np.array(uniform_sampled_data).T, columns=df.columns)
 
 
-def fill_missing_data(df: pd.DataFrame, sampling_frequency: int, method: str = "quadratic", log: bool = False):
-    """
-    Identifies missing data points ina given data frame and fills it using interpolation
-    @param df: dataframe that holds measurements and index with timestamps in seconds
-    @param sampling_frequency: the current sampling frequency
-    @param method: interpolation methods, such as quadratic
-    @param log: flag if missing points should be printed
-    @return: data frame with filled gaps
-    """
-    diffs = np.diff(df.index) / (1 / sampling_frequency)
+def identify_and_fill_gaps_in_data(df: pd.DataFrame, sampling_rate: int, method: str = "quadratic", log: bool = False):
+    diffs = np.diff(df.index) / (1 / sampling_rate)
     diffs = (np.round(diffs) - 1).astype(np.uint32)
     if log:
         print(f'Number of missing data points: {np.sum(diffs)}')

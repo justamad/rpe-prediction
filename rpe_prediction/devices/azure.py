@@ -1,4 +1,5 @@
-from rpe_prediction.processing import normalize_signal, find_closest_timestamp, fill_missing_data, filter_dataframe
+from rpe_prediction.processing import normalize_signal, find_closest_timestamp, identify_and_fill_gaps_in_data, \
+    remove_columns_from_dataframe
 from .sensor_base import SensorBase
 from os.path import join
 from enum import Enum
@@ -49,10 +50,10 @@ class AzureKinect(SensorBase):
         df = df.where(l_mask, np.NAN)
         df = df.interpolate(method='quadratic', order=4).bfill()
 
-        df = filter_dataframe(df, excluded_joints)
+        df = remove_columns_from_dataframe(df, excluded_joints)
 
         df.index *= 1e-6  # Convert microseconds to seconds
-        df = fill_missing_data(df, 30, method='linear', log=True)
+        df = identify_and_fill_gaps_in_data(df, 30, method='linear', log=True)
         super().__init__(df, 30)
 
     def multiply_matrix(self, matrix, translation=np.array([0, 0, 0])):
@@ -115,7 +116,7 @@ class AzureKinect(SensorBase):
         Remove unnecessary joints from data frame using the excluded joints
         @return: None
         """
-        self._data = filter_dataframe(self._data, excluded_joints)
+        self._data = remove_columns_from_dataframe(self._data, excluded_joints)
 
     def set_timestamps(self, timestamps):
         """

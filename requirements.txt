@@ -17,3 +17,4 @@ fastparquet
 tsfresh
 imblearn
 PyPDF2
+xgboost

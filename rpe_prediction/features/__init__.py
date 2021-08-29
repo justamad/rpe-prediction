@@ -1,1 +1,1 @@
-from .kinect_features import prepare_skeleton_data
+from .kinect_features import calculate_kinect_feature_set

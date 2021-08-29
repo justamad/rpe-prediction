@@ -1,4 +1,4 @@
-from rpe_prediction.processing import get_joints_as_list
+from rpe_prediction.processing import get_joint_names_from_columns_as_list
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -16,7 +16,7 @@ def plot_sensor_data_for_axes(df: pd.DataFrame, title: str, joints: list, file_n
     @param file_name: file name of output file
     @param columns: number of columns in the plot
     """
-    joints = get_joints_as_list(df, joints)
+    joints = get_joint_names_from_columns_as_list(df, joints)
     rows, cols = math.ceil(len(joints) / columns), columns
     fig, axs = plt.subplots(rows, cols, figsize=(15, 15))
 

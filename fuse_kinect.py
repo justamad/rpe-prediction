@@ -1,6 +1,6 @@
 from rpe_prediction.config import SubjectDataIterator, StereoAzureLoader, RPELoader, FusedAzureLoader
 from rpe_prediction.devices import AzureKinect
-from rpe_prediction.processing import segment_1d_joint_on_example, compute_statistics_for_subjects
+from rpe_prediction.processing import segment_1d_joint_on_example, compute_mean_and_std_of_joint_for_subjects
 from rpe_prediction.stereo_cam import StereoAzure
 from rpe_prediction.plot import PDFWriter
 from os.path import join, isdir
@@ -102,7 +102,7 @@ def plot_repetition_data(pdf_file):
     pdf_render = PDFWriter(pdf_file)
     subjects = list(filter(lambda x: isdir(x), map(lambda x: join(args.log_path, x), os.listdir(args.log_path))))
     file_iterator = SubjectDataIterator(args.dst_path).add_loader(FusedAzureLoader)
-    means, std = compute_statistics_for_subjects(file_iterator.iterate_over_all_subjects())
+    means, std = compute_mean_and_std_of_joint_for_subjects(file_iterator.iterate_over_all_subjects())
 
     # Utils for colorbar
     cmap = plt.cm.get_cmap("jet")
@@ -149,7 +149,7 @@ def normalize_data_plot(pdf_file):
     @return: None
     """
     file_iterator = SubjectDataIterator(args.dst_path).add_loader(FusedAzureLoader)
-    means, std = compute_statistics_for_subjects(file_iterator.iterate_over_all_subjects())
+    means, std = compute_mean_and_std_of_joint_for_subjects(file_iterator.iterate_over_all_subjects())
     pdf_writer = PDFWriter(pdf_file)
 
     for set_data in file_iterator.iterate_over_all_subjects():

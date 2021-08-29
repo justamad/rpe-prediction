@@ -20,18 +20,22 @@ joints_with_first_joint_as_origin = [("SPINE_CHEST", "NECK", "SPINE_NAVEL"),
                                      ("KNEE_LEFT", "HIP_LEFT", "ANKLE_LEFT")]
 
 
-def calculate_3d_joint_velocities(df):
-    a = df.iloc[0:-1]
-    b = df.iloc[1:]
-    diff = (a.to_numpy() - b.to_numpy()) ** 2
-    grad = np.sqrt(np.sum(diff.reshape(-1, 3), axis=1))
-    grad = grad.reshape(diff.shape[0], diff.shape[1] // 3)
-    return pd.DataFrame(data=grad,
-                        columns=list(map(lambda x: x[:-4] + "_VELOCITY", df.columns[::3])),
-                        index=df.index[1:])
+def calculate_individual_axes_joint_velocities(df: pd.DataFrame):
+    diff = df.diff(axis=0).dropna(axis='index')
+    diff = diff.add_suffix('_velocity')
+    return diff
 
 
-def calculate_joint_angles_with_reference_joint(df, reference="PELVIS"):
+def calculate_3d_joint_velocities(df: pd.DataFrame):
+    diff = df.diff(axis=0).dropna(axis='index')
+    euclidean_distances = np.sqrt(np.sum((diff.to_numpy() ** 2).reshape(-1, 3), axis=1))
+    gradients = euclidean_distances.reshape(diff.shape[0], diff.shape[1] // 3)
+    return pd.DataFrame(data=gradients,
+                        columns=list(map(lambda x: x[:-4] + "_3D_VELOCITY", df.columns[::3])),
+                        index=diff.index)
+
+
+def calculate_joint_angles_with_reference_joint(df: pd.DataFrame, reference: str = "PELVIS"):
     r = df[[c for c in df.columns if reference in c]].to_numpy()
     result = []
     columns = []
@@ -46,7 +50,7 @@ def calculate_joint_angles_with_reference_joint(df, reference="PELVIS"):
     return pd.DataFrame(data=np.stack(result, axis=-1), columns=columns, index=df.index)
 
 
-def calculate_angles_between_3_joints(df):
+def calculate_angles_between_3_joints(df: pd.DataFrame):
     result = []
     columns = []
     for j1, j2, j3 in joints_with_first_joint_as_origin:
@@ -60,7 +64,7 @@ def calculate_angles_between_3_joints(df):
     return pd.DataFrame(data=np.stack(result, axis=-1), columns=columns, index=df.index)
 
 
-def calculate_angle_in_radians_between_vectors(v1, v2):
+def calculate_angle_in_radians_between_vectors(v1: np.ndarray, v2: np.ndarray):
     l_v1 = v1 / np.linalg.norm(v1, axis=1).reshape(-1, 1)
     l_v2 = v2 / np.linalg.norm(v2, axis=1).reshape(-1, 1)
     dot = np.sum(l_v1 * l_v2, axis=1)
