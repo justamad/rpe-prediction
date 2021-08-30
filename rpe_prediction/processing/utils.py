@@ -1,6 +1,7 @@
 from .geometry import calculate_angle_in_radians_between_vectors, create_rotation_matrix_y_axis, \
-    apply_affine_transformation
+    apply_affine_transformation, create_rotation_matrix_z_axis
 
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import matplotlib.colors
@@ -44,19 +45,36 @@ def compute_mean_and_std_of_joint_for_subjects(subject_iterator):
     return means, std_devs
 
 
-def align_skeleton_parallel_to_x_axis(df: pd.DataFrame):
-    def check_angle_to_x_axis(new_df):
-        foot_left = get_all_columns_for_joint(new_df, "FOOT_LEFT").to_numpy()
-        foot_right = get_all_columns_for_joint(new_df, "FOOT_RIGHT").to_numpy()
-        v1 = foot_left - foot_right
-        v2 = np.repeat(np.array([1, 0, 0]).reshape(1, 3), len(v1), axis=0)
-        return calculate_angle_in_radians_between_vectors(v1, v2)
+def check_angle_between_x_axis(df: pd.DataFrame):
+    foot_left = get_all_columns_for_joint(df, "FOOT_LEFT").to_numpy()
+    foot_right = get_all_columns_for_joint(df, "FOOT_RIGHT").to_numpy()
+    v1 = foot_left - foot_right
+    v2 = np.repeat(np.array([1, 0, 0]).reshape(1, 3), len(v1), axis=0)
+    return calculate_angle_in_radians_between_vectors(v1, v2)
 
-    angles = []
+
+def align_skeleton_parallel_to_x_axis(df: pd.DataFrame, show: bool = False):
+    angles_y = []
+    angles_z = []
+
     for angle in range(360):
-        data = apply_affine_transformation(df, create_rotation_matrix_y_axis(angle))
-        result = check_angle_to_x_axis(data)
-        angles.append(result.mean())
+        angle_y = check_angle_between_x_axis(apply_affine_transformation(df, create_rotation_matrix_y_axis(angle)))
+        angle_z = check_angle_between_x_axis(apply_affine_transformation(df, create_rotation_matrix_z_axis(angle)))
 
-    rotation_angle = np.argmin(angles)
-    return apply_affine_transformation(df, create_rotation_matrix_y_axis(float(rotation_angle)))
+        angles_y.append(angle_y.mean())
+        angles_z.append(angle_z.mean())
+
+    rot_angle_y = np.argmin(angles_y)
+    rot_angle_z = np.argmin(angles_z)
+
+    if show:
+        plt.plot(angles_y, label="Angles Y")
+        plt.plot(angles_z, label="Angles Z")
+        plt.xlabel("Degrees")
+        plt.ylabel("Error [mm]")
+        plt.title(f"Y: {rot_angle_y}, dev: {angles_y[rot_angle_y]}, Z:{rot_angle_z}, dev: {angles_z[rot_angle_z]}")
+        plt.show()
+
+    df = apply_affine_transformation(df, create_rotation_matrix_y_axis(float(rot_angle_y)))
+    df = apply_affine_transformation(df, create_rotation_matrix_z_axis(float(rot_angle_z)))
+    return df

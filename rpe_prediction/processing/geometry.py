@@ -9,6 +9,13 @@ def create_rotation_matrix_y_axis(angle_degrees: float):
                       [-np.sin(angle_rad), 0, np.cos(angle_rad)]])
 
 
+def create_rotation_matrix_z_axis(angle_degrees: float):
+    angle_rad = angle_degrees * np.pi / 180
+    return np.matrix([[np.cos(angle_rad), -np.sin(angle_rad), 0],
+                      [np.sin(angle_rad), np.cos(angle_rad), 0],
+                      [0, 0, 1]])
+
+
 def calculate_angle_in_radians_between_vectors(v1: np.ndarray, v2: np.ndarray):
     l_v1 = v1 / np.linalg.norm(v1, axis=1).reshape(-1, 1)
     l_v2 = v2 / np.linalg.norm(v2, axis=1).reshape(-1, 1)

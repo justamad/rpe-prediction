@@ -20,7 +20,7 @@ class PDFWriter(object):
         for joint in joints:
             self.__bookmarks.append((subject_name, set_nr, joint))
 
-    def close_and_save_file(self, add_bookmarks: bool = False):
+    def close_and_save_file(self, add_bookmarks: bool = True):
         self.__pp.close()
         output_file = PdfFileWriter()
         input_file = PdfFileReader(self.__pdf_buffer)
