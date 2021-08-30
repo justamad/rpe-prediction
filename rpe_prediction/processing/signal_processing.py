@@ -1,4 +1,4 @@
-from scipy.signal import butter, sosfiltfilt, medfilt
+from scipy.signal import butter, sosfiltfilt
 from scipy import interpolate
 
 import numpy as np
@@ -75,5 +75,4 @@ def identify_and_fill_gaps_in_data(df: pd.DataFrame, sampling_rate: int, method:
         for _ in range(missing_frames):
             df_new = df_new.append(pd.Series(), ignore_index=True)
 
-    df_new = df_new.interpolate(method=method)
-    return df_new.set_index('timestamp', drop=True)
+    return df_new.interpolate(method=method).set_index('timestamp', drop=True)

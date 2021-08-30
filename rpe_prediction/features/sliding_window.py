@@ -13,13 +13,6 @@ del settings['mean']  # Highly correlated with RMS and Sum
 
 
 def calculate_features_sliding_window(df: pd.DataFrame, window_size: int, overlap: float = 0.25):
-    """
-    Method calculates features for sliding windows
-    @param df: the current dataframe that holds data from a set, repetition or arbitrary timespan
-    @param window_size: the desired window size
-    @param overlap: the current overlap of sliding windows in percent
-    @return: pandas data frame that holds the calculated features in columns for all sensors/joints
-    """
     windows = []
     stride = int(window_size - (window_size * overlap))
     n_windows = math.floor((len(df) - window_size) / stride) + 1
@@ -31,5 +24,5 @@ def calculate_features_sliding_window(df: pd.DataFrame, window_size: int, overla
 
     df = pd.concat(windows, ignore_index=True)
     features = tsfresh.extract_features(df, column_id='id', column_sort='timestamp', default_fc_parameters=settings)
-    features = impute(features)  # Remove Nan and inf values by replacing it with extreme values (min, max)
+    features = impute(features)  # Replace Nan and inf by with extreme values (min, max)
     return features

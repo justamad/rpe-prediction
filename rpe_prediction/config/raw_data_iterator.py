@@ -1,13 +1,14 @@
-from .data_loaders import SubjectDataCollector, LoadingException, StereoAzureLoader, RPELoader, FusedAzureLoader
+from .data_loaders import SubjectDataCollector, LoadingException, StereoAzureSubjectLoader, RPESubjectLoader, \
+    FusedAzureSubjectLoader
 from os.path import join
 
 import os
 import logging
 
 loader_names = {
-    StereoAzureLoader: 'azure',
-    RPELoader: 'rpe',
-    FusedAzureLoader: 'azure'
+    StereoAzureSubjectLoader: 'azure',
+    RPESubjectLoader: 'rpe',
+    FusedAzureSubjectLoader: 'azure'
 }
 
 

@@ -1,6 +1,8 @@
-from rpe_prediction.config import SubjectDataIterator, StereoAzureLoader, RPELoader, FusedAzureLoader
-from rpe_prediction.devices import AzureKinect
-from rpe_prediction.processing import segment_1d_joint_on_example, compute_mean_and_std_of_joint_for_subjects
+from rpe_prediction.config import SubjectDataIterator, StereoAzureSubjectLoader, RPESubjectLoader, \
+    FusedAzureSubjectLoader
+from rpe_prediction.camera import AzureKinect
+from rpe_prediction.processing import segment_1d_joint_on_example, compute_mean_and_std_of_joint_for_subjects, \
+    align_skeleton_parallel_to_x_axis
 from rpe_prediction.stereo_cam import StereoAzure
 from rpe_prediction.plot import PDFWriter
 from os.path import join, isdir
@@ -31,17 +33,12 @@ args = parser.parse_args()
 example = np.loadtxt("data/example.np")
 
 
-def fuse_kinect_data(pdf_file):
-    """
-    Fuse Kinect data from sub and master camera and calculate features
-    @param pdf_file: output name of current pdf file
-    """
+def fuse_both_kinect_cameras(pdf_file: str):
     pdf_writer = PDFWriter(pdf_file)
-    file_iterator = SubjectDataIterator(args.src_path).add_loader(StereoAzureLoader).add_loader(RPELoader)
+    file_iterator = SubjectDataIterator(args.src_path).add_loader(StereoAzureSubjectLoader).add_loader(RPESubjectLoader)
     sum_repetitions = 0
 
     for set_data in file_iterator.iterate_over_all_subjects():
-        # Create output folder to save averaged skeleton
         dst_path = join(args.dst_path, set_data['subject_name'])
         log_path = join(args.log_path, set_data['subject_name'])
         for cur_path in [dst_path, log_path]:
@@ -51,19 +48,18 @@ def fuse_kinect_data(pdf_file):
         sub_path, master_path = set_data['azure']
         azure = StereoAzure(master_path=master_path, sub_path=sub_path)
 
-        # Segment data based on pelvis joint
         repetitions = segment_1d_joint_on_example(joint_data=azure.sub_position['PELVIS (y)'],
-                                                  exemplar=example, std_dev_percentage=0.5,
+                                                  exemplar=example, std_dev_p=0.5,
                                                   show=False)
         sum_repetitions += len(repetitions)
-        print(f"reps: {len(repetitions)}")
 
         # Cut Kinect data before first and right after last repetition
         azure.cut_skeleton_data(repetitions[0][0], repetitions[-1][1])
         azure.calculate_affine_transform_based_on_data(show=False)
-        mean, std = azure.check_agreement_of_both_cameras()
-        print(f"Agreement internal {sub_path}: Mean: {mean:.2f} mm, std: {std:.2f} mm")
+        mean, std = azure.calculate_error_between_both_cameras()
+        print(f"{sub_path}: Agreement=Mean: {mean:.2f} mm, std: {std:.2f} mm, Reps={len(repetitions)}")
         avg_df = azure.fuse_cameras(show=True, pp=pdf_writer)
+        avg_df = align_skeleton_parallel_to_x_axis(avg_df)
         avg_df.to_csv(f"{os.path.join(dst_path, str(set_data['nr_set']))}_azure.csv", sep=';', index=True)
 
         # Save individual repetitions
@@ -75,7 +71,6 @@ def fuse_kinect_data(pdf_file):
                                      sep=';',
                                      index=False)
 
-        # Create output folder to save averaged skeleton
         dst_path = join(args.dst_path, set_data['subject_name'])
         if not os.path.exists(dst_path):
             os.makedirs(dst_path)
@@ -93,24 +88,18 @@ def fuse_kinect_data(pdf_file):
     os.system('cd data/raw;find . -type f -name "*.json" -exec install -v {} ../processed/{} \\;')
 
 
-def plot_repetition_data(pdf_file):
-    """
-    Plot the resulting joints into a single
-    @param pdf_file: the name of the output PDF file
-    @return: None
-    """
+def plot_repetition_data(pdf_file: str):
     pdf_render = PDFWriter(pdf_file)
     subjects = list(filter(lambda x: isdir(x), map(lambda x: join(args.log_path, x), os.listdir(args.log_path))))
-    file_iterator = SubjectDataIterator(args.dst_path).add_loader(FusedAzureLoader)
+    file_iterator = SubjectDataIterator(args.dst_path).add_loader(FusedAzureSubjectLoader)
     means, std = compute_mean_and_std_of_joint_for_subjects(file_iterator.iterate_over_all_subjects())
 
-    # Utils for colorbar
     cmap = plt.cm.get_cmap("jet")
     norm = matplotlib.colors.Normalize(vmin=10, vmax=20)
     sm = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
     sm.set_array([])
 
-    def parse_rpe_file(segment_file):
+    def parse_rpe_file(segment_file: str):
         return int(segment_file.split('_')[2][:2])
 
     for subject in subjects:
@@ -143,12 +132,7 @@ def plot_repetition_data(pdf_file):
 
 
 def normalize_data_plot(pdf_file):
-    """
-    Normalize the data by subtracting mean and dividing by std deviation
-    @param pdf_file: the current output pdf file
-    @return: None
-    """
-    file_iterator = SubjectDataIterator(args.dst_path).add_loader(FusedAzureLoader)
+    file_iterator = SubjectDataIterator(args.dst_path).add_loader(FusedAzureSubjectLoader)
     means, std = compute_mean_and_std_of_joint_for_subjects(file_iterator.iterate_over_all_subjects())
     pdf_writer = PDFWriter(pdf_file)
 
@@ -177,6 +161,6 @@ def normalize_data_plot(pdf_file):
 
 
 if __name__ == '__main__':
-    fuse_kinect_data(pdf_file='results/raw_fusion.pdf')
-    normalize_data_plot(pdf_file="results/fusion_norm.pdf")
+    fuse_both_kinect_cameras(pdf_file='results/raw_fusion.pdf')
     plot_repetition_data(pdf_file='results/fusion_segmented.pdf')
+    # normalize_data_plot(pdf_file="results/fusion_norm.pdf")

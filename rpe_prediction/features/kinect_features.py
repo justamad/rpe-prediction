@@ -1,4 +1,4 @@
-from rpe_prediction.config import SubjectDataIterator, RPELoader, FusedAzureLoader
+from rpe_prediction.config import SubjectDataIterator, RPESubjectLoader, FusedAzureSubjectLoader
 from rpe_prediction.processing import compute_mean_and_std_of_joint_for_subjects
 from .skeleton_features import calculate_3d_joint_velocities, calculate_joint_angles_with_reference_joint, \
     calculate_angles_between_3_joints, calculate_individual_axes_joint_velocities
@@ -16,7 +16,7 @@ def calculate_kinect_feature_set(input_path, window_size=30, overlap=0.5):
     @param overlap: The current overlap in percent
     @return: Tuple that contains input data and labels (input, labels)
     """
-    file_iterator = SubjectDataIterator(input_path).add_loader(RPELoader).add_loader(FusedAzureLoader)
+    file_iterator = SubjectDataIterator(input_path).add_loader(RPESubjectLoader).add_loader(FusedAzureSubjectLoader)
     # means, std_dev = compute_mean_and_std_of_joint_for_subjects(file_iterator.iterate_over_all_subjects())
     x_data = []
     y_data = []

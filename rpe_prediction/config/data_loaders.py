@@ -9,7 +9,7 @@ class LoadingException(Exception):
     pass
 
 
-class BaseLoader(object):
+class BaseSubjectLoader(object):
 
     def __init__(self):
         pass
@@ -21,7 +21,7 @@ class BaseLoader(object):
         pass
 
 
-class RPELoader(BaseLoader):
+class RPESubjectLoader(BaseSubjectLoader):
 
     def __init__(self, root_path, subject):
         super().__init__()
@@ -39,11 +39,6 @@ class RPELoader(BaseLoader):
         return len(self._trials)
 
     def get_trial_by_set_nr(self, trial_nr: int):
-        """
-        Return an RPE value for given set
-        @param trial_nr: the current set number, starts at 1
-        @return: the current RPE value for given set number
-        """
         if trial_nr not in self._trials:
             raise LoadingException(f"{str(self)}: Could not load trial {trial_nr}")
         return self._trials[trial_nr]
@@ -52,7 +47,7 @@ class RPELoader(BaseLoader):
         return f"RPELoader {self._subject}"
 
 
-class StereoAzureLoader(BaseLoader):
+class StereoAzureSubjectLoader(BaseSubjectLoader):
 
     def __init__(self, root_path, subject):
         super().__init__()
@@ -69,14 +64,10 @@ class StereoAzureLoader(BaseLoader):
         self._subject = subject
 
     def get_trial_by_set_nr(self, trial_nr: int):
-        """
-        Return azure Kinect data
-        @param trial_nr: the current set number, starts at 1
-        @return: the current RPE value for given set number
-        """
         if trial_nr not in self._sub_trials or trial_nr not in self._master_trials:
             raise LoadingException(f"{str(self)}: Error when loading set: {trial_nr} for subject {self._azure_path}")
-        return self._sub_trials[trial_nr], self._master_trials[trial_nr]
+        return join(self._sub_trials[trial_nr], "positions_3d.csv"), \
+               join(self._master_trials[trial_nr], "positions_3d.csv")
 
     def get_nr_of_sets(self):
         return min(len(self._sub_trials), len(self._master_trials))
@@ -85,7 +76,7 @@ class StereoAzureLoader(BaseLoader):
         return f"StereoAzureLoader {self._subject}"
 
 
-class FusedAzureLoader(BaseLoader):
+class FusedAzureSubjectLoader(BaseSubjectLoader):
 
     def __init__(self, root_path, subject):
         super().__init__()
@@ -112,13 +103,6 @@ class FusedAzureLoader(BaseLoader):
 class SubjectDataCollector(object):
 
     def __init__(self, subject_root_path, data_loaders, subject_name, nr_sets=12):
-        """
-        Constructor for data collector that crawls and prepares all data for one subject
-        @param subject_root_path: the current path to subject folder
-        @param data_loaders: a dictionary that defines the data to be loaded
-        @param subject_name: the name (pseudonym) of the current subject
-        @param nr_sets: the expected total number of sets
-        """
         self._file_loaders = {}
         for loader_name, loader in data_loaders.items():
             current_loader = loader(subject_root_path, subject_name)
@@ -132,10 +116,6 @@ class SubjectDataCollector(object):
         self._nr_sets = nr_sets
 
     def iterate_over_sets(self):
-        """
-        Iterate over the entire set and collect data from individual trials
-        @return: Iterator over entire training set
-        """
         for current_set in range(self._nr_sets):
             try:
                 trial_dic = {k: v.get_trial_by_set_nr(current_set) for k, v in self._file_loaders.items()}

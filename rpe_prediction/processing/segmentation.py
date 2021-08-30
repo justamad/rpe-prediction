@@ -7,23 +7,14 @@ import numpy as np
 import pandas as pd
 
 
-def segment_1d_joint_on_example(joint_data: pd.Series, exemplar: np.array, std_dev_percentage: float,
-                                show: bool = False):
-    """
-    Segment data based on a given joint and a given example
-    @param joint_data: 1D-trajectory of the target axis, pandas series
-    @param exemplar: exemplar repetition
-    @param std_dev_percentage: the percentage value multiplied by std dev for example as threshold
-    @param show: flag if results should be shown or saved
-    @return: list of tuples with start and end points of candidates, list of costs for all observations
-    """
+def segment_1d_joint_on_example(joint_data: pd.Series, exemplar: np.array, std_dev_p: float, show: bool = False):
     exemplar = (exemplar - np.mean(exemplar)) / np.std(exemplar)
     joint_data = (joint_data - np.mean(joint_data)) / np.std(joint_data)
     peaks, _ = signal.find_peaks(joint_data, height=0, prominence=0.05)
 
     candidates = []
     dtw_costs = []
-    exemplar_std_threshold = np.std(exemplar) * std_dev_percentage
+    exemplar_std_threshold = np.std(exemplar) * std_dev_p
 
     # Check conditions for new candidates
     for p1, p2 in zip(peaks, peaks[1:]):

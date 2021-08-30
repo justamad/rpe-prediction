@@ -2,15 +2,8 @@ from rpe_prediction.models import GridSearching, SVRModelConfig, RFModelConfig, 
     MLPModelConfig, GBRModelConfig, XGBoostRegressor
 from rpe_prediction.features import calculate_kinect_feature_set
 from rpe_prediction.plot import plot_data_frame_column_wise_as_pdf
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import ExtraTreesClassifier
-from sklearn.feature_selection import SelectFromModel
-from sklearn.feature_selection import RFECV
 from xgboost import XGBRegressor
-from sklearn.svm import SVR
-from sklearn.pipeline import Pipeline
 from sklearn.model_selection import LeaveOneGroupOut
-from sklearn.preprocessing import StandardScaler
 from datetime import datetime
 from os.path import join
 

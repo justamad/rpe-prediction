@@ -1,3 +1,5 @@
+from rpe_prediction.processing import calculate_angle_in_radians_between_vectors
+
 import pandas as pd
 import numpy as np
 
@@ -62,10 +64,3 @@ def calculate_angles_between_3_joints(df: pd.DataFrame):
         result.append(angles)
 
     return pd.DataFrame(data=np.stack(result, axis=-1), columns=columns, index=df.index)
-
-
-def calculate_angle_in_radians_between_vectors(v1: np.ndarray, v2: np.ndarray):
-    l_v1 = v1 / np.linalg.norm(v1, axis=1).reshape(-1, 1)
-    l_v2 = v2 / np.linalg.norm(v2, axis=1).reshape(-1, 1)
-    dot = np.sum(l_v1 * l_v2, axis=1)
-    return np.arccos(dot)
