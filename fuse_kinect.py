@@ -57,7 +57,7 @@ def fuse_both_kinect_cameras(pdf_file: str):
         azure.cut_skeleton_data(repetitions[0][0], repetitions[-1][1])
         azure.calculate_affine_transform_based_on_data(show=False)
         mean, std = azure.calculate_error_between_both_cameras()
-        print(f"{sub_path}: Agreement=Mean: {mean:.2f} mm, std: {std:.2f} mm, Reps={len(repetitions)}")
+        print(f"{sub_path}: Agreement: m={mean:.2f}, s={std:.2f} mm, Reps={len(repetitions)}")
         avg_df = azure.fuse_cameras(show=True, pp=pdf_writer)
         avg_df = align_skeleton_parallel_to_x_axis(avg_df)
         avg_df.to_csv(f"{os.path.join(dst_path, str(set_data['nr_set']))}_azure.csv", sep=';', index=True)
