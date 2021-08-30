@@ -9,13 +9,6 @@ import numpy as np
 
 
 def calculate_kinect_feature_set(input_path, window_size=30, overlap=0.5):
-    """
-    Prepare Kinect skeleton data using the RawFileIterator
-    @param input_path: the current path where data resides in
-    @param window_size: The number of sampled in one window
-    @param overlap: The current overlap in percent
-    @return: Tuple that contains input data and labels (input, labels)
-    """
     file_iterator = SubjectDataIterator(input_path).add_loader(RPESubjectLoader).add_loader(FusedAzureSubjectLoader)
     # means, std_dev = compute_mean_and_std_of_joint_for_subjects(file_iterator.iterate_over_all_subjects())
     x_data = []

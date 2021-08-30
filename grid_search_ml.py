@@ -2,6 +2,7 @@ from rpe_prediction.models import GridSearching, SVRModelConfig, RFModelConfig, 
     MLPModelConfig, GBRModelConfig, XGBoostRegressor
 from rpe_prediction.features import calculate_kinect_feature_set
 from rpe_prediction.plot import plot_data_frame_column_wise_as_pdf
+from sklearn.preprocessing import StandardScaler, RobustScaler, QuantileTransformer
 from xgboost import XGBRegressor
 from sklearn.model_selection import LeaveOneGroupOut
 from datetime import datetime
@@ -35,7 +36,8 @@ window_sizes = [30, 60, 90, 120]  # 1s, 2s, 3s, 4s
 overlaps = [0.5, 0.7, 0.9]
 
 # models = [SVRModelConfig(), GBRModelConfig(), RFModelConfig(), MLPModelConfig()]
-models = [XGBoostRegressor()]
+# models = [XGBoostRegressor()]
+models = [SVRModelConfig()]
 logo = LeaveOneGroupOut()
 
 for window_size in window_sizes:
@@ -44,7 +46,8 @@ for window_size in window_sizes:
         X, y = calculate_kinect_feature_set(input_path=args.src_path, window_size=window_size, overlap=overlap)
         X_train, y_train, X_test, y_test = split_data_to_pseudonyms(X, y, train_p=0.8, random_seed=42)
         print(f"Shape data: {X.shape}")
-        plot_data_frame_column_wise_as_pdf(X, join(out_path, f"importance_winsize_{window_size}_overlap_{overlap}.pdf"))
+        X = pd.DataFrame(QuantileTransformer().fit_transform(X), columns=X.columns, index=X.index)
+        plot_data_frame_column_wise_as_pdf(X, join(out_path, f"features_winsize_{window_size}_overlap_{overlap}.pdf"))
 
         # Save train and test subjects to file
         np.savetxt(join(out_path, f"train_win_{window_size}_overlap_{overlap}.txt"), y_train['name'].unique(), fmt='%s')

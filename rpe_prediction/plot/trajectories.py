@@ -83,4 +83,4 @@ def plot_data_frame_column_wise_as_pdf(df: pd.DataFrame, file_name: str):
         pp.save_figure()
         plt.clf()
 
-    pp.close_and_save_file()
+    pp.close_and_save_file(add_bookmarks=False)
