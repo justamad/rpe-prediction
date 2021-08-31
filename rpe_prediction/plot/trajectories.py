@@ -1,22 +1,21 @@
 from .pdf_writer import PDFWriter
 from rpe_prediction.processing import get_joint_names_from_columns_as_list
+from scipy.stats import norm
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 import math
 
 colors = ['red', 'green', 'blue', 'yellow']
 
+# plt.rcParams["figure.figsize"] = (20, 10)
+plt.rcParams["font.family"] = 'Times New Roman'
+plt.rcParams["font.weight"] = 'bold'
+plt.rcParams["font.size"] = 22
+
 
 def plot_sensor_data_for_axes(df: pd.DataFrame, title: str, joints: list, file_name: str = None, columns: int = 4):
-    """
-    Plots the trajectories for the Azure Kinect camera
-    @param df: Data Frame that contains the positional or orientation data
-    @param title: The title of the graph
-    @param joints: A list of the current joints within the data frame
-    @param file_name: file name of output file
-    @param columns: number of columns in the plot
-    """
     joints = get_joint_names_from_columns_as_list(df, joints)
     rows, cols = math.ceil(len(joints) / columns), columns
     fig, axs = plt.subplots(rows, cols, figsize=(15, 15))
@@ -49,13 +48,6 @@ def plot_sensor_data_for_axes(df: pd.DataFrame, title: str, joints: list, file_n
 
 
 def plot_sensor_data_for_single_axis(df: pd.DataFrame, title: str, file_name: str = None, columns: int = 4):
-    """
-    Plots trajectories or other sensor data for a given data frame. In each subplot only one axis is shown
-    @param df: data frame that contains the sensor data
-    @param title: title of the final plot
-    @param file_name: file name in case plot should be saved to disk
-    @param columns: number of columns for sub plots
-    """
     rows, cols = math.ceil(len(df.columns) / columns), columns
     fig, axs = plt.subplots(rows, cols, figsize=(15, 15))
 
@@ -82,5 +74,36 @@ def plot_data_frame_column_wise_as_pdf(df: pd.DataFrame, file_name: str):
         plt.plot(df[column])
         pp.save_figure()
         plt.clf()
+
+    pp.close_and_save_file(add_bookmarks=False)
+
+
+def plot_data_frame_column_wise_with_distribution_as_pdf(df: pd.DataFrame, df_norm: pd.DataFrame, file_name: str):
+    pp = PDFWriter(file_name)
+
+    for column in df:
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(25, 15))
+        data = df[column]
+        ax1.plot(data)
+        ax1.set_title("Raw Feature")
+
+        # Plot distribution
+        mu, std = norm.fit(data)
+        ax2.hist(data, bins=50, density=True, alpha=0.6, color='g')
+        x = np.linspace(min(data), max(data), 100)
+        p = norm.pdf(x, mu, std)
+        ax2.plot(x, p, 'k', linewidth=2)
+        ax2.set_title(f"Gaussian Fit: mu={mu:.2f}, std={std:.2f}")
+
+        ax3.plot(df_norm[column])
+        ax3.set_title("Normalized Feature")
+
+        fig.suptitle(f"{column}")
+        pp.save_figure()
+        ax1.cla()
+        ax2.cla()
+        ax3.cla()
+        plt.close()
+        fig.clf()
 
     pp.close_and_save_file(add_bookmarks=False)

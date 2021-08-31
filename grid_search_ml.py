@@ -1,7 +1,7 @@
 from rpe_prediction.models import GridSearching, SVRModelConfig, RFModelConfig, split_data_to_pseudonyms, \
     MLPModelConfig, GBRModelConfig, XGBoostRegressor
 from rpe_prediction.features import calculate_kinect_feature_set
-from rpe_prediction.plot import plot_data_frame_column_wise_as_pdf
+from rpe_prediction.plot import plot_data_frame_column_wise_with_distribution_as_pdf
 from sklearn.preprocessing import StandardScaler, RobustScaler, QuantileTransformer
 from xgboost import XGBRegressor
 from sklearn.model_selection import LeaveOneGroupOut
@@ -40,19 +40,26 @@ overlaps = [0.5, 0.7, 0.9]
 models = [SVRModelConfig()]
 logo = LeaveOneGroupOut()
 
+
+def preprocess(x: pd.DataFrame):
+    mean = x.mean()
+    std_dev = x.std()
+    x = (x - mean) / (3 * std_dev)
+    x = x.clip(-1.0, 1.0)
+    return x
+
+
 for window_size in window_sizes:
     for overlap in reversed(overlaps):
         # Generate new train and test data
-        X, y = calculate_kinect_feature_set(input_path=args.src_path, window_size=window_size, overlap=overlap)
-        X_train, y_train, X_test, y_test = split_data_to_pseudonyms(X, y, train_p=0.8, random_seed=42)
-        print(f"Shape data: {X.shape}")
-        X = pd.DataFrame(QuantileTransformer().fit_transform(X), columns=X.columns, index=X.index)
-        plot_data_frame_column_wise_as_pdf(X, join(out_path, f"features_winsize_{window_size}_overlap_{overlap}.pdf"))
+        X_orig, y = calculate_kinect_feature_set(input_path=args.src_path, window_size=window_size, overlap=overlap)
+        print(f"Shape data: {X_orig.shape}")
+        X = preprocess(X_orig)
+        plot_data_frame_column_wise_with_distribution_as_pdf(X_orig, X,
+                                                             join(out_path,
+                                                                  f"features_winsize_{window_size}_overlap_{overlap}.pdf"))
 
-        # Save train and test subjects to file
-        np.savetxt(join(out_path, f"train_win_{window_size}_overlap_{overlap}.txt"), y_train['name'].unique(), fmt='%s')
-        np.savetxt(join(out_path, f"test_win_{window_size}_overlap_{overlap}.txt"), y_test['name'].unique(), fmt='%s')
-
+        # Feature elimination
         model = XGBRegressor()
         model.fit(X, y['rpe'])
 
@@ -65,18 +72,25 @@ for window_size in window_sizes:
         features = list(X.loc[:, mask].columns)
         print(features)
 
-        X_train = X_train.loc[:, mask]
-        X_test = X_test.loc[:, mask]
-        X_train.to_csv(join(out_path, f"X_train_win_{window_size}_overlap_{overlap}.csv"), index=False, sep=';')
-        X_test.to_csv(join(out_path, f"X_test_win_{window_size}_overlap_{overlap}.csv"), index=False, sep=';')
+        # Data split
+        X_train, y_train, X_test, y_test = split_data_to_pseudonyms(X, y, train_p=0.8, random_seed=42)
 
-        for model_config in models:
-            param_dict = model_config.get_trial_data_dict()
-            grid_search = GridSearching(groups=y_train['group'], **param_dict)
-            file_name = join(out_path, f"{str(model_config)}_win_{window_size}_overlap_{overlap}.csv")
-            best_model = grid_search.perform_grid_search(X_train, y_train['rpe'], output_file=file_name)
-            logging.info(best_model.predict(X_test))
-            logging.info(best_model.score(X_test, y_test['rpe']))
+        # Save train and test subjects to file
+        np.savetxt(join(out_path, f"train_win_{window_size}_overlap_{overlap}.txt"), y_train['name'].unique(), fmt='%s')
+        np.savetxt(join(out_path, f"test_win_{window_size}_overlap_{overlap}.txt"), y_test['name'].unique(), fmt='%s')
+
+        # X_train = X_train.loc[:, mask]
+        # X_test = X_test.loc[:, mask]
+        # X_train.to_csv(join(out_path, f"X_train_win_{window_size}_overlap_{overlap}.csv"), index=False, sep=';')
+        # X_test.to_csv(join(out_path, f"X_test_win_{window_size}_overlap_{overlap}.csv"), index=False, sep=';')
+        #
+        # for model_config in models:
+        #     param_dict = model_config.get_trial_data_dict()
+        #     grid_search = GridSearching(groups=y_train['group'], **param_dict)
+        #     file_name = join(out_path, f"{str(model_config)}_win_{window_size}_overlap_{overlap}.csv")
+        #     best_model = grid_search.perform_grid_search(X_train, y_train['rpe'], output_file=file_name)
+        #     logging.info(best_model.predict(X_test))
+        #     logging.info(best_model.score(X_test, y_test['rpe']))
 
 
 def feature_elimination():

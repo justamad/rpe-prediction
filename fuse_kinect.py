@@ -91,8 +91,6 @@ def fuse_both_kinect_cameras(pdf_file: str):
 def plot_repetition_data(pdf_file: str):
     pdf_render = PDFWriter(pdf_file)
     subjects = list(filter(lambda x: isdir(x), map(lambda x: join(args.log_path, x), os.listdir(args.log_path))))
-    file_iterator = SubjectDataIterator(args.dst_path).add_loader(FusedAzureSubjectLoader)
-    means, std = compute_mean_and_std_of_joint_for_subjects(file_iterator.iterate_over_all_subjects())
 
     cmap = plt.cm.get_cmap("jet")
     norm = matplotlib.colors.Normalize(vmin=10, vmax=20)
@@ -114,8 +112,6 @@ def plot_repetition_data(pdf_file: str):
         cols = files[0][0].columns
         for col in cols:
             for df, rpe in files:
-                df = (df - means[subject_name]) / (std[subject_name] * 3)
-                df = df.clip(-1, 1)
                 plt.plot(df[col], color=cmap(norm(rpe)))
 
             plt.xlabel("Frames [1/30s]")
@@ -131,7 +127,7 @@ def plot_repetition_data(pdf_file: str):
     pdf_render.close_and_save_file()
 
 
-def normalize_data_plot(pdf_file):
+def normalize_data_plot(pdf_file: str):
     file_iterator = SubjectDataIterator(args.dst_path).add_loader(FusedAzureSubjectLoader)
     means, std = compute_mean_and_std_of_joint_for_subjects(file_iterator.iterate_over_all_subjects())
     pdf_writer = PDFWriter(pdf_file)
@@ -162,5 +158,4 @@ def normalize_data_plot(pdf_file):
 
 if __name__ == '__main__':
     fuse_both_kinect_cameras(pdf_file='results/raw_fusion.pdf')
-    plot_repetition_data(pdf_file='results/fusion_segmented.pdf')
-    # normalize_data_plot(pdf_file="results/fusion_norm.pdf")
+    plot_repetition_data(pdf_file='results/fusion_segmented_new.pdf')
