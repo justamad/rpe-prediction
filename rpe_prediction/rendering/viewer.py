@@ -3,45 +3,46 @@ import pandas as pd
 import numpy as np
 
 COLORS = ["red", "green", "blue"]
+WIDTH = 1280
+HEIGHT = 1024
 
 
 class SkeletonViewer(object):
 
     def __init__(self, sphere_radius: float = 0.01):
-        """
-        Constructor for Skeleton Viewer using VTK graphics framework
-        @param sphere_radius: the radius of spheres
-        """
         self.colors = vtk.vtkNamedColors()
         self.renderer = vtk.vtkRenderer()
         self.renderer.SetBackground(0, 0, 0)
         self.renderer.ResetCamera()
 
         self.render_window = vtk.vtkRenderWindow()
+        self.render_window.SetSize(WIDTH, HEIGHT)
         self.render_window.AddRenderer(self.renderer)
 
         self.render_window_interactor = vtk.vtkRenderWindowInteractor()
         self.render_window_interactor.SetRenderWindow(self.render_window)
         self.render_window_interactor.Initialize()
-        self.timer_id = self.render_window_interactor.CreateRepeatingTimer(33)
+        self._timer_id = self.render_window_interactor.CreateRepeatingTimer(33)
         self.render_window_interactor.AddObserver('KeyPressEvent', self.keypress_callback, 1.0)
 
-        # Data objects
+        self.video_writer = vtk.vtkAVIWriter()
+        self.image_filter = vtk.vtkWindowToImageFilter()
+        self.image_filter.SetInput(self.render_window)
+
         self.__skeleton_objects = []
         self.__max_frames = float('inf')
         self.__cur_frame = 0
-        self.__break = False
+        self.__pause = False
+        self.__record = False
         self.__trans_vector = np.array([0, 0, 0])
         self.__scale_factor = 1.0
         self._sphere_radius = sphere_radius
+        self.__axis_scale = 0.3
+        self.__video_count = 0
+
+        self._draw_coordinate_axes()
 
     def add_skeleton(self, data: pd.DataFrame, skeleton_connection=None):
-        """
-        Add a new skeleton to the renderer
-        @param data: new skeleton data in a numpy array
-        @param skeleton_connection: list of tuples with joint connection names
-        @return: None
-        """
         actors_markers = []  # each marker has an own actor
         actors_bones = []  # actors for each line segment between two markers
         lines = []
@@ -87,47 +88,62 @@ class SkeletonViewer(object):
             'lines': lines,
             'actors_markers': actors_markers,
         })
-
-    def show_window(self, axis_scale: float = 0.3):
-        """
-        Start the rendering sequence
-        @param axis_scale: scaling factor for coordinate system axes
-        @return: None
-        """
-        # Initialize a timer for the animation
-        self.render_window_interactor.AddObserver('TimerEvent', self.update)
         self.__max_frames = min(map(lambda x: len(x['data']), self.__skeleton_objects))
 
-        # Calculate bounding box and scale to center
+    def _calculate_bounding_box(self):
         data = np.concatenate(list(map(lambda x: x['data'].reshape(-1, 3), self.__skeleton_objects)))
         min_vals = np.min(data, axis=0)
         max_vals = np.max(data, axis=0)
         self.__trans_vector = np.array([(min_vals[0] + max_vals[0]) / 2, min_vals[1], (min_vals[2] + max_vals[2]) / 2])
         self.__scale_factor = np.max(data - self.__trans_vector)
 
-        # create coordinate actor
+    def _draw_coordinate_axes(self):
         axes = vtk.vtkAxesActor()
-        axes.SetTotalLength(axis_scale, axis_scale, axis_scale)
+        axes.SetTotalLength(self.__axis_scale, self.__axis_scale, self.__axis_scale)
         axes.GetXAxisCaptionActor2D().GetTextActor().SetTextScaleModeToNone()
         axes.GetYAxisCaptionActor2D().GetTextActor().SetTextScaleModeToNone()
         axes.GetZAxisCaptionActor2D().GetTextActor().SetTextScaleModeToNone()
         self.renderer.AddActor(axes)
 
-        # Begin Interaction
-        self.render_window.SetSize(2560, 1520)
+    def show_window(self):
+        self._calculate_bounding_box()
+        self.render_window_interactor.AddObserver('TimerEvent', self._update)
         self.render_window.Render()
         self.render_window_interactor.Start()
 
-    def update(self, obj, event):
+    def _update(self, iren, event):
         if self.__cur_frame >= self.__max_frames:
             self.__cur_frame = 0
 
-        # Draw individual skeleton
+        self._draw_new_frame(self.__cur_frame)
+        iren.GetRenderWindow().Render()
+
+        if self.__record:
+            self._write_video()
+
+        if not self.__pause:
+            self.__cur_frame += 1
+
+    def _start_video(self):
+        self.video_writer.SetFileName(f'video_{self.__video_count}.avi')
+        self.video_writer.SetInputConnection(self.image_filter.GetOutputPort())
+        self.video_writer.SetRate(30)
+        self.video_writer.SetQuality(2)
+        self.video_writer.Start()
+
+    def _write_video(self):
+        self.image_filter.Modified()
+        self.video_writer.Write()
+
+    def _close_video(self):
+        self.video_writer.End()
+        self.__video_count += 1
+
+    def _draw_new_frame(self, index: int = 0):
         for skeleton_data in self.__skeleton_objects:
-            # Update marker position for current frame
             data = skeleton_data['data']
             actors_markers = skeleton_data['actors_markers']
-            points = (data[self.__cur_frame].reshape(-1, 3) - self.__trans_vector) / self.__scale_factor
+            points = (data[index].reshape(-1, 3) - self.__trans_vector) / self.__scale_factor
 
             for c_points, actor in enumerate(actors_markers):
                 x, y, z = points[c_points]
@@ -143,14 +159,10 @@ class SkeletonViewer(object):
                 line.SetPoint1(points[j1])
                 line.SetPoint2(points[j2])
 
-        obj.GetRenderWindow().Render()
-        if not self.__break:
-            self.__cur_frame += 1
-
     def keypress_callback(self, obj, ev):
         key = obj.GetKeySym()
         if key == 'space':
-            self.__break = not self.__break
+            self.__pause = not self.__pause
         elif key == 'Left':
             new_frame = self.__cur_frame - 1
             self.__cur_frame = new_frame if new_frame > 0 else self.__cur_frame
@@ -159,3 +171,10 @@ class SkeletonViewer(object):
             new_frame = self.__cur_frame + 1
             self.__cur_frame = new_frame if new_frame < self.__max_frames else self.__cur_frame
             print(f"Current Frame: {self.__cur_frame}")
+        elif key == 'v':
+            if self.__record:
+                self._close_video()
+                self.__record = False
+            else:
+                self._start_video()
+                self.__record = True
