@@ -1,13 +1,21 @@
-from rpe_prediction.models import GridSearching, SVRModelConfig, RFModelConfig, split_data_to_pseudonyms, \
-    MLPModelConfig, GBRModelConfig, XGBoostRegressor
 from rpe_prediction.features import calculate_kinect_feature_set
-from rpe_prediction.plot import plot_data_frame_column_wise_with_distribution_as_pdf
-from sklearn.preprocessing import StandardScaler, RobustScaler, QuantileTransformer
-from xgboost import XGBRegressor
+from rpe_prediction.plot import plot_feature_distribution_as_pdf, plot_feature_correlation_heatmap
 from sklearn.model_selection import LeaveOneGroupOut
 from datetime import datetime
 from os.path import join
 
+from rpe_prediction.models import (
+    GridSearching,
+    SVRModelConfig,
+    RFModelConfig,
+    split_data_to_pseudonyms,
+    normalize_features_z_score,
+    feature_elimination,
+    MLPModelConfig,
+    GBRModelConfig,
+    XGBoostRegressor)
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import argparse
@@ -41,39 +49,19 @@ models = [SVRModelConfig()]
 logo = LeaveOneGroupOut()
 
 
-def preprocess(x: pd.DataFrame):
-    mean = x.mean()
-    std_dev = x.std()
-    x = (x - mean) / (3 * std_dev)
-    x = x.clip(-1.0, 1.0)
-    return x
-
-
 for window_size in window_sizes:
     for overlap in reversed(overlaps):
-        # Generate new train and test data
         X_orig, y = calculate_kinect_feature_set(input_path=args.src_path, window_size=window_size, overlap=overlap)
-        print(f"Shape data: {X_orig.shape}")
-        X = preprocess(X_orig)
-        plot_data_frame_column_wise_with_distribution_as_pdf(X_orig, X,
-                                                             join(out_path,
-                                                                  f"features_winsize_{window_size}_overlap_{overlap}.pdf"))
-
-        # Feature elimination
-        model = XGBRegressor()
-        model.fit(X, y['rpe'])
-
-        df = pd.DataFrame(model.feature_importances_, index=X.columns, columns=["Importance"]) \
-            .sort_values(by='Importance', ascending=False)
-        df.index.names = ["Feature"]
-        df.to_csv(join(out_path, f"importance_winsize_{window_size}_overlap_{overlap}.csv"), sep=';')
-        threshold = sorted(model.feature_importances_)[-(args.nr_features + 1)]
-        mask = model.feature_importances_ > threshold
-        features = list(X.loc[:, mask].columns)
-        print(features)
+        # features = X_orig.filter(regex="3D_VELOCITY")
+        # features = features.filter(regex="maximum")
+        # plot_feature_correlation_heatmap(features)
+        X = normalize_features_z_score(X_orig)
+        plot_feature_distribution_as_pdf(X_orig, X,
+                                         join(out_path, f"features_winsize_{window_size}_overlap_{overlap}.pdf"))
 
         # Data split
         X_train, y_train, X_test, y_test = split_data_to_pseudonyms(X, y, train_p=0.8, random_seed=42)
+        feature_elimination(X_train, y_train['rpe'], X_test, y_test['rpe'], window_size, overlap, out_path)
 
         # Save train and test subjects to file
         np.savetxt(join(out_path, f"train_win_{window_size}_overlap_{overlap}.txt"), y_train['name'].unique(), fmt='%s')
@@ -91,36 +79,3 @@ for window_size in window_sizes:
         #     best_model = grid_search.perform_grid_search(X_train, y_train['rpe'], output_file=file_name)
         #     logging.info(best_model.predict(X_test))
         #     logging.info(best_model.score(X_test, y_test['rpe']))
-
-
-def feature_elimination():
-    pass
-    # selector = SelectFromModel(estimator=LogisticRegression()).fit(X, y['rpe'])
-    # print(selector.estimator_.coef_)
-    # print(selector.threshold_)
-    # print(selector.get_support())
-    # features = list(X.loc[:, selector.get_support()].columns)
-    # print(features)
-
-    # clf = ExtraTreesClassifier(n_estimators=50)
-    # clf = clf.fit(X, y)
-    # print(clf.feature_importances_)
-    # # Perform an initial recursive feature elimination
-    # rfe = RFECV(SVR(kernel='linear'),
-    #             min_features_to_select=args.nr_features,
-    #             step=0.1,
-    #             n_jobs=-1,
-    #             verbose=10,
-    #             cv=logo.get_n_splits(groups=y_train['group']))
-    #
-    #
-    # pipe = Pipeline([
-    #     ('scaler', StandardScaler()),
-    #     ('rfe', rfe)
-    # ])
-    # pipe.fit(X_train, y_train['rpe'])
-    #
-    # # Save RFECV results for later
-    # rfe_df = pd.DataFrame(rfe.ranking_, index=X.columns, columns=['Rank']).sort_values(by='Rank', ascending=True)
-    # rfe_df.index.names = ["Feature"]
-    # rfe_df.to_csv(join(out_path, f"features_win_{window_size}_overlap_{overlap}.csv"), sep=';')

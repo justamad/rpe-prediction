@@ -1,12 +1,19 @@
-from rpe_prediction.config import SubjectDataIterator, StereoAzureSubjectLoader, RPESubjectLoader, \
-    FusedAzureSubjectLoader
-from rpe_prediction.camera import AzureKinect
-from rpe_prediction.processing import segment_1d_joint_on_example, compute_mean_and_std_of_joint_for_subjects, \
-    align_skeleton_parallel_to_x_axis
 from rpe_prediction.stereo_cam import StereoAzure
 from rpe_prediction.plot import PDFWriter
 from os.path import join, isdir
 from functools import reduce
+from rpe_prediction.camera import AzureKinect
+
+from rpe_prediction.config import (
+    SubjectDataIterator,
+    StereoAzureSubjectLoader,
+    RPESubjectLoader,
+    FusedAzureSubjectLoader)
+
+from rpe_prediction.processing import (
+    segment_1d_joint_on_example,
+    compute_mean_and_std_of_joint_for_subjects,
+    align_skeleton_parallel_to_x_axis)
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -16,7 +23,7 @@ import numpy as np
 import argparse
 import os
 
-matplotlib.use("TkAgg")
+# matplotlib.use("TkAgg")
 
 plt.rcParams["figure.figsize"] = (20, 10)
 plt.rcParams["font.family"] = 'Times New Roman'
@@ -158,4 +165,4 @@ def normalize_data_plot(pdf_file: str):
 
 if __name__ == '__main__':
     fuse_both_kinect_cameras(pdf_file='results/raw_fusion.pdf')
-    plot_repetition_data(pdf_file='results/fusion_segmented_new.pdf')
+    plot_repetition_data(pdf_file='results/fusion_segmented.pdf')

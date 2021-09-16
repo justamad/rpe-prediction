@@ -24,7 +24,7 @@ joints_with_first_joint_as_origin = [("SPINE_CHEST", "NECK", "SPINE_NAVEL"),
 
 def calculate_individual_axes_joint_velocities(df: pd.DataFrame):
     diff = df.diff(axis=0).dropna(axis='index')
-    diff = diff.add_suffix('_velocity')
+    diff = diff.add_suffix('_1D_VELOCITY')
     return diff
 
 
@@ -47,7 +47,7 @@ def calculate_joint_angles_with_reference_joint(df: pd.DataFrame, reference: str
         p2 = df[[c for c in df.columns if j2 in c]].to_numpy()
         angles = calculate_angle_in_radians_between_vectors(r - p1, p2 - r)
         result.append(angles)
-        columns.append(f"{j1}_{j2}")
+        columns.append(f"{j1}={j2}")
 
     return pd.DataFrame(data=np.stack(result, axis=-1), columns=columns, index=df.index)
 
@@ -59,7 +59,7 @@ def calculate_angles_between_3_joints(df: pd.DataFrame):
         p1 = df[[c for c in df.columns if j1 in c]].to_numpy()
         p2 = df[[c for c in df.columns if j2 in c]].to_numpy()
         p3 = df[[c for c in df.columns if j3 in c]].to_numpy()
-        columns.append(f"{j1}->{j2}_{j1}->{j3}")
+        columns.append(f"{j1}->{j2}={j1}->{j3}")
         angles = calculate_angle_in_radians_between_vectors(p2 - p1, p3 - p1)
         result.append(angles)
 

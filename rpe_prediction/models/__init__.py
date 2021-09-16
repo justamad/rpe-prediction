@@ -1,5 +1,12 @@
 from .ml_grid_search import GridSearching
-from .ml_model_config import SVRModelConfig, KNNModelConfig, RFModelConfig, GBRModelConfig, MLPModelConfig, \
-    XGBoostRegressor
 from .ml_evaluate import evaluate_for_subject
-from .utils import split_data_to_pseudonyms, normalize_rpe_values_min_max
+from .utils import split_data_to_pseudonyms, normalize_rpe_values_min_max, normalize_features_z_score
+from .ml_feature_extraction import feature_elimination
+
+from .ml_model_config import (
+    SVRModelConfig,
+    KNNModelConfig,
+    RFModelConfig,
+    GBRModelConfig,
+    MLPModelConfig,
+    XGBoostRegressor)

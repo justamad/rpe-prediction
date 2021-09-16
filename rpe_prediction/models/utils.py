@@ -24,3 +24,11 @@ def normalize_rpe_values_min_max(df: pd.DataFrame):
         df.loc[mask, 'rpe'] = (df_subject['rpe'] - min_rpe) / (max_rpe - min_rpe)
 
     return df
+
+
+def normalize_features_z_score(df: pd.DataFrame):
+    mean = df.mean()
+    std_dev = df.std()
+    df = (df - mean) / (3 * std_dev)
+    df = df.clip(-1.0, 1.0)
+    return df

@@ -1,5 +1,8 @@
-from .geometry import calculate_angle_in_radians_between_vectors, create_rotation_matrix_y_axis, \
-    apply_affine_transformation, create_rotation_matrix_z_axis
+from .geometry import (
+    calculate_angle_in_radians_between_vectors,
+    create_rotation_matrix_y_axis,
+    apply_affine_transformation,
+    create_rotation_matrix_z_axis)
 
 import matplotlib.pyplot as plt
 import pandas as pd
