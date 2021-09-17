@@ -11,9 +11,8 @@ scoring = {'R2': 'r2',
 
 class GridSearching(object):
 
-    def __init__(self, groups, model, scaler, parameters, learner_name, balancer):
+    def __init__(self, groups, model, parameters, learner_name, balancer):
         self._steps = [
-            ("scaler", scaler),
             ('balance_sampling', balancer),
             (learner_name, model)
         ]
@@ -22,7 +21,7 @@ class GridSearching(object):
         self._groups = groups
         self._learner_name = learner_name
 
-    def perform_grid_search(self, input_data: pd.DataFrame, ground_truth: pd.DataFrame, output_file: str = None):
+    def perform_grid_search(self, X_train: pd.DataFrame, y_train: pd.DataFrame, output_file: str = None):
         pipe = Pipeline(steps=self._steps)
         logo = LeaveOneGroupOut()
 
@@ -35,8 +34,9 @@ class GridSearching(object):
                               refit='MSE')
 
         logging.info(search)
-        search.fit(input_data, ground_truth)
-        logging.info("Best parameter (CV score=%0.3f):" % search.best_score_)
+        logging.info(f"Input shape: {X_train.shape}")
+        search.fit(X_train, y_train)
+        logging.info(f"Best parameter (CV score={search.best_score_:.5f}")
         logging.info(search.best_params_)
         results = pd.DataFrame(search.cv_results_)
         results = results.drop(['params'], axis=1)

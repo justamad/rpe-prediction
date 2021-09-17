@@ -1,6 +1,5 @@
 from imblearn.over_sampling import RandomOverSampler
 from xgboost import XGBRegressor
-from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.neural_network import MLPRegressor
@@ -10,7 +9,6 @@ from sklearn.svm import SVR
 class LearningModelBase(object):
 
     def __init__(self, model, parameters):
-        self.scaler = StandardScaler()
         self.model = model
         self.parameters = parameters
         self.balancer = RandomOverSampler()
@@ -18,7 +16,6 @@ class LearningModelBase(object):
     def get_trial_data_dict(self):
         return {
             'model': self.model,
-            'scaler': self.scaler,
             'parameters': self.parameters,
             'learner_name': str(self),
             'balancer': self.balancer,

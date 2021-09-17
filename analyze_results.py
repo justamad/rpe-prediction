@@ -1,4 +1,4 @@
-from rpe_prediction.models import split_data_to_pseudonyms, evaluate_for_subject, normalize_rpe_values_min_max
+from rpe_prediction.models import split_data_based_on_pseudonyms, evaluate_for_subject, normalize_rpe_values_min_max
 from imblearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
@@ -64,7 +64,7 @@ def test_model(input_path, win_size, overlap):
 
     X, y = pd.read_csv("data/X.csv", sep=';', index_col=False), pd.read_csv("data/y.csv", sep=';', index_col=False)
     y = normalize_rpe_values_min_max(y)
-    X_train, y_train, X_test, y_test = split_data_to_pseudonyms(X, y, train_p=0.8, random_seed=19)
+    X_train, y_train, X_test, y_test = split_data_based_on_pseudonyms(X, y, train_p=0.8, random_seed=19)
     X_train = X_train.loc[:, feature_mask]
     X_test = X_test.loc[:, feature_mask]
 
