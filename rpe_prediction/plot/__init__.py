@@ -6,4 +6,6 @@ from .trajectories import (
     plot_sensor_data_for_single_axis,
     plot_data_frame_column_wise_as_pdf,
     plot_feature_distribution_as_pdf,
-    plot_feature_correlation_heatmap)
+    plot_feature_correlation_heatmap,
+    plot_parallel_coordinates
+)

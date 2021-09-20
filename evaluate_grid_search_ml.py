@@ -1,28 +1,24 @@
 from rpe_prediction.models import split_data_based_on_pseudonyms, evaluate_for_subject, normalize_rpe_values_min_max
+from rpe_prediction.plot import plot_parallel_coordinates
 from imblearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
 from sklearn.svm import SVR
 from scipy.stats import spearmanr, pearsonr
-from sklearn.neighbors import KNeighborsRegressor
 from os.path import join
 
+import matplotlib.pyplot as plt
 import pandas as pd
 import os
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--src_path', type=str, dest='src_path', default="results/2021-06-14-13-15-57")
+parser.add_argument('--src_path', type=str, dest='src_path', default="results/2021-09-17-12-04-10")
 parser.add_argument('--data_path', type=str, dest='data_path', default="data/processed")
 args = parser.parse_args()
 
 
-def aggregate_features(input_path):
-    """
-    Aggregates the features from all trials into one single csv file
-    @param input_path: The current input file where files reside in
-    :return: None
-    """
+def aggregate_features(input_path: str):
     files = filter(lambda x: x.startswith('features') and x.endswith('.csv'), os.listdir(input_path))
     data = []
 
@@ -37,27 +33,40 @@ def aggregate_features(input_path):
     df_sum.to_csv(join(input_path, "feature_ranks.csv"))
 
 
-def analyze_svr_results(input_path):
-    """
-    Read in results from classifiers and concatenate into large data frame
-    :param input_path: the path to the result data
-    :return: None
-    """
-    data = []
-    for file in filter(lambda x: x.startswith('svr') and x.endswith('.csv'), os.listdir(input_path)):
+def evaluate_results_for_ml_model(input_path: str, model: str = "svr"):
+    # data = []
+    for file in filter(lambda x: x.startswith(model) and x.endswith('.csv'), os.listdir(input_path)):
         split = file.split('_')
-        classifier, win_size, overlap = split[0], int(split[2]), float(split[4][:-4])
-        df = pd.read_csv(join(input_path, file), delimiter=';', index_col=False)
-        df.insert(0, 'model', classifier)
-        df.insert(1, 'win_size', win_size)
-        df.insert(2, 'overlap', overlap)
-        data.append(df)
+        win_size, overlap = int(split[2]), float(split[4][:-4])
+        df = pd.read_csv(join(input_path, file), delimiter=';', index_col=False).sort_values(by='rank_test_MSE',
+                                                                                             ascending=False)
 
-    data = pd.concat(data)
-    data.to_csv(join(input_path, "classifier_results.csv"), sep=';', index=False)
+        mapping = {'linear': 0, 'rbf': 1}
+        df = df.replace({'param_svr__kernel': mapping})
+
+        plot_parallel_coordinates(
+            df,
+            cols=["param_svr__kernel", "param_svr__C", "param_svr__gamma", "mean_test_MSE", "mean_test_MAE"],
+            color_column="mean_test_MSE",
+            title=f"Window Size: {win_size}, Overlap: {overlap}"
+        )
+
+        # plot_parallel_coordinates(df, "rank_test_MAE",
+        #                                  cols=["param_svr__C", "param_svr__gamma", "split10_test_R2"]
+        #                                  # "param_svr__kernel"]
+        #                                  )
+        plt.show()
+
+        # df.insert(0, 'model', model)
+        # df.insert(1, 'win_size', win_size)
+        # df.insert(2, 'overlap', overlap)
+        # data.append(df)
+
+    # data = pd.concat(data)
+    # data.to_csv(join(input_path, "classifier_results.csv"), sep=';', index=False)
 
 
-def test_model(input_path, win_size, overlap):
+def test_model(input_path: str, win_size: int, overlap: float):
     file = join(input_path, f"features_win_{win_size}_overlap_{overlap}.csv")
     features = pd.read_csv(file, delimiter=',', index_col=False)
     feature_mask = features[features['Rank'] == 1].loc[:, 'Unnamed: 0']
@@ -112,5 +121,5 @@ def test_model(input_path, win_size, overlap):
 
 if __name__ == '__main__':
     # aggregate_features(args.src_path)
-    # analyze_svr_results(args.src_path)
-    test_model(args.src_path, 90, 0.7)
+    evaluate_results_for_ml_model(args.src_path, "svr")
+    # test_model(args.src_path, 90, 0.7)

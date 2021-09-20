@@ -1,6 +1,7 @@
+from rpe_prediction.processing import get_joint_names_from_columns_as_list, get_hsv_color_interpolation
 from .pdf_writer import PDFWriter
-from rpe_prediction.processing import get_joint_names_from_columns_as_list
 from scipy.stats import norm
+from matplotlib import ticker
 
 import matplotlib.pyplot as plt
 import seaborn as sb
@@ -9,12 +10,6 @@ import numpy as np
 import math
 
 colors = ['red', 'green', 'blue', 'yellow']
-
-
-# plt.rcParams["figure.figsize"] = (20, 10)
-# plt.rcParams["font.family"] = 'Times New Roman'
-# plt.rcParams["font.weight"] = 'bold'
-# plt.rcParams["font.size"] = 22
 
 
 def plot_sensor_data_for_axes(df: pd.DataFrame, title: str, joints: list, file_name: str = None, columns: int = 4):
@@ -132,4 +127,68 @@ def plot_feature_correlation_heatmap(df: pd.DataFrame):
     )
 
     plt.tight_layout()
+    plt.show()
+
+
+def plot_parallel_coordinates(df: pd.DataFrame, cols: list, color_column: str, title: str = None):
+    df = df[cols]
+    trials, parameters = df.shape
+    x = list(range(parameters))
+    mse = df[color_column]
+    fig, axes = plt.subplots(1, len(x) - 1, sharey=False, figsize=(15, 5))
+
+    # Get min, max and range for each column - Normalize the data for each column
+    min_max_range = {}
+    for col in cols:
+        min_max_range[col] = [df[col].min(), df[col].max(), np.ptp(df[col])]
+        df[col] = np.true_divide(df[col] - df[col].min(), np.ptp(df[col]))
+
+    # Plot each row / trial
+    for i, ax in enumerate(axes):
+        for idx in df.index:
+            ax.plot(x, df.loc[idx, cols], color=get_hsv_color_interpolation(df.loc[idx, color_column], 1), alpha=1.0)
+        ax.set_xlim([x[i], x[i + 1]])
+
+    def set_ticks_for_axis(dim, ax, ticks):
+        """
+        Set the tick positions and labels on y axis for each plot
+        @param dim:
+        @param ax:
+        @param ticks:
+        """
+        # Tick positions based on normalised data
+        # Tick labels are based on original data
+        min_val, max_val, val_range = min_max_range[cols[dim]]
+        step = val_range / float(ticks - 1)
+        tick_labels = [round(min_val + step * i, 2) for i in range(ticks)]
+        norm_min = df[cols[dim]].min()
+        norm_range = np.ptp(df[cols[dim]])
+        norm_step = norm_range / float(ticks - 1)
+        ticks = [round(norm_min + norm_step * i, 2) for i in range(ticks)]
+        ax.yaxis.set_ticks(ticks)
+        ax.set_yticklabels(tick_labels)
+
+    for dim, ax in enumerate(axes):
+        ax.xaxis.set_major_locator(ticker.FixedLocator([dim]))
+        set_ticks_for_axis(dim, ax, ticks=6)
+        ax.set_xticklabels([cols[dim]])
+
+    # Move the final axis' ticks to the right-hand side
+    ax = plt.twinx(axes[-1])
+    dim = len(axes)
+    ax.xaxis.set_major_locator(ticker.FixedLocator([x[-2], x[-1]]))
+    set_ticks_for_axis(dim, ax, ticks=6)
+    ax.set_xticklabels([cols[-2], cols[-1]])
+
+    # Remove space between subplots
+    plt.subplots_adjust(wspace=0)
+
+    # Add legend to plot
+    # plt.legend([plt.Line2D((0, 1), (0, 0), color="red") for column in cols],
+    # df['mpg'].cat.categories,
+    # bbox_to_anchor=(1.2, 1), loc=2, borderaxespad=0.)
+
+    if title is not None:
+        plt.suptitle(title)
+
     plt.show()
