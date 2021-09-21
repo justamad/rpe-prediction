@@ -41,7 +41,7 @@ if not os.path.exists(out_path):
 window_sizes = [30, 60, 90, 120]  # 1s, 2s, 3s, 4s
 overlaps = [0.5, 0.7, 0.9]
 
-models = [XGBoostConfig()]
+models = [GBRTModelConfig()]
 logo = LeaveOneGroupOut()
 
 for window_size in window_sizes:
