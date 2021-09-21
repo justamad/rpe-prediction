@@ -7,13 +7,12 @@ from sklearn.svm import SVR
 from scipy.stats import spearmanr, pearsonr
 from os.path import join
 
-import matplotlib.pyplot as plt
 import pandas as pd
 import os
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--src_path', type=str, dest='src_path', default="results/2021-09-17-12-04-10")
+parser.add_argument('--src_path', type=str, dest='src_path', default="results/2021-09-17-14-24-36")
 parser.add_argument('--data_path', type=str, dest='data_path', default="data/processed")
 args = parser.parse_args()
 
@@ -33,37 +32,37 @@ def aggregate_features(input_path: str):
     df_sum.to_csv(join(input_path, "feature_ranks.csv"))
 
 
-def evaluate_results_for_ml_model(input_path: str, model: str = "svr"):
-    # data = []
-    for file in filter(lambda x: x.startswith(model) and x.endswith('.csv'), os.listdir(input_path)):
+def evaluate_results_for_ml_model(input_path: str, ml_model: str = "svr"):
+    results_data = []
+    for file in filter(lambda x: x.startswith(ml_model) and x.endswith('.csv'), os.listdir(input_path)):
         split = file.split('_')
         win_size, overlap = int(split[2]), float(split[4][:-4])
-        df = pd.read_csv(join(input_path, file), delimiter=';', index_col=False).sort_values(by='rank_test_MSE',
-                                                                                             ascending=False)
+        df = pd.read_csv(join(input_path, file), delimiter=';', index_col=False).sort_values(by='mean_test_R2',
+                                                                                             ascending=True)
 
         mapping = {'linear': 0, 'rbf': 1}
+        df = df[[c for c in df.columns if "param" in c or "mean_test" in c or "std_test" in c]]
         df = df.replace({'param_svr__kernel': mapping})
-
         plot_parallel_coordinates(
             df,
-            cols=["param_svr__kernel", "param_svr__C", "param_svr__gamma", "mean_test_MSE", "mean_test_MAE"],
-            color_column="mean_test_MSE",
-            title=f"Window Size: {win_size}, Overlap: {overlap}"
+            color_column="mean_test_MAE",
+            title=f"Window Size: {win_size}, Overlap: {overlap}",
+            file_name=f"window_size_{win_size}_overlap_{overlap}.png"
         )
 
-        # plot_parallel_coordinates(df, "rank_test_MAE",
-        #                                  cols=["param_svr__C", "param_svr__gamma", "split10_test_R2"]
-        #                                  # "param_svr__kernel"]
-        #                                  )
-        plt.show()
+        df.insert(0, 'param__win_size', win_size)
+        df.insert(1, 'param__overlap', overlap)
+        results_data.append(df)
 
-        # df.insert(0, 'model', model)
-        # df.insert(1, 'win_size', win_size)
-        # df.insert(2, 'overlap', overlap)
-        # data.append(df)
+    results_data = pd.concat(results_data, ignore_index=True).sort_values(by="mean_test_R2", ascending=True)
+    results_data.to_csv(f"{ml_model}_results.csv", sep=';', index=False)
 
-    # data = pd.concat(data)
-    # data.to_csv(join(input_path, "classifier_results.csv"), sep=';', index=False)
+    plot_parallel_coordinates(
+        results_data,
+        color_column="mean_test_MAE",
+        title=f"All parameters",
+        file_name=f"total.png"
+    )
 
 
 def test_model(input_path: str, win_size: int, overlap: float):

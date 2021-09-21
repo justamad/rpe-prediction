@@ -63,7 +63,7 @@ class RFModelConfig(LearningModelBase):
         return "rf"
 
 
-class GBRModelConfig(LearningModelBase):
+class GBRTModelConfig(LearningModelBase):
 
     def __init__(self):
         tuned_parameters = {f'{str(self)}__n_estimators': [15, 50, 150, 500],
@@ -75,7 +75,7 @@ class GBRModelConfig(LearningModelBase):
         super().__init__(model=model, parameters=tuned_parameters)
 
     def __repr__(self):
-        return "gbr"
+        return "gbrt"
 
 
 class MLPModelConfig(LearningModelBase):
@@ -94,7 +94,7 @@ class MLPModelConfig(LearningModelBase):
         return "mlp"
 
 
-class XGBoostRegressor(LearningModelBase):
+class XGBoostConfig(LearningModelBase):
 
     def __init__(self):
         tuned_parameters = {

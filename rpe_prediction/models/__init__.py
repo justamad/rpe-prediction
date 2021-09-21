@@ -7,6 +7,6 @@ from .ml_model_config import (
     SVRModelConfig,
     KNNModelConfig,
     RFModelConfig,
-    GBRModelConfig,
+    GBRTModelConfig,
     MLPModelConfig,
-    XGBoostRegressor)
+    XGBoostConfig)

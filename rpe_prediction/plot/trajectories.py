@@ -130,23 +130,31 @@ def plot_feature_correlation_heatmap(df: pd.DataFrame):
     plt.show()
 
 
-def plot_parallel_coordinates(df: pd.DataFrame, cols: list, color_column: str, title: str = None):
-    df = df[cols]
+def plot_parallel_coordinates(df: pd.DataFrame,
+                              color_column: str,
+                              columns: list = None,
+                              title: str = None,
+                              file_name: str = None):
+    if columns is not None:
+        df = df[columns]
+
+    columns = df.columns
     trials, parameters = df.shape
     x = list(range(parameters))
-    mse = df[color_column]
     fig, axes = plt.subplots(1, len(x) - 1, sharey=False, figsize=(15, 5))
 
     # Get min, max and range for each column - Normalize the data for each column
     min_max_range = {}
-    for col in cols:
+    df_norm = df.copy()
+    for col in df.columns:
         min_max_range[col] = [df[col].min(), df[col].max(), np.ptp(df[col])]
-        df[col] = np.true_divide(df[col] - df[col].min(), np.ptp(df[col]))
+        df_norm[col] = np.true_divide(df[col] - df[col].min(), np.ptp(df[col]))
 
     # Plot each row / trial
     for i, ax in enumerate(axes):
         for idx in df.index:
-            ax.plot(x, df.loc[idx, cols], color=get_hsv_color_interpolation(df.loc[idx, color_column], 1), alpha=1.0)
+            ax.plot(x, df_norm.loc[idx, columns],
+                    color=get_hsv_color_interpolation(df_norm.loc[idx, color_column], 1), alpha=1.0)
         ax.set_xlim([x[i], x[i + 1]])
 
     def set_ticks_for_axis(dim, ax, ticks):
@@ -158,11 +166,11 @@ def plot_parallel_coordinates(df: pd.DataFrame, cols: list, color_column: str, t
         """
         # Tick positions based on normalised data
         # Tick labels are based on original data
-        min_val, max_val, val_range = min_max_range[cols[dim]]
+        min_val, max_val, val_range = min_max_range[columns[dim]]
         step = val_range / float(ticks - 1)
         tick_labels = [round(min_val + step * i, 2) for i in range(ticks)]
-        norm_min = df[cols[dim]].min()
-        norm_range = np.ptp(df[cols[dim]])
+        norm_min = df_norm[columns[dim]].min()
+        norm_range = np.ptp(df_norm[columns[dim]])
         norm_step = norm_range / float(ticks - 1)
         ticks = [round(norm_min + norm_step * i, 2) for i in range(ticks)]
         ax.yaxis.set_ticks(ticks)
@@ -171,14 +179,14 @@ def plot_parallel_coordinates(df: pd.DataFrame, cols: list, color_column: str, t
     for dim, ax in enumerate(axes):
         ax.xaxis.set_major_locator(ticker.FixedLocator([dim]))
         set_ticks_for_axis(dim, ax, ticks=6)
-        ax.set_xticklabels([cols[dim]])
+        ax.set_xticklabels([columns[dim]])
 
     # Move the final axis' ticks to the right-hand side
     ax = plt.twinx(axes[-1])
     dim = len(axes)
     ax.xaxis.set_major_locator(ticker.FixedLocator([x[-2], x[-1]]))
     set_ticks_for_axis(dim, ax, ticks=6)
-    ax.set_xticklabels([cols[-2], cols[-1]])
+    ax.set_xticklabels([columns[-2], columns[-1]])
 
     # Remove space between subplots
     plt.subplots_adjust(wspace=0)
@@ -191,4 +199,11 @@ def plot_parallel_coordinates(df: pd.DataFrame, cols: list, color_column: str, t
     if title is not None:
         plt.suptitle(title)
 
-    plt.show()
+    if file_name is not None:
+        plt.savefig(file_name)
+    else:
+        plt.show()
+
+    plt.close()
+    plt.clf()
+    plt.cla()

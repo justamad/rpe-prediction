@@ -59,6 +59,7 @@ def feature_elimination_xgboost(X_train: pd.DataFrame, y_train: pd.DataFrame,
     mask = model.feature_importances_ > threshold
     return X_train.loc[:, mask].copy(), X_test.loc[:, mask].copy()
 
+
 # def feature_elimination_rfe(X_train, y_train, X_test, y_test, nr_features: int):
 #     estimator = XGBRegressor()
 #     rfe = RFECV(estimator,

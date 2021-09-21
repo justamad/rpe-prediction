@@ -12,8 +12,8 @@ from rpe_prediction.models import (
     normalize_features_z_score,
     feature_elimination_xgboost,
     MLPModelConfig,
-    GBRModelConfig,
-    XGBoostRegressor)
+    GBRTModelConfig,
+    XGBoostConfig)
 
 import numpy as np
 import argparse
@@ -41,9 +41,7 @@ if not os.path.exists(out_path):
 window_sizes = [30, 60, 90, 120]  # 1s, 2s, 3s, 4s
 overlaps = [0.5, 0.7, 0.9]
 
-# models = [SVRModelConfig(), GBRModelConfig(), RFModelConfig(), MLPModelConfig()]
-# models = [XGBoostRegressor()]
-models = [SVRModelConfig()]
+models = [XGBoostConfig()]
 logo = LeaveOneGroupOut()
 
 for window_size in window_sizes:
