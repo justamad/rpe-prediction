@@ -54,6 +54,6 @@ def extract_kinect_features(df: pd.DataFrame, window_size: int, overlap: float, 
 
     # Construct y-data with pseudonyms, rpe values, groups and number of sets
     y = np.repeat([[set_data['subject_name'], set_data['rpe'], set_data['group'], set_data['nr_set']]],
-                  len(features), axis=0)
+                  len(x), axis=0)
     y = pd.DataFrame(y, columns=['name', 'rpe', 'group', 'set'])
     return x, y

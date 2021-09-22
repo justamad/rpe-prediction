@@ -47,7 +47,7 @@ logo = LeaveOneGroupOut()
 for window_size in window_sizes:
     for overlap in reversed(overlaps):
         X_orig, y = calculate_kinect_feature_set(input_path=args.src_path, window_size=window_size, overlap=overlap,
-                                                 data_augmentation=True)
+                                                 data_augmentation=True, nr_iterations=5)
         # features = X_orig.filter(regex="3D_VELOCITY")
         # features = features.filter(regex="maximum")
         # plot_feature_correlation_heatmap(features)
