@@ -22,7 +22,7 @@ joints_with_first_joint_as_origin = [("SPINE_CHEST", "NECK", "SPINE_NAVEL"),
                                      ("KNEE_LEFT", "HIP_LEFT", "ANKLE_LEFT")]
 
 
-def calculate_individual_axes_joint_velocities(df: pd.DataFrame):
+def calculate_1d_joint_velocities(df: pd.DataFrame):
     diff = df.diff(axis=0).dropna(axis='index')
     diff = diff.add_suffix('_1D_VELOCITY')
     return diff
@@ -64,3 +64,13 @@ def calculate_angles_between_3_joints(df: pd.DataFrame):
         result.append(angles)
 
     return pd.DataFrame(data=np.stack(result, axis=-1), columns=columns, index=df.index)
+
+
+def calculate_relative_coordinates_with_reference_joint(df: pd.DataFrame, reference_joint: str = "PELVIS"):
+    ref_data = df[[c for c in df.columns if reference_joint in c]].to_numpy()
+    ref_data = np.tile(ref_data, df.shape[1] // 3)
+
+    data = df.to_numpy() - ref_data
+    new_df = pd.DataFrame(data=data, columns=[c + "_REL_POSITION" for c in df.columns], index=df.index)
+    new_df.drop(list(new_df.filter(regex=reference_joint)), axis=1, inplace=True)
+    return new_df

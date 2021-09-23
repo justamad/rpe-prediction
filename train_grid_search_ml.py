@@ -41,19 +41,20 @@ if not os.path.exists(out_path):
 window_sizes = [30, 60, 90, 120]  # 1s, 2s, 3s, 4s
 overlaps = [0.5, 0.7, 0.9]
 
-models = [GBRTModelConfig()]
+models = [SVRModelConfig()]
 logo = LeaveOneGroupOut()
 
 for window_size in window_sizes:
     for overlap in reversed(overlaps):
         X_orig, y = calculate_kinect_feature_set(input_path=args.src_path, window_size=window_size, overlap=overlap,
                                                  data_augmentation=True, nr_iterations=5)
+
         # features = X_orig.filter(regex="3D_VELOCITY")
         # features = features.filter(regex="maximum")
         # plot_feature_correlation_heatmap(features)
         X = normalize_features_z_score(X_orig)
-        plot_feature_distribution_as_pdf(X_orig, X,
-                                         join(out_path, f"features_winsize_{window_size}_overlap_{overlap}.pdf"))
+        # plot_feature_distribution_as_pdf(X_orig, X,
+        #                                  join(out_path, f"features_win_{window_size}_overlap_{overlap}.pdf"))
 
         X_train, y_train, X_test, y_test = split_data_based_on_pseudonyms(X, y, train_p=0.8, random_seed=42)
         X_train, X_test = feature_elimination_xgboost(X_train, y_train['rpe'], X_test, y_test['rpe'],
@@ -64,7 +65,10 @@ for window_size in window_sizes:
         np.savetxt(join(out_path, f"test_win_{window_size}_overlap_{overlap}.txt"), y_test['name'].unique(), fmt='%s')
 
         X_train.to_csv(join(out_path, f"X_train_win_{window_size}_overlap_{overlap}.csv"), index=False, sep=';')
+        y_train.to_csv(join(out_path, f"y_train_win_{window_size}_overlap_{overlap}.csv"), index=False, sep=';')
+
         X_test.to_csv(join(out_path, f"X_test_win_{window_size}_overlap_{overlap}.csv"), index=False, sep=';')
+        y_test.to_csv(join(out_path, f"y_test_win_{window_size}_overlap_{overlap}.csv"), index=False, sep=';')
 
         for model_config in models:
             param_dict = model_config.get_trial_data_dict()
