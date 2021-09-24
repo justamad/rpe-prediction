@@ -18,7 +18,7 @@ from .skeleton_features import (
 import pandas as pd
 import numpy as np
 
-ROTATION_ANGLE = 15
+ROTATION_ANGLE = 7.5
 
 
 def calculate_kinect_feature_set(input_path: str, window_size: int = 30, overlap: float = 0.5,

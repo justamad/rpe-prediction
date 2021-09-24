@@ -47,14 +47,14 @@ logo = LeaveOneGroupOut()
 for window_size in window_sizes:
     for overlap in reversed(overlaps):
         X_orig, y = calculate_kinect_feature_set(input_path=args.src_path, window_size=window_size, overlap=overlap,
-                                                 data_augmentation=True, nr_iterations=5)
+                                                 data_augmentation=True, nr_iterations=2)
 
         # features = X_orig.filter(regex="3D_VELOCITY")
         # features = features.filter(regex="maximum")
         # plot_feature_correlation_heatmap(features)
         X = normalize_features_z_score(X_orig)
-        # plot_feature_distribution_as_pdf(X_orig, X,
-        #                                  join(out_path, f"features_win_{window_size}_overlap_{overlap}.pdf"))
+        plot_feature_distribution_as_pdf(X_orig, X,
+                                         join(out_path, f"features_win_{window_size}_overlap_{overlap}.pdf"))
 
         X_train, y_train, X_test, y_test = split_data_based_on_pseudonyms(X, y, train_p=0.8, random_seed=42)
         X_train, X_test = feature_elimination_xgboost(X_train, y_train['rpe'], X_test, y_test['rpe'],
