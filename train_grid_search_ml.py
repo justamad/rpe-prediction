@@ -8,12 +8,13 @@ from rpe_prediction.models import (
     GridSearching,
     SVRModelConfig,
     RFModelConfig,
+    KNNModelConfig,
     split_data_based_on_pseudonyms,
     normalize_features_z_score,
     feature_elimination_xgboost,
     MLPModelConfig,
     GBRTModelConfig,
-    XGBoostConfig)
+)
 
 import numpy as np
 import argparse
@@ -41,13 +42,13 @@ if not os.path.exists(out_path):
 window_sizes = [30, 60, 90, 120]  # 1s, 2s, 3s, 4s
 overlaps = [0.5, 0.7, 0.9]
 
-models = [SVRModelConfig()]
+models = [MLPModelConfig(), RFModelConfig(), GBRTModelConfig(), KNNModelConfig()]
 logo = LeaveOneGroupOut()
 
 for window_size in window_sizes:
     for overlap in reversed(overlaps):
         X_orig, y = calculate_kinect_feature_set(input_path=args.src_path, window_size=window_size, overlap=overlap,
-                                                 data_augmentation=True, nr_iterations=2)
+                                                 data_augmentation=True, nr_iterations=5)
 
         # features = X_orig.filter(regex="3D_VELOCITY")
         # features = features.filter(regex="maximum")
