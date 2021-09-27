@@ -1,6 +1,6 @@
-from rpe_prediction.models import evaluate_for_subject
-from rpe_prediction.plot import plot_parallel_coordinates
+from rpe_prediction.plot import plot_parallel_coordinates, plot_rpe_predictions_from_dataframe
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
+from ast import literal_eval as make_tuple
 from sklearn.svm import SVR
 from sklearn.neural_network import MLPRegressor
 from scipy.stats import spearmanr, pearsonr
@@ -17,8 +17,7 @@ args = parser.parse_args()
 
 def instantiate_mlp(p: pd.Series):
     return MLPRegressor(
-        # hidden_layer_sizes=p['param_mlp__hidden_layer_sizes'],
-        hidden_layer_sizes=(100,),
+        hidden_layer_sizes=make_tuple(p['param_mlp__hidden_layer_sizes']),
         activation=p['param_mlp__activation'],
         solver=p['param_mlp__solver'],
         learning_rate_init=p['param_mlp__learning_rate_init'],
@@ -28,6 +27,7 @@ def instantiate_mlp(p: pd.Series):
 
 
 models = {'svr': None,
+          'gbrt': None,
           'mlp': instantiate_mlp}
 
 
@@ -80,19 +80,24 @@ def evaluate_best_performing_ml_model(input_path: str, ml_model: str = 'svr'):
     print(f"Pearson Correlation Train: {pearsonr(y_train['rpe'], train_pred)}")
     print(f"Pearson Correlation Test: {pearsonr(y_test['rpe'], test_pred)}")
 
-    for test_subject in sorted(y_test['name'].unique()):
-        mask = y_test['name'] == test_subject
-        s_test = y_test.loc[mask].copy()
-        evaluate_for_subject(s_test)
+    for subject in sorted(y_test['name'].unique()):
+        df = y_test.loc[y_test['name'] == subject].copy()
+        plot_rpe_predictions_from_dataframe(df, join(input_path, ml_model, f"test_subject_{subject}.png"))
+
+    for subject in sorted(y_train['name'].unique()):
+        df = y_train.loc[y_train['name'] == subject].copy()
+        plot_rpe_predictions_from_dataframe(df, join(input_path, ml_model, f"train_subject_{subject}.png"))
 
 
 def aggregate_individual_ml_trials_of_model(input_path: str, ml_model: str = "svr", plot: bool = True):
     results_data = []
-    for file in filter(lambda x: x.startswith(ml_model) and x.endswith('.csv'), os.listdir(input_path)):
+
+    for file in os.listdir(join(input_path, ml_model)):
         split = file.split('_')
-        win_size, overlap = int(split[2]), float(split[4][:-4])
-        df = pd.read_csv(join(input_path, file), delimiter=';', index_col=False).sort_values(by='mean_test_R2',
-                                                                                             ascending=True)
+        win_size, overlap = int(split[1]), float(split[3][:-4])
+        df = pd.read_csv(join(input_path, ml_model, file),
+                         delimiter=';',
+                         index_col=False).sort_values(by='mean_test_R2', ascending=True)
 
         if plot:
             mapping = {'linear': 0, 'rbf': 1}

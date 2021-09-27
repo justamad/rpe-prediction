@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 
 
-def evaluate_for_subject(df: pd.DataFrame):
+def plot_rpe_predictions_from_dataframe(df: pd.DataFrame, file_name: str = None):
     data = df[['set', 'prediction']]
     sets = data['set'].unique()
     rpe = df[['rpe', 'set']].drop_duplicates()
@@ -22,13 +22,21 @@ def evaluate_for_subject(df: pd.DataFrame):
 
     pear, p = pearsonr([means[i] for i in sets], [rpe[i] for i in sets])
 
-    # create stacked error bars:
-    plt.errorbar(means.keys(), means.values(), stds.values(), fmt='ok', lw=1)
-    plt.scatter(rpe.keys(), rpe.values(), label="Ground Truth")
+    # Create stacked error bars:
+    plt.errorbar(means.keys(), means.values(), stds.values(), fmt='ok', lw=1, ecolor='green', mfc='green')
+    plt.scatter(rpe.keys(), rpe.values(), label="Ground Truth", c='red')
     plt.xticks(list(rpe.keys()))
     plt.yticks(np.arange(10, 21))
     # plt.yticks(np.arange(0, 1.1, 0.1))
     plt.xlabel("Set Nr")
     plt.ylabel("RPE value")
     plt.title(f'Correlation Pearson: {pear:.2f}')
-    plt.show()
+
+    if file_name is not None:
+        plt.savefig(file_name)
+    else:
+        plt.show()
+
+    plt.clf()
+    plt.cla()
+    plt.close()
