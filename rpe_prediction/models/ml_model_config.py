@@ -87,7 +87,7 @@ class MLPModelConfig(LearningModelBase):
                             f'{str(self)}__learning_rate_init': [1e-2, 1e-3, 1e-4],
                             f'{str(self)}__learning_rate': ["constant", "adaptive"]}
 
-        model = MLPRegressor()
+        model = MLPRegressor(max_iter=1000)
         super().__init__(model=model, parameters=tuned_parameters)
 
     def __repr__(self):
