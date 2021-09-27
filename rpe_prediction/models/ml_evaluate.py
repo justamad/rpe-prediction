@@ -5,12 +5,7 @@ import pandas as pd
 import numpy as np
 
 
-def evaluate_for_subject(df):
-    """
-    Plot result data for subject
-    :param df: dataframe that holds predictions and ground truth values
-    :return: None
-    """
+def evaluate_for_subject(df: pd.DataFrame):
     data = df[['set', 'prediction']]
     sets = data['set'].unique()
     rpe = df[['rpe', 'set']].drop_duplicates()
@@ -31,8 +26,8 @@ def evaluate_for_subject(df):
     plt.errorbar(means.keys(), means.values(), stds.values(), fmt='ok', lw=1)
     plt.scatter(rpe.keys(), rpe.values(), label="Ground Truth")
     plt.xticks(list(rpe.keys()))
-    # plt.yticks(np.arange(10, 21))
-    plt.yticks(np.arange(0, 1.1, 0.1))
+    plt.yticks(np.arange(10, 21))
+    # plt.yticks(np.arange(0, 1.1, 0.1))
     plt.xlabel("Set Nr")
     plt.ylabel("RPE value")
     plt.title(f'Correlation Pearson: {pear:.2f}')
