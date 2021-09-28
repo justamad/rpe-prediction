@@ -1,7 +1,8 @@
-from rpe_prediction.processing import get_joint_names_from_columns_as_list, get_hsv_color_interpolation
+from rpe_prediction.processing import get_joint_names_from_columns_as_list, get_hsv_color
 from .pdf_writer import PDFWriter
 from scipy.stats import norm
 from matplotlib import ticker
+from pandas.api.types import is_numeric_dtype
 
 import matplotlib.pyplot as plt
 import seaborn as sb
@@ -137,6 +138,10 @@ def plot_parallel_coordinates(df: pd.DataFrame,
                               file_name: str = None):
     if columns is not None:
         df = df[columns]
+    else:
+        df = df[[c for c in df.columns if "param" in c or "mean_test" in c or "std_test" in c]]
+
+    df.columns = df.columns.str.replace('param_mlp__', '')
 
     columns = df.columns
     trials, parameters = df.shape
@@ -145,56 +150,55 @@ def plot_parallel_coordinates(df: pd.DataFrame,
 
     # Get min, max and range for each column - Normalize the data for each column
     min_max_range = {}
-    df_norm = df.copy()
+    labels = {}
     for col in df.columns:
+        if not is_numeric_dtype(df[col]):
+            values = df[col].unique()
+            mapping = {v: k for k, v in enumerate(values)}
+            df = df.replace({col: mapping})
+            labels[col] = values
+
         min_max_range[col] = [df[col].min(), df[col].max(), np.ptp(df[col])]
-        df_norm[col] = np.true_divide(df[col] - df[col].min(), np.ptp(df[col]))
+        df.loc[:, col] = np.true_divide(df[col] - df[col].min(), np.ptp(df[col]))
 
     # Plot each row / trial
     for i, ax in enumerate(axes):
         for idx in df.index:
-            ax.plot(x, df_norm.loc[idx, columns],
-                    color=get_hsv_color_interpolation(df_norm.loc[idx, color_column], 1), alpha=1.0)
+            ax.plot(x, df.loc[idx, columns], color=get_hsv_color(df.loc[idx, color_column], 1))
         ax.set_xlim([x[i], x[i + 1]])
 
-    def set_ticks_for_axis(dim, ax, ticks):
-        """
-        Set the tick positions and labels on y axis for each plot
-        @param dim:
-        @param ax:
-        @param ticks:
-        """
+    def set_ticks_for_axis(dim_id: int, axis, ticks: int = 6):
         # Tick positions based on normalised data
         # Tick labels are based on original data
-        min_val, max_val, val_range = min_max_range[columns[dim]]
-        step = val_range / float(ticks - 1)
-        tick_labels = [round(min_val + step * i, 2) for i in range(ticks)]
-        norm_min = df_norm[columns[dim]].min()
-        norm_range = np.ptp(df_norm[columns[dim]])
+        min_val, max_val, val_range = min_max_range[columns[dim_id]]
+
+        if columns[dim_id] in labels:
+            tick_labels = labels[columns[dim_id]]
+            ticks = len(tick_labels)
+        else:
+            step = val_range / float(ticks - 1)
+            tick_labels = [round(min_val + step * i, 2) for i in range(ticks)]
+
+        norm_min = df[columns[dim_id]].min()
+        norm_range = np.ptp(df[columns[dim_id]])
         norm_step = norm_range / float(ticks - 1)
         ticks = [round(norm_min + norm_step * i, 2) for i in range(ticks)]
-        ax.yaxis.set_ticks(ticks)
-        ax.set_yticklabels(tick_labels)
+        axis.yaxis.set_ticks(ticks)
+        axis.set_yticklabels(tick_labels)
 
     for dim, ax in enumerate(axes):
         ax.xaxis.set_major_locator(ticker.FixedLocator([dim]))
-        set_ticks_for_axis(dim, ax, ticks=6)
+        set_ticks_for_axis(dim, ax)
         ax.set_xticklabels([columns[dim]])
 
     # Move the final axis' ticks to the right-hand side
     ax = plt.twinx(axes[-1])
-    dim = len(axes)
     ax.xaxis.set_major_locator(ticker.FixedLocator([x[-2], x[-1]]))
-    set_ticks_for_axis(dim, ax, ticks=6)
+    set_ticks_for_axis(dim_id=len(axes), axis=ax)
     ax.set_xticklabels([columns[-2], columns[-1]])
 
     # Remove space between subplots
     plt.subplots_adjust(wspace=0)
-
-    # Add legend to plot
-    # plt.legend([plt.Line2D((0, 1), (0, 0), color="red") for column in cols],
-    # df['mpg'].cat.categories,
-    # bbox_to_anchor=(1.2, 1), loc=2, borderaxespad=0.)
 
     if title is not None:
         plt.suptitle(title)
@@ -204,6 +208,6 @@ def plot_parallel_coordinates(df: pd.DataFrame,
     else:
         plt.show()
 
-    plt.close()
     plt.clf()
     plt.cla()
+    plt.close()

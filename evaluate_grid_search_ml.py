@@ -1,3 +1,5 @@
+from cv2 import ml_ParamGrid
+
 from rpe_prediction.plot import plot_parallel_coordinates, plot_rpe_predictions_from_dataframe
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
 from ast import literal_eval as make_tuple
@@ -32,10 +34,10 @@ models = {'svr': None,
 
 
 def evaluate_best_performing_ml_model(input_path: str, ml_model: str = 'svr'):
-    df = aggregate_individual_ml_trials_of_model(input_path, ml_model, plot=False)
+    df = aggregate_individual_ml_trials_of_model(input_path, ml_model, plot=True)
     best_combination = df.sort_values(by="mean_test_R2", ascending=False).iloc[0]
-    win_size = best_combination['param__win_size']
-    overlap = best_combination['param__overlap']
+    win_size = best_combination[f'param_{ml_model}__win_size']
+    overlap = best_combination[f'param_{ml_model}__overlap']
 
     X_train = pd.read_csv(join(input_path, f"X_train_win_{int(win_size)}_overlap_{overlap:.1f}.csv"), sep=';',
                           index_col=False)
@@ -92,26 +94,23 @@ def evaluate_best_performing_ml_model(input_path: str, ml_model: str = 'svr'):
 def aggregate_individual_ml_trials_of_model(input_path: str, ml_model: str = "svr", plot: bool = True):
     results_data = []
 
-    for file in os.listdir(join(input_path, ml_model)):
-        split = file.split('_')
+    for trial_file in filter(lambda x: x.endswith('csv'), os.listdir(join(input_path, ml_model))):
+        split = trial_file.split('_')
         win_size, overlap = int(split[1]), float(split[3][:-4])
-        df = pd.read_csv(join(input_path, ml_model, file),
+        df = pd.read_csv(join(input_path, ml_model, trial_file),
                          delimiter=';',
                          index_col=False).sort_values(by='mean_test_R2', ascending=True)
 
         if plot:
-            mapping = {'linear': 0, 'rbf': 1}
-            df = df[[c for c in df.columns if "param" in c or "mean_test" in c or "std_test" in c]]
-            df = df.replace({'param_svr__kernel': mapping})
             plot_parallel_coordinates(
-                df,
+                df.copy().loc[::4, :],
                 color_column="mean_test_MAE",
                 title=f"Window Size: {win_size}, Overlap: {overlap}",
                 file_name=f"window_size_{win_size}_overlap_{overlap}.png"
             )
 
-        df.insert(0, 'param__win_size', win_size)
-        df.insert(1, 'param__overlap', overlap)
+        df.insert(0, f'param_{ml_model}__win_size', win_size)
+        df.insert(1, f'param_{ml_model}__overlap', overlap)
         results_data.append(df)
 
     results_data = pd.concat(results_data, ignore_index=True).sort_values(by="mean_test_R2", ascending=True)
@@ -119,7 +118,7 @@ def aggregate_individual_ml_trials_of_model(input_path: str, ml_model: str = "sv
 
     if plot:
         plot_parallel_coordinates(
-            results_data,
+            results_data.copy(),
             color_column="mean_test_MAE",
             title=f"All parameters",
             file_name=f"total.png"

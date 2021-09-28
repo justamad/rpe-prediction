@@ -1,6 +1,6 @@
 from fastdtw import fastdtw
 from scipy import signal
-from .utils import get_hsv_color_interpolation
+from .utils import get_hsv_color
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -47,12 +47,12 @@ def segment_1d_joint_on_example(joint_data: pd.Series, exemplar: np.array, std_d
         # Third plot - candidates
         for counter, ((t1, t2), dtw_cost) in enumerate(zip(candidates, dtw_costs)):
             ax3.plot(joint_data.loc[t1:t2], label=f"{counter + 1}: dtw={dtw_cost:.1f}",
-                     color=get_hsv_color_interpolation(counter, len(candidates)))
+                     color=get_hsv_color(counter, len(candidates)))
         ax3.legend()
 
         # Third plot - candidates
         for counter, (t1, t2) in enumerate(final_segments):
-            ax4.plot(joint_data.loc[t1:t2], color=get_hsv_color_interpolation(counter, len(final_segments)))
+            ax4.plot(joint_data.loc[t1:t2], color=get_hsv_color(counter, len(final_segments)))
 
         plt.tight_layout()
         plt.show()
