@@ -28,17 +28,17 @@ def instantiate_mlp(p: pd.Series):
     )
 
 
-def instantiate_gbrt(p: pd.Series):
+def instantiate_gbr(p: pd.Series):
     return GradientBoostingRegressor(
-        loss=p['param_gbrt__loss'],
-        learning_rate=p['param_gbrt__learning_rate'],
-        n_estimators=p['param_gbrt__n_estimators'],
-        n_iter_no_change=None if np.isnan(p['param_gbrt__n_iter_no_change']) else int(p['param_gbrt__n_iter_no_change'])
+        loss=p['param_gbr__loss'],
+        learning_rate=p['param_gbr__learning_rate'],
+        n_estimators=p['param_gbr__n_estimators'],
+        n_iter_no_change=None if np.isnan(p['param_gbr__n_iter_no_change']) else int(p['param_gbr__n_iter_no_change'])
     )
 
 
 models = {'svr': None,
-          'gbrt': instantiate_gbrt,
+          'gbr': instantiate_gbr,
           'mlp': instantiate_mlp}
 
 
@@ -137,4 +137,4 @@ def aggregate_individual_ml_trials_of_model(input_path: str, ml_model: str = "sv
 
 
 if __name__ == '__main__':
-    evaluate_best_performing_ml_model(args.src_path, 'gbrt')
+    evaluate_best_performing_ml_model(args.src_path, 'mlp')

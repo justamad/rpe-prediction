@@ -21,8 +21,13 @@ import numpy as np
 ROTATION_ANGLE = 7.5
 
 
-def calculate_kinect_feature_set(input_path: str, window_size: int = 30, overlap: float = 0.5,
-                                 data_augmentation: bool = False, nr_iterations: int = 10):
+def calculate_kinect_feature_set(
+        input_path: str,
+        window_size: int = 30,
+        overlap: float = 0.5,
+        data_augmentation: bool = False,
+        nr_iterations: int = 10
+):
     file_iterator = SubjectDataIterator(input_path).add_loader(RPESubjectLoader).add_loader(FusedAzureSubjectLoader)
     x_data = []
     y_data = []
@@ -64,10 +69,10 @@ def extract_kinect_features(df: pd.DataFrame, window_size: int, overlap: float, 
                           angle.iloc[1:],
                           angles_velocity,
                           ], axis=1).reset_index()
+
     x = calculate_features_sliding_window(features, window_size=window_size, overlap=overlap)
 
-    # Construct y-data with pseudonyms, rpe values, groups and number of sets
-    y = np.repeat([[trial['subject_name'], trial['rpe'], trial['group'], trial['nr_set'], augmented]],
-                  len(x), axis=0)
-    y = pd.DataFrame(y, columns=['name', 'rpe', 'group', 'set', 'augmented'])
+    y_values = [trial['subject_name'], trial['rpe'], trial['group'], trial['nr_set'], augmented]
+    y = pd.DataFrame(data=[y_values for _ in range(len(x))],
+                     columns=['name', 'rpe', 'group', 'set', 'augmented'])
     return x, y

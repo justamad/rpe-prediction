@@ -1,5 +1,5 @@
-from imblearn.over_sampling import RandomOverSampler
 from xgboost import XGBRegressor
+from imblearn.over_sampling import RandomOverSampler
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.neural_network import MLPRegressor
@@ -8,17 +8,17 @@ from sklearn.svm import SVR
 
 class LearningModelBase(object):
 
-    def __init__(self, model, parameters):
-        self.model = model
-        self.parameters = parameters
-        self.balancer = RandomOverSampler()
+    def __init__(self, model, grid_search_params: dict):
+        self.__model = model
+        self.__grid_search_params = grid_search_params
+        self.__balancer = RandomOverSampler()
 
     def get_trial_data_dict(self):
         return {
-            'model': self.model,
-            'parameters': self.parameters,
+            'model': self.__model,
+            'parameters': self.__grid_search_params,
             'learner_name': str(self),
-            'balancer': self.balancer,
+            'balancer': self.__balancer,
         }
 
 
@@ -30,7 +30,7 @@ class SVRModelConfig(LearningModelBase):
                             f'{str(self)}__C': [1e0, 1e1, 1e2, 1e3], }
 
         model = SVR()
-        super().__init__(model=model, parameters=tuned_parameters)
+        super().__init__(model=model, grid_search_params=tuned_parameters)
 
     def __repr__(self):
         return "svr"
@@ -44,7 +44,7 @@ class KNNModelConfig(LearningModelBase):
                             f'{str(self)}__leaf_size': [10, 30, 60, 120]}
 
         model = KNeighborsRegressor()
-        super().__init__(model=model, parameters=tuned_parameters)
+        super().__init__(model=model, grid_search_params=tuned_parameters)
 
     def __repr__(self):
         return "knn"
@@ -57,13 +57,13 @@ class RFModelConfig(LearningModelBase):
                             f'{str(self)}__criterion': ['mse', 'mae']}
 
         model = RandomForestRegressor()
-        super().__init__(model=model, parameters=tuned_parameters)
+        super().__init__(model=model, grid_search_params=tuned_parameters)
 
     def __repr__(self):
         return "rf"
 
 
-class GBRTModelConfig(LearningModelBase):
+class GBRModelConfig(LearningModelBase):
 
     def __init__(self):
         tuned_parameters = {f'{str(self)}__n_estimators': [15, 50, 150, 500],
@@ -72,10 +72,10 @@ class GBRTModelConfig(LearningModelBase):
                             f'{str(self)}__n_iter_no_change': [None, 5, 50, 100]}
 
         model = GradientBoostingRegressor()
-        super().__init__(model=model, parameters=tuned_parameters)
+        super().__init__(model=model, grid_search_params=tuned_parameters)
 
     def __repr__(self):
-        return "gbrt"
+        return "gbr"
 
 
 class MLPModelConfig(LearningModelBase):
@@ -88,7 +88,7 @@ class MLPModelConfig(LearningModelBase):
                             f'{str(self)}__learning_rate': ["constant", "adaptive"]}
 
         model = MLPRegressor(max_iter=1000)
-        super().__init__(model=model, parameters=tuned_parameters)
+        super().__init__(model=model, grid_search_params=tuned_parameters)
 
     def __repr__(self):
         return "mlp"
@@ -106,7 +106,7 @@ class XGBoostConfig(LearningModelBase):
             f'{str(self)}__subsample': [0.7, 0.8, 0.9]
         }
         model = XGBRegressor()
-        super().__init__(model=model, parameters=tuned_parameters)
+        super().__init__(model=model, grid_search_params=tuned_parameters)
 
     def __repr__(self):
         return "XGBoost"

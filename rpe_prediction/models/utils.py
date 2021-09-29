@@ -16,9 +16,9 @@ def split_data_based_on_pseudonyms(x: pd.DataFrame, y: pd.DataFrame, train_p: fl
 
 
 def normalize_rpe_values_min_max(df: pd.DataFrame):
-    subjects = df['group'].unique()
-    for subject_id in subjects:
-        mask = df['group'] == subject_id
+    subjects = df['name'].unique()
+    for subject_name in subjects:
+        mask = df['name'] == subject_name
         df_subject = df[mask]
         min_rpe, max_rpe = df_subject['rpe'].min(), df_subject['rpe'].max()
         df.loc[mask, 'rpe'] = (df_subject['rpe'] - min_rpe) / (max_rpe - min_rpe)
