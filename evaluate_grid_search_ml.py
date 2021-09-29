@@ -43,7 +43,7 @@ models = {'svr': None,
 
 
 def evaluate_best_performing_ml_model(input_path: str, ml_model: str = 'svr'):
-    df = aggregate_individual_ml_trials_of_model(input_path, ml_model, plot=True)
+    df = aggregate_individual_ml_trials_of_model(input_path, ml_model)
     best_combination = df.sort_values(by="mean_test_R2", ascending=False).iloc[0]
     win_size = best_combination[f'param_{ml_model}__win_size']
     overlap = best_combination[f'param_{ml_model}__overlap']
@@ -100,7 +100,7 @@ def evaluate_best_performing_ml_model(input_path: str, ml_model: str = 'svr'):
         plot_rpe_predictions_from_dataframe(df, join(input_path, ml_model, f"train_subject_{subject}.png"))
 
 
-def aggregate_individual_ml_trials_of_model(input_path: str, ml_model: str = "svr", plot: bool = True):
+def aggregate_individual_ml_trials_of_model(input_path: str, ml_model: str = "svr"):
     results_data = []
 
     for trial_file in filter(lambda x: x.endswith('csv'), os.listdir(join(input_path, ml_model))):
@@ -110,30 +110,28 @@ def aggregate_individual_ml_trials_of_model(input_path: str, ml_model: str = "sv
                          delimiter=';',
                          index_col=False).sort_values(by='mean_test_R2', ascending=True)
 
-        if plot:
-            plot_parallel_coordinates(
-                df.copy(),
-                color_column="mean_test_MAE",
-                title=f"Window Size: {win_size}, Overlap: {overlap}",
-                param_prefix=f"param_{ml_model}__",
-                file_name=join(input_path, ml_model, f"window_size_{win_size}_overlap_{overlap}.png")
-            )
+        plot_parallel_coordinates(
+            df.copy(),
+            color_column="mean_test_MAE",
+            title=f"Window Size: {win_size}, Overlap: {overlap}",
+            param_prefix=f"param_{ml_model}__",
+            file_name=join(input_path, ml_model, f"window_size_{win_size}_overlap_{overlap}.png")
+        )
 
         df.insert(0, f'param_{ml_model}__win_size', win_size)
         df.insert(1, f'param_{ml_model}__overlap', overlap)
         results_data.append(df)
 
     results_data = pd.concat(results_data, ignore_index=True).sort_values(by="mean_test_R2", ascending=True)
-    results_data.to_csv(f"{ml_model}_results.csv", sep=';', index=False)
+    results_data.to_csv(join(input_path, ml_model, f"{ml_model}_results.csv"), sep=';', index=False)
 
-    if plot:
-        plot_parallel_coordinates(
-            results_data.copy(),
-            color_column="mean_test_MAE",
-            title=f"All parameters",
-            param_prefix=f"param_{ml_model}__",
-            file_name=join(input_path, ml_model, f"total.png")
-        )
+    plot_parallel_coordinates(
+        results_data.copy(),
+        color_column="mean_test_MAE",
+        title=f"All parameters",
+        param_prefix=f"param_{ml_model}__",
+        file_name=join(input_path, ml_model, f"total.png")
+    )
 
     return results_data
 
