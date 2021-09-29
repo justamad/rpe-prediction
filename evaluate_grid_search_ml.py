@@ -1,19 +1,19 @@
-from cv2 import ml_ParamGrid
-
 from rpe_prediction.plot import plot_parallel_coordinates, plot_rpe_predictions_from_dataframe
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
 from ast import literal_eval as make_tuple
 from sklearn.svm import SVR
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.neural_network import MLPRegressor
 from scipy.stats import spearmanr, pearsonr
 from os.path import join
 
 import pandas as pd
+import numpy as np
 import os
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--src_path', type=str, dest='src_path', default="results/2021-09-26-20-09-02")
+parser.add_argument('--src_path', type=str, dest='src_path', default="results/2021-09-27-08-32-52")
 args = parser.parse_args()
 
 
@@ -28,8 +28,17 @@ def instantiate_mlp(p: pd.Series):
     )
 
 
+def instantiate_gbrt(p: pd.Series):
+    return GradientBoostingRegressor(
+        loss=p['param_gbrt__loss'],
+        learning_rate=p['param_gbrt__learning_rate'],
+        n_estimators=p['param_gbrt__n_estimators'],
+        n_iter_no_change=None if np.isnan(p['param_gbrt__n_iter_no_change']) else int(p['param_gbrt__n_iter_no_change'])
+    )
+
+
 models = {'svr': None,
-          'gbrt': None,
+          'gbrt': instantiate_gbrt,
           'mlp': instantiate_mlp}
 
 
@@ -103,10 +112,11 @@ def aggregate_individual_ml_trials_of_model(input_path: str, ml_model: str = "sv
 
         if plot:
             plot_parallel_coordinates(
-                df.copy().loc[::4, :],
+                df.copy(),
                 color_column="mean_test_MAE",
                 title=f"Window Size: {win_size}, Overlap: {overlap}",
-                file_name=f"window_size_{win_size}_overlap_{overlap}.png"
+                param_prefix=f"param_{ml_model}__",
+                file_name=join(input_path, ml_model, f"window_size_{win_size}_overlap_{overlap}.png")
             )
 
         df.insert(0, f'param_{ml_model}__win_size', win_size)
@@ -121,11 +131,12 @@ def aggregate_individual_ml_trials_of_model(input_path: str, ml_model: str = "sv
             results_data.copy(),
             color_column="mean_test_MAE",
             title=f"All parameters",
-            file_name=f"total.png"
+            param_prefix=f"param_{ml_model}__",
+            file_name=join(input_path, ml_model, f"total.png")
         )
 
     return results_data
 
 
 if __name__ == '__main__':
-    evaluate_best_performing_ml_model(args.src_path, 'mlp')
+    evaluate_best_performing_ml_model(args.src_path, 'gbrt')

@@ -135,14 +135,17 @@ def plot_parallel_coordinates(df: pd.DataFrame,
                               color_column: str,
                               columns: list = None,
                               title: str = None,
+                              param_prefix: str = None,
                               file_name: str = None):
     if columns is not None:
         df = df[columns]
     else:
         df = df[[c for c in df.columns if "param" in c or "mean_test" in c or "std_test" in c]]
 
-    df.columns = df.columns.str.replace('param_mlp__', '')
+    if param_prefix is not None:
+        df.columns = df.columns.str.replace(param_prefix, '')
 
+    df = df.fillna(0)
     columns = df.columns
     trials, parameters = df.shape
     x = list(range(parameters))
