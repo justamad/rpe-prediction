@@ -36,6 +36,7 @@ parser.add_argument('--src_path', type=str, dest='src_path', default="data/proce
 parser.add_argument('--feature_path', type=str, dest='feature_path', default="data/features")
 parser.add_argument('--result_path', type=str, dest='result_path', default="results")
 parser.add_argument('--nr_features', type=int, dest='nr_features', default=100)
+parser.add_argument('--nr_augment', type=int, dest='nr_augment', default=0)
 args = parser.parse_args()
 
 models = [MLPModelConfig(), GBRModelConfig()]
@@ -60,18 +61,18 @@ for win_size in window_sizes:
     for overlap in reversed(overlaps):
 
         # Cache pre-calculated features
-        X_file = join(args.feature_path, f"X_win_{win_size}_overlap_{overlap}.csv")
-        y_file = join(args.feature_path, f"y_win_{win_size}_overlap_{overlap}.csv")
+        X_file = join(args.feature_path, f"X_win_{win_size}_overlap_{overlap}_augmentation_{args.nr_augment}.csv")
+        y_file = join(args.feature_path, f"y_win_{win_size}_overlap_{overlap}_augmentation_{args.nr_augment}.csv")
 
         if isfile(X_file) and isfile(y_file):
             X_orig = pd.read_csv(X_file, sep=';', index_col=False)
             y_orig = pd.read_csv(y_file, sep=';', index_col=False)
         else:
             X_orig, y_orig = calculate_kinect_feature_set(input_path=args.src_path,
-                                                          window_size=win_size,
-                                                          overlap=overlap,
-                                                          data_augmentation=False,
-                                                          nr_iterations=5)
+                                                          window_size=90,
+                                                          overlap=0.5,
+                                                          nr_augmentation_iterations=args.nr_augment)
+
             X_orig.to_csv(X_file, sep=';', index=False)
             y_orig.to_csv(y_file, sep=';', index=False)
 

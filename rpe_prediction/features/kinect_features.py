@@ -25,8 +25,7 @@ def calculate_kinect_feature_set(
         input_path: str,
         window_size: int = 30,
         overlap: float = 0.5,
-        data_augmentation: bool = False,
-        nr_iterations: int = 10
+        nr_augmentation_iterations: int = 0,
 ):
     file_iterator = SubjectDataIterator(input_path).add_loader(RPESubjectLoader).add_loader(FusedAzureSubjectLoader)
     x_data = []
@@ -36,14 +35,13 @@ def calculate_kinect_feature_set(
         kinect_df = pd.read_csv(set_data['azure'], sep=';', index_col=False).set_index('timestamp', drop=True)
         kinect_df = remove_columns_from_dataframe(kinect_df, ["FOOT"])
 
-        if data_augmentation:
-            for _ in range(nr_iterations):
-                angle = (np.random.rand() * 2 * ROTATION_ANGLE) - ROTATION_ANGLE
-                matrix = create_rotation_matrix_y_axis(angle)
-                df = apply_affine_transformation(kinect_df, matrix)
-                x, y = extract_kinect_features(df, window_size, overlap, set_data, augmented=True)
-                x_data.append(x)
-                y_data.append(y)
+        for _ in range(nr_augmentation_iterations):
+            angle = (np.random.rand() * 2 * ROTATION_ANGLE) - ROTATION_ANGLE
+            matrix = create_rotation_matrix_y_axis(angle)
+            df = apply_affine_transformation(kinect_df, matrix)
+            x, y = extract_kinect_features(df, window_size, overlap, set_data, augmented=True)
+            x_data.append(x)
+            y_data.append(y)
 
         x, y = extract_kinect_features(kinect_df, window_size, overlap, set_data, augmented=False)
         x_data.append(x)
