@@ -55,8 +55,6 @@ create_folder_if_not_already_exists(args.feature_path)
 window_sizes = [30, 60, 90, 120]  # 1s, 2s, 3s, 4s
 overlaps = [0.5, 0.7, 0.9]
 
-logo = LeaveOneGroupOut()
-
 for win_size in window_sizes:
     for overlap in reversed(overlaps):
 
@@ -69,8 +67,8 @@ for win_size in window_sizes:
             y_orig = pd.read_csv(y_file, sep=';', index_col=False)
         else:
             X_orig, y_orig = calculate_kinect_feature_set(input_path=args.src_path,
-                                                          window_size=90,
-                                                          overlap=0.5,
+                                                          window_size=win_size,
+                                                          overlap=overlap,
                                                           nr_augmentation_iterations=args.nr_augment)
 
             X_orig.to_csv(X_file, sep=';', index=False)
@@ -82,8 +80,8 @@ for win_size in window_sizes:
 
         X_scaled = normalize_features_z_score(X_orig)
         # y_norm = normalize_rpe_values_min_max(y_orig)
-        plot_feature_distribution_as_pdf(X_orig, X_scaled,
-                                         join(result_path, f"features_win_{win_size}_overlap_{overlap}.pdf"))
+        # plot_feature_distribution_as_pdf(X_orig, X_scaled,
+        #                                  join(result_path, f"features_win_{win_size}_overlap_{overlap}.pdf"))
 
         X_train, y_train, X_test, y_test = split_data_based_on_pseudonyms(X_scaled,
                                                                           y_orig,

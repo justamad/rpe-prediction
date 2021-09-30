@@ -17,9 +17,9 @@ def calculate_features_sliding_window(df: pd.DataFrame, window_size: int, overla
     stride = int(window_size - (window_size * overlap))
     n_windows = math.floor((len(df) - window_size) / stride) + 1
 
-    for window_index in range(0, n_windows):
-        window = df.iloc[window_index * stride:window_index * stride + window_size].copy()
-        window['id'] = window_index
+    for window_idx in range(0, n_windows):
+        window = df.iloc[window_idx * stride:window_idx * stride + window_size].copy()
+        window['id'] = window_idx
         windows.append(window)
 
     df = pd.concat(windows, ignore_index=True)
