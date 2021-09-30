@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 
-def split_data_based_on_pseudonyms(x: pd.DataFrame, y: pd.DataFrame, train_p: float = 0.8, random_seed: int = None):
+def split_data_based_on_pseudonyms(X: pd.DataFrame, y: pd.DataFrame, train_p: float = 0.8, random_seed: int = None):
     subject_names = sorted(y['name'].unique())
     nr_subjects = int(len(subject_names) * train_p)
 
@@ -12,7 +12,7 @@ def split_data_based_on_pseudonyms(x: pd.DataFrame, y: pd.DataFrame, train_p: fl
     train_subjects = np.random.choice(subject_names, nr_subjects, replace=False)
     train_idx = y['name'].isin(train_subjects)
 
-    return x.loc[train_idx].copy(), y.loc[train_idx].copy(), x.loc[~train_idx].copy(), y.loc[~train_idx].copy()
+    return X.loc[train_idx].copy(), y.loc[train_idx].copy(), X.loc[~train_idx].copy(), y.loc[~train_idx].copy()
 
 
 def normalize_rpe_values_min_max(df: pd.DataFrame):

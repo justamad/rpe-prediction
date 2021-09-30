@@ -1,5 +1,3 @@
-import pandas as pd
-
 from rpe_prediction.features import calculate_kinect_feature_set
 from rpe_prediction.plot import plot_feature_distribution_as_pdf, plot_feature_correlation_heatmap
 from sklearn.model_selection import LeaveOneGroupOut
@@ -19,6 +17,7 @@ from rpe_prediction.models import (
     GBRModelConfig,
 )
 
+import pandas as pd
 import numpy as np
 import argparse
 import logging
@@ -87,7 +86,7 @@ for win_size in window_sizes:
 
         X_train, y_train, X_test, y_test = split_data_based_on_pseudonyms(X_scaled,
                                                                           y_norm,
-                                                                          train_p=0.75,
+                                                                          train_p=0.6,
                                                                           random_seed=69)
 
         X_train, X_test = feature_elimination_xgboost(X_train, y_train['rpe'], X_test, y_test['rpe'],

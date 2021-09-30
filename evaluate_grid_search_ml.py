@@ -13,7 +13,7 @@ import os
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--src_path', type=str, dest='src_path', default="results/2021-09-27-08-32-52")
+parser.add_argument('--src_path', type=str, dest='src_path', default="results/2021-09-29-15-50-11")
 args = parser.parse_args()
 
 
@@ -44,7 +44,7 @@ models = {'svr': None,
 
 def evaluate_best_performing_ml_model(input_path: str, ml_model: str = 'svr'):
     df = aggregate_individual_ml_trials_of_model(input_path, ml_model)
-    best_combination = df.sort_values(by="mean_test_R2", ascending=False).iloc[0]
+    best_combination = df.sort_values(by="mean_test_r2", ascending=False).iloc[0]
     win_size = best_combination[f'param_{ml_model}__win_size']
     overlap = best_combination[f'param_{ml_model}__overlap']
 
@@ -108,11 +108,11 @@ def aggregate_individual_ml_trials_of_model(input_path: str, ml_model: str = "sv
         win_size, overlap = int(split[1]), float(split[3][:-4])
         df = pd.read_csv(join(input_path, ml_model, trial_file),
                          delimiter=';',
-                         index_col=False).sort_values(by='mean_test_R2', ascending=True)
+                         index_col=False).sort_values(by='mean_test_r2', ascending=True)
 
         plot_parallel_coordinates(
             df.copy(),
-            color_column="mean_test_MAE",
+            color_column="mean_test_neg_mean_absolute_error",
             title=f"Window Size: {win_size}, Overlap: {overlap}",
             param_prefix=f"param_{ml_model}__",
             file_name=join(input_path, ml_model, f"window_size_{win_size}_overlap_{overlap}.png")
@@ -122,12 +122,12 @@ def aggregate_individual_ml_trials_of_model(input_path: str, ml_model: str = "sv
         df.insert(1, f'param_{ml_model}__overlap', overlap)
         results_data.append(df)
 
-    results_data = pd.concat(results_data, ignore_index=True).sort_values(by="mean_test_R2", ascending=True)
+    results_data = pd.concat(results_data, ignore_index=True).sort_values(by="mean_test_r2", ascending=True)
     results_data.to_csv(join(input_path, ml_model, f"{ml_model}_results.csv"), sep=';', index=False)
 
     plot_parallel_coordinates(
         results_data.copy(),
-        color_column="mean_test_MAE",
+        color_column="mean_test_r2",
         title=f"All parameters",
         param_prefix=f"param_{ml_model}__",
         file_name=join(input_path, ml_model, f"total.png")
