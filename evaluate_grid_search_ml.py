@@ -13,7 +13,7 @@ import os
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--src_path', type=str, dest='src_path', default="results/2021-09-29-15-50-11")
+parser.add_argument('--src_path', type=str, dest='src_path', default="results/2021-09-30-12-17-21")
 args = parser.parse_args()
 
 

@@ -81,12 +81,12 @@ for win_size in window_sizes:
         # plot_feature_correlation_heatmap(features)
 
         X_scaled = normalize_features_z_score(X_orig)
-        y_norm = normalize_rpe_values_min_max(y_orig)
-        # plot_feature_distribution_as_pdf(X_orig, X_scaled,
-        #                                  join(result_path, f"features_win_{win_size}_overlap_{overlap}.pdf"))
+        # y_norm = normalize_rpe_values_min_max(y_orig)
+        plot_feature_distribution_as_pdf(X_orig, X_scaled,
+                                         join(result_path, f"features_win_{win_size}_overlap_{overlap}.pdf"))
 
         X_train, y_train, X_test, y_test = split_data_based_on_pseudonyms(X_scaled,
-                                                                          y_norm,
+                                                                          y_orig,
                                                                           train_p=0.6,
                                                                           random_seed=69)
 

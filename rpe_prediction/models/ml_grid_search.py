@@ -15,7 +15,7 @@ class GridSearching(object):
 
     def __init__(self, groups: list, model: None, parameters, learner_name: str, balancer):
         self._steps = [
-            # ('balance_sampling', balancer),
+            ('balance_sampling', balancer),
             (learner_name, model)
         ]
 
