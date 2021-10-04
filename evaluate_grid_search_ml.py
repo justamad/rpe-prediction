@@ -1,4 +1,9 @@
-from rpe_prediction.plot import plot_parallel_coordinates, plot_rpe_predictions_from_dataframe
+from rpe_prediction.plot import (
+    plot_parallel_coordinates,
+    plot_rpe_predictions_from_dataframe,
+    plot_time_series_predictions
+)
+
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
 from ast import literal_eval as make_tuple
 from sklearn.svm import SVR
@@ -13,7 +18,7 @@ import os
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--src_path', type=str, dest='src_path', default="results/2021-09-30-12-17-21")
+parser.add_argument('--src_path', type=str, dest='src_path', default="results/2021-09-30-15-40-49")
 args = parser.parse_args()
 
 
@@ -94,10 +99,12 @@ def evaluate_best_performing_ml_model(input_path: str, ml_model: str = 'svr'):
     for subject in sorted(y_test['name'].unique()):
         df = y_test.loc[y_test['name'] == subject].copy()
         plot_rpe_predictions_from_dataframe(df, join(input_path, ml_model, f"test_subject_{subject}.png"))
+        plot_time_series_predictions(df, join(input_path, ml_model, f"pred_test_subject_{subject}.png"))
 
     for subject in sorted(y_train['name'].unique()):
         df = y_train.loc[y_train['name'] == subject].copy()
         plot_rpe_predictions_from_dataframe(df, join(input_path, ml_model, f"train_subject_{subject}.png"))
+        plot_time_series_predictions(df, join(input_path, ml_model, f"pred_train_subject_{subject}.png"))
 
 
 def aggregate_individual_ml_trials_of_model(input_path: str, ml_model: str = "svr"):

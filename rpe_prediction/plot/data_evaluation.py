@@ -26,11 +26,31 @@ def plot_rpe_predictions_from_dataframe(df: pd.DataFrame, file_name: str = None)
     plt.errorbar(means.keys(), means.values(), stds.values(), fmt='ok', lw=1, ecolor='green', mfc='green')
     plt.scatter(rpe.keys(), rpe.values(), label="Ground Truth", c='red')
     plt.xticks(list(rpe.keys()))
-    # plt.yticks(np.arange(10, 21))
-    plt.yticks(np.arange(0, 1.1, 0.1))
+    plt.yticks(np.arange(10, 21))
+    # plt.yticks(np.arange(0, 1.1, 0.1))
     plt.xlabel("Set Nr")
     plt.ylabel("RPE value")
     plt.title(f'Correlation Pearson: {pear:.2f}')
+
+    if file_name is not None:
+        plt.savefig(file_name)
+    else:
+        plt.show()
+
+    plt.clf()
+    plt.cla()
+    plt.close()
+
+
+def plot_time_series_predictions(df: pd.DataFrame, file_name: str = None):
+    plt.plot(df['rpe'], label="Ground Truth")
+    plt.plot(df['prediction'], label="Predictions")
+    plt.yticks(np.arange(10, 21))
+    # plt.yticks(np.arange(0, 1.1, 0.1))
+
+    plt.xlabel("Frames (Windows)")
+    plt.ylabel("RPE value")
+    # plt.title(f'')
 
     if file_name is not None:
         plt.savefig(file_name)

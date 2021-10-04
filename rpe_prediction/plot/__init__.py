@@ -1,6 +1,10 @@
 from .pdf_writer import PDFWriter
 from .confidence import plot_confidence_values
-from .data_evaluation import plot_rpe_predictions_from_dataframe
+
+from .data_evaluation import (
+    plot_rpe_predictions_from_dataframe,
+    plot_time_series_predictions
+)
 
 from .trajectories import (
     plot_sensor_data_for_axes,

@@ -1,10 +1,10 @@
 from rpe_prediction.features import calculate_kinect_feature_set
 from rpe_prediction.plot import plot_feature_distribution_as_pdf, plot_feature_correlation_heatmap
-from sklearn.model_selection import LeaveOneGroupOut
 from datetime import datetime
 from os.path import join, isfile
+from argparse import ArgumentParser
 
-from rpe_prediction.models import (
+from rpe_prediction.ml import (
     GridSearching,
     SVRModelConfig,
     RFModelConfig,
@@ -19,7 +19,6 @@ from rpe_prediction.models import (
 
 import pandas as pd
 import numpy as np
-import argparse
 import logging
 import os
 
@@ -31,7 +30,7 @@ console = logging.StreamHandler()
 console.setLevel(logging.INFO)
 logging.getLogger('my_logger').addHandler(console)
 
-parser = argparse.ArgumentParser()
+parser = ArgumentParser()
 parser.add_argument('--src_path', type=str, dest='src_path', default="data/processed")
 parser.add_argument('--feature_path', type=str, dest='feature_path', default="data/features")
 parser.add_argument('--result_path', type=str, dest='result_path', default="results")
