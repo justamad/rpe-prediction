@@ -3,7 +3,8 @@ from .confidence import plot_confidence_values
 
 from .data_evaluation import (
     plot_rpe_predictions_from_dataframe,
-    plot_time_series_predictions
+    plot_time_series_predictions,
+    plot_parallel_coordinates,
 )
 
 from .trajectories import (
@@ -12,5 +13,4 @@ from .trajectories import (
     plot_data_frame_column_wise_as_pdf,
     plot_feature_distribution_as_pdf,
     plot_feature_correlation_heatmap,
-    plot_parallel_coordinates
 )

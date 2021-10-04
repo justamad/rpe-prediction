@@ -1,10 +1,11 @@
 import numpy as np
 import pandas as pd
+import math
 
 
 def split_data_based_on_pseudonyms(X: pd.DataFrame, y: pd.DataFrame, train_p: float = 0.8, random_seed: int = None):
     subject_names = sorted(y['name'].unique())
-    nr_subjects = int(len(subject_names) * train_p)
+    nr_subjects = math.ceil(len(subject_names) * train_p)
 
     if random_seed is not None:
         np.random.seed(random_seed)

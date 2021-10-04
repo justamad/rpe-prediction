@@ -5,15 +5,15 @@ import tensorflow as tf
 
 
 def build_fcn_regression_model(
-        seq_len: int,
-        n_dim: int,
+        n_samples: int,
+        n_features: int,
         nr_filter: int = 128,
         activation: str = None,
         l2_factor: float = 0.03,
         dropout: float = 0.5,
 ):
     model = tf.keras.Sequential()
-    model.add(layers.Input(shape=(seq_len, n_dim)))
+    model.add(layers.Input(shape=(n_samples, n_features)))
 
     model.add(layers.Conv1D(filters=nr_filter, kernel_size=8, padding='same', kernel_regularizer=l2(l2_factor)))
     model.add(layers.BatchNormalization())

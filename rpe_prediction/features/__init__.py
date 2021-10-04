@@ -1,2 +1,2 @@
 from .kinect_features import calculate_kinect_feature_set
-from .prepare_data_dl import prepare_data_for_deep_learning
+from .prepare_data_dl import collect_all_trials_with_labels
