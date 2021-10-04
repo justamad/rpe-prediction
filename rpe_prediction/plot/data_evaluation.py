@@ -2,13 +2,14 @@ from scipy.stats import pearsonr, spearmanr
 from matplotlib import ticker
 from pandas.api.types import is_numeric_dtype
 from rpe_prediction.processing import get_hsv_color
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
 
-def plot_rpe_predictions_from_dataframe(df: pd.DataFrame, file_name: str = None):
+def plot_ml_predictions_for_sets(df: pd.DataFrame, file_name: str = None):
     data = df[['set', 'prediction']]
     sets = data['set'].unique()
     rpe = df[['rpe', 'set']].drop_duplicates()
@@ -45,15 +46,21 @@ def plot_rpe_predictions_from_dataframe(df: pd.DataFrame, file_name: str = None)
     plt.close()
 
 
-def plot_time_series_predictions(df: pd.DataFrame, file_name: str = None):
-    plt.plot(df['rpe'], label="Ground Truth")
-    plt.plot(df['prediction'], label="Predictions")
+def plot_ml_predictions_for_frames(df: pd.DataFrame, file_name: str = None):
+    predictions = df['prediction']
+    ground_truth = df['rpe']
+
+    plt.plot(ground_truth, label="Ground Truth")
+    plt.plot(predictions, label="Predictions")
     plt.yticks(np.arange(10, 21))
     # plt.yticks(np.arange(0, 1.1, 0.1))
 
     plt.xlabel("Frames (Windows)")
     plt.ylabel("RPE value")
-    # plt.title(f'')
+
+    mse = mean_squared_error(ground_truth, predictions)
+    mae = mean_absolute_error(ground_truth, predictions)
+    plt.title(f"MSE: {mse:.2f}, MAE: {mae:.2f}")
 
     if file_name is not None:
         plt.savefig(file_name)

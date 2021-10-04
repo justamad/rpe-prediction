@@ -1,13 +1,12 @@
 from rpe_prediction.plot import (
     plot_parallel_coordinates,
-    plot_rpe_predictions_from_dataframe,
-    plot_time_series_predictions
+    plot_ml_predictions_for_sets,
+    plot_ml_predictions_for_frames
 )
 
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
 from ast import literal_eval as make_tuple
-from sklearn.svm import SVR
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.neural_network import MLPRegressor
 from scipy.stats import spearmanr, pearsonr
 from os.path import join
@@ -98,13 +97,13 @@ def evaluate_best_performing_ml_model(input_path: str, ml_model: str = 'svr'):
 
     for subject in sorted(y_test['name'].unique()):
         df = y_test.loc[y_test['name'] == subject].copy()
-        plot_rpe_predictions_from_dataframe(df, join(input_path, ml_model, f"test_subject_{subject}.png"))
-        plot_time_series_predictions(df, join(input_path, ml_model, f"pred_test_subject_{subject}.png"))
+        plot_ml_predictions_for_sets(df, join(input_path, ml_model, f"test_subject_{subject}.png"))
+        plot_ml_predictions_for_frames(df, join(input_path, ml_model, f"pred_test_subject_{subject}.png"))
 
     for subject in sorted(y_train['name'].unique()):
         df = y_train.loc[y_train['name'] == subject].copy()
-        plot_rpe_predictions_from_dataframe(df, join(input_path, ml_model, f"train_subject_{subject}.png"))
-        plot_time_series_predictions(df, join(input_path, ml_model, f"pred_train_subject_{subject}.png"))
+        plot_ml_predictions_for_sets(df, join(input_path, ml_model, f"train_subject_{subject}.png"))
+        plot_ml_predictions_for_frames(df, join(input_path, ml_model, f"pred_train_subject_{subject}.png"))
 
 
 def aggregate_individual_ml_trials_of_model(input_path: str, ml_model: str = "svr"):
@@ -144,4 +143,4 @@ def aggregate_individual_ml_trials_of_model(input_path: str, ml_model: str = "sv
 
 
 if __name__ == '__main__':
-    evaluate_best_performing_ml_model(args.src_path, 'mlp')
+    evaluate_best_performing_ml_model(args.src_path, 'gbr')
