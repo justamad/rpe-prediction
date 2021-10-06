@@ -31,6 +31,8 @@ def eliminate_features_with_xgboost_coefficients(
     if analyze_features:
         thresholds = np.sort(np.unique(model.feature_importances_))
         result = {}
+        plt.figure(figsize=(20, 15))
+
         for thresh in thresholds:
             selection = SelectFromModel(model, threshold=thresh, prefit=True)
             select_X_train = selection.transform(X_train)
@@ -50,7 +52,6 @@ def eliminate_features_with_xgboost_coefficients(
         plt.xlabel("Number of features")
         plt.ylabel("MSE")
         plt.title(f"Window Size={win_size}, Overlap={overlap}")
-        plt.tight_layout()
 
         if path is None:
             plt.show()

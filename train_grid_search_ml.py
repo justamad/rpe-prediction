@@ -11,8 +11,8 @@ from rpe_prediction.ml import (
     KNNModelConfig,
     split_data_based_on_pseudonyms,
     normalize_features_z_score,
-    normalize_rpe_values_min_max,
-    feature_elimination_xgboost,
+    eliminate_features_with_rfe,
+    eliminate_features_with_xgboost_coefficients,
     MLPModelConfig,
     GBRModelConfig,
 )
@@ -87,8 +87,15 @@ for win_size in window_sizes:
                                                                           train_p=0.6,
                                                                           random_seed=69)
 
-        X_train, X_test = feature_elimination_xgboost(X_train, y_train['rpe'], X_test, y_test['rpe'],
-                                                      win_size, overlap, args.nr_features, result_path)
+        X_train, X_test = eliminate_features_with_xgboost_coefficients(X_train,
+                                                                       y_train['rpe'],
+                                                                       X_test,
+                                                                       y_test['rpe'],
+                                                                       analyze_features=True,
+                                                                       win_size=win_size,
+                                                                       overlap=overlap,
+                                                                       nr_features=args.nr_features,
+                                                                       path=result_path)
 
         # Save train and test subjects to file
         np.savetxt(join(result_path, f"train_win_{win_size}_overlap_{overlap}.txt"), y_train['name'].unique(), fmt='%s')
