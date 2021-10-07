@@ -18,7 +18,7 @@ parser.add_argument('--n_features', type=int, dest='n_features', default=51)
 parser.add_argument('--n_frames', type=int, dest='n_frames', default=60)
 parser.add_argument('--n_filters', type=int, dest='n_filters', default=128)
 parser.add_argument('--batch_size', type=int, dest='batch_size', default=32)
-parser.add_argument('--epochs', type=int, dest='epochs', default=100)
+parser.add_argument('--epochs', type=int, dest='epochs', default=1)
 args = parser.parse_args()
 
 model = build_fcn_regression_model(args.n_frames, args.n_features, args.n_filters, 'relu')
@@ -74,6 +74,10 @@ history = model.fit(train_gen,
                     callbacks=[model_checkpoint, tensorboard_callback],
                     )
 
+# Save trained model to file
+model_name = join(base_path, "models")
+model.save(model_name)
+
 # Plot the results
 plt.figure(1)
 plt.plot(history.history['loss'], 'b', label='Training Loss')
@@ -85,11 +89,3 @@ plt.legend()
 plt.tight_layout()
 plt.savefig(join(base_path, "history.png"))
 plt.show()
-
-# Print the minimum loss
-print("Training loss", np.min(history.history['loss']))
-print("Validation loss", np.min(history.history['val_loss']))
-
-# Save trained model to file
-model_name = join(base_path, "models")
-model.save(model_name)
