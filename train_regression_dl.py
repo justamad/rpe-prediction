@@ -59,12 +59,14 @@ tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=join(base_path, "l
 train_gen = TimeseriesGenerator(X_train.to_numpy(),
                                 y_train['rpe'].to_numpy(),
                                 length=args.n_frames,
-                                batch_size=args.batch_size)
+                                batch_size=args.batch_size,
+                                shuffle=True)
 
 val_gen = TimeseriesGenerator(X_val.to_numpy(),
                               y_val['rpe'].to_numpy(),
                               length=args.n_frames,
-                              batch_size=args.batch_size)
+                              batch_size=args.batch_size,
+                              shuffle=True)
 
 history = model.fit(train_gen,
                     epochs=args.epochs,
