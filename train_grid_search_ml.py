@@ -33,6 +33,7 @@ parser.add_argument('--feature_path', type=str, dest='feature_path', default="da
 parser.add_argument('--result_path', type=str, dest='result_path', default="results")
 parser.add_argument('--nr_features', type=int, dest='nr_features', default=100)
 parser.add_argument('--nr_augment', type=int, dest='nr_augment', default=0)
+parser.add_argument('--borg_scale', type=int, dest='borg_scale', default=5)
 args = parser.parse_args()
 
 models = [MLPModelConfig(), GBRModelConfig()]
@@ -74,7 +75,7 @@ for win_size in window_sizes:
         # plot_feature_correlation_heatmap(features)
 
         X_scaled = normalize_features_z_score(X_orig)
-        y_norm = normalize_rpe_values_min_max(y_orig, digitize=True, bins=10)
+        y_norm = normalize_rpe_values_min_max(y_orig, digitize=True, bins=args.borg_scale)
         # plot_feature_distribution_as_pdf(X_orig, X_scaled,
         #                                  join(result_path, f"features_win_{win_size}_overlap_{overlap}.pdf"))
 
@@ -87,7 +88,7 @@ for win_size in window_sizes:
                                                                        y_train['rpe'],
                                                                        X_test,
                                                                        y_test['rpe'],
-                                                                       analyze_features=True,
+                                                                       analyze_features=False,
                                                                        win_size=win_size,
                                                                        overlap=overlap,
                                                                        nr_features=args.nr_features,
