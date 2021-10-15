@@ -6,12 +6,9 @@ from argparse import ArgumentParser
 
 from rpe_prediction.ml import (
     GridSearching,
-    SVRModelConfig,
-    RFModelConfig,
-    KNNModelConfig,
     split_data_based_on_pseudonyms,
     normalize_features_z_score,
-    eliminate_features_with_rfe,
+    normalize_rpe_values_min_max,
     eliminate_features_with_xgboost_coefficients,
     MLPModelConfig,
     GBRModelConfig,
@@ -69,7 +66,6 @@ for win_size in window_sizes:
                                                           window_size=win_size,
                                                           overlap=overlap,
                                                           nr_augmentation_iterations=args.nr_augment)
-
             X_orig.to_csv(X_file, sep=';', index=False)
             y_orig.to_csv(y_file, sep=';', index=False)
 
@@ -78,7 +74,7 @@ for win_size in window_sizes:
         # plot_feature_correlation_heatmap(features)
 
         X_scaled = normalize_features_z_score(X_orig)
-        # y_norm = normalize_rpe_values_min_max(y_orig)
+        y_norm = normalize_rpe_values_min_max(y_orig, digitize=True, bins=10)
         # plot_feature_distribution_as_pdf(X_orig, X_scaled,
         #                                  join(result_path, f"features_win_{win_size}_overlap_{overlap}.pdf"))
 

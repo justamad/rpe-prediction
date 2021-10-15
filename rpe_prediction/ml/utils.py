@@ -16,13 +16,18 @@ def split_data_based_on_pseudonyms(X: pd.DataFrame, y: pd.DataFrame, train_p: fl
     return X.loc[train_idx].copy(), y.loc[train_idx].copy(), X.loc[~train_idx].copy(), y.loc[~train_idx].copy()
 
 
-def normalize_rpe_values_min_max(df: pd.DataFrame):
+def normalize_rpe_values_min_max(df: pd.DataFrame, digitize: bool = False, bins: int = 10):
     subjects = df['name'].unique()
     for subject_name in subjects:
         mask = df['name'] == subject_name
-        df_subject = df[mask]
-        min_rpe, max_rpe = df_subject['rpe'].min(), df_subject['rpe'].max()
-        df.loc[mask, 'rpe'] = (df_subject['rpe'] - min_rpe) / (max_rpe - min_rpe)
+        rpe_values = df.loc[mask, 'rpe'].to_numpy()
+        rpe_norm = (rpe_values - rpe_values.min()) / (rpe_values.max() - rpe_values.min())
+
+        if digitize:
+            # bins = np.histogram_bin_edges(result, bins="auto", range=(0, 1))
+            rpe_norm = np.digitize(rpe_norm, bins=np.arange(bins) / bins)
+
+        df.loc[mask, 'rpe'] = rpe_norm
 
     return df
 
