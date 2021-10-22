@@ -9,7 +9,7 @@ from ast import literal_eval as make_tuple
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.neural_network import MLPRegressor
 from scipy.stats import spearmanr, pearsonr
-from os.path import join
+from os.path import join, isfile
 
 import pandas as pd
 import numpy as np
@@ -17,8 +17,14 @@ import os
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--src_path', type=str, dest='src_path', default="results/2021-09-30-15-40-49")
+parser.add_argument('--src_path', type=str, dest='src_path', default="results/2021-10-15-10-46-02")
+parser.add_argument('--model', type=str, dest='model', default="gbr")
 args = parser.parse_args()
+
+
+def create_folder_if_not_already_exists(path: str):
+    if not os.path.exists(path):
+        os.makedirs(path)
 
 
 def instantiate_mlp(p: pd.Series):
@@ -51,6 +57,9 @@ def evaluate_best_performing_ml_model(input_path: str, ml_model: str = 'svr'):
     best_combination = df.sort_values(by="mean_test_r2", ascending=False).iloc[0]
     win_size = best_combination[f'param_{ml_model}__win_size']
     overlap = best_combination[f'param_{ml_model}__overlap']
+
+    output_path = join(input_path, ml_model, "results")
+    create_folder_if_not_already_exists(output_path)
 
     X_train = pd.read_csv(join(input_path, f"X_train_win_{int(win_size)}_overlap_{overlap:.1f}.csv"), sep=';',
                           index_col=False)
@@ -95,18 +104,29 @@ def evaluate_best_performing_ml_model(input_path: str, ml_model: str = 'svr'):
     print(f"Pearson Correlation Train: {pearsonr(y_train['rpe'], train_pred)}")
     print(f"Pearson Correlation Test: {pearsonr(y_test['rpe'], test_pred)}")
 
-    for subject in sorted(y_test['name'].unique()):
-        df = y_test.loc[y_test['name'] == subject].copy()
-        plot_ml_predictions_for_sets(df, join(input_path, ml_model, f"test_subject_{subject}.png"))
-        plot_ml_predictions_for_frames(df, join(input_path, ml_model, f"pred_test_subject_{subject}.png"))
+    def plot_results(df, mode: str = "train"):
+        for subject_name in sorted(df["name"].unique()):
+            subject_df = df.loc[df["name"] == subject_name].copy()
+            plot_ml_predictions_for_sets(
+                subject_df,
+                join(output_path, f"{mode}_subject_{subject_name}.png"),
+            )
 
-    for subject in sorted(y_train['name'].unique()):
-        df = y_train.loc[y_train['name'] == subject].copy()
-        plot_ml_predictions_for_sets(df, join(input_path, ml_model, f"train_subject_{subject}.png"))
-        plot_ml_predictions_for_frames(df, join(input_path, ml_model, f"pred_train_subject_{subject}.png"))
+            plot_ml_predictions_for_frames(
+                subject_df,
+                join(output_path, f"pred_{mode}_subject_{subject_name}.png"),
+            )
+
+    plot_results(y_test, "test")
+    plot_results(y_train, "train")
 
 
 def aggregate_individual_ml_trials_of_model(input_path: str, ml_model: str = "svr"):
+    file_name = join(input_path, ml_model, f"{ml_model}_results.csv")
+    if isfile(file_name):
+        df = pd.read_csv(file_name, sep=";", index_col=False)
+        return df
+
     results_data = []
 
     for trial_file in filter(lambda x: x.endswith('csv'), os.listdir(join(input_path, ml_model))):
@@ -129,18 +149,18 @@ def aggregate_individual_ml_trials_of_model(input_path: str, ml_model: str = "sv
         results_data.append(df)
 
     results_data = pd.concat(results_data, ignore_index=True).sort_values(by="mean_test_r2", ascending=True)
-    results_data.to_csv(join(input_path, ml_model, f"{ml_model}_results.csv"), sep=';', index=False)
+    results_data.to_csv(file_name, sep=';', index=False)
 
     plot_parallel_coordinates(
         results_data.copy(),
         color_column="mean_test_r2",
         title=f"All parameters",
         param_prefix=f"param_{ml_model}__",
-        file_name=join(input_path, ml_model, f"total.png")
+        file_name=join(input_path, ml_model, f"total.png"),
     )
 
     return results_data
 
 
 if __name__ == '__main__':
-    evaluate_best_performing_ml_model(args.src_path, 'gbr')
+    evaluate_best_performing_ml_model(args.src_path, args.model)

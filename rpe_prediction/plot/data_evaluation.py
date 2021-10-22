@@ -2,17 +2,20 @@ from scipy.stats import pearsonr, spearmanr
 from matplotlib import ticker
 from pandas.api.types import is_numeric_dtype
 from rpe_prediction.processing import get_hsv_color
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+
+Y_AXIS_LIM_EPSILON = 0.5
 
 
 def plot_ml_predictions_for_sets(df: pd.DataFrame, file_name: str = None):
     data = df[['set', 'prediction']]
     sets = data['set'].unique()
     rpe = df[['rpe', 'set']].drop_duplicates()
+    ground_truth = df['rpe']
 
     rpe = {cur_set: cur_rpe for cur_set, cur_rpe in zip(rpe['set'], rpe['rpe'])}
     means = {}
@@ -30,8 +33,7 @@ def plot_ml_predictions_for_sets(df: pd.DataFrame, file_name: str = None):
     plt.errorbar(means.keys(), means.values(), stds.values(), fmt='ok', lw=1, ecolor='green', mfc='green')
     plt.scatter(rpe.keys(), rpe.values(), label="Ground Truth", c='red')
     plt.xticks(list(rpe.keys()))
-    plt.yticks(np.arange(10, 21))
-    # plt.yticks(np.arange(0, 1.1, 0.1))
+    plt.ylim(ground_truth.min() - Y_AXIS_LIM_EPSILON, ground_truth.max() + Y_AXIS_LIM_EPSILON)
     plt.xlabel("Set Nr")
     plt.ylabel("RPE value")
     plt.title(f'Correlation Pearson: {pear:.2f}')
@@ -52,15 +54,15 @@ def plot_ml_predictions_for_frames(df: pd.DataFrame, file_name: str = None):
 
     plt.plot(ground_truth, label="Ground Truth")
     plt.plot(predictions, label="Predictions")
-    plt.yticks(np.arange(10, 21))
-    # plt.yticks(np.arange(0, 1.1, 0.1))
+    plt.ylim(ground_truth.min() - Y_AXIS_LIM_EPSILON, ground_truth.max() + Y_AXIS_LIM_EPSILON)
 
     plt.xlabel("Frames (Windows)")
     plt.ylabel("RPE value")
 
     mse = mean_squared_error(ground_truth, predictions)
     mae = mean_absolute_error(ground_truth, predictions)
-    plt.title(f"MSE: {mse:.2f}, MAE: {mae:.2f}")
+    r2 = r2_score(ground_truth, predictions)
+    plt.title(f"MSE: {mse:.2f}, MAE: {mae:.2f}, R2: {r2:.2f}")
 
     if file_name is not None:
         plt.savefig(file_name)
@@ -72,12 +74,14 @@ def plot_ml_predictions_for_frames(df: pd.DataFrame, file_name: str = None):
     plt.close()
 
 
-def plot_parallel_coordinates(df: pd.DataFrame,
-                              color_column: str,
-                              columns: list = None,
-                              title: str = None,
-                              param_prefix: str = None,
-                              file_name: str = None):
+def plot_parallel_coordinates(
+        df: pd.DataFrame,
+        color_column: str,
+        columns: list = None,
+        title: str = None,
+        param_prefix: str = None,
+        file_name: str = None
+):
     if columns is not None:
         df = df[columns]
     else:
