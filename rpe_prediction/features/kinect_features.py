@@ -1,10 +1,15 @@
 from .sliding_window import calculate_features_sliding_window
-from rpe_prediction.config import SubjectDataIterator, RPESubjectLoader, FusedAzureSubjectLoader
+
+from rpe_prediction.config import (
+    SubjectDataIterator,
+    RPESubjectLoader,
+    FusedAzureSubjectLoader,
+)
 
 from rpe_prediction.processing import (
     create_rotation_matrix_y_axis,
     apply_affine_transformation,
-    remove_columns_from_dataframe
+    remove_columns_from_dataframe,
 )
 
 from .skeleton_features import (
@@ -12,7 +17,7 @@ from .skeleton_features import (
     calculate_joint_angles_with_reference_joint,
     calculate_angles_between_3_joints,
     calculate_1d_joint_velocities,
-    calculate_relative_coordinates_with_reference_joint
+    calculate_relative_coordinates_with_reference_joint,
 )
 
 import pandas as pd
@@ -23,6 +28,7 @@ ROTATION_ANGLE = 7.5
 
 def calculate_kinect_feature_set(
         input_path: str,
+        statistical_features: bool = True,
         window_size: int = 30,
         overlap: float = 0.5,
         nr_augmentation_iterations: int = 0,
@@ -39,18 +45,25 @@ def calculate_kinect_feature_set(
             angle = (np.random.rand() * 2 * ROTATION_ANGLE) - ROTATION_ANGLE
             matrix = create_rotation_matrix_y_axis(angle)
             df = apply_affine_transformation(kinect_df, matrix)
-            x, y = extract_kinect_features(df, window_size, overlap, set_data, augmented=True)
+            x, y = extract_kinect_features(df, statistical_features, window_size, overlap, set_data, augmented=True)
             x_data.append(x)
             y_data.append(y)
 
-        x, y = extract_kinect_features(kinect_df, window_size, overlap, set_data, augmented=False)
+        x, y = extract_kinect_features(kinect_df, statistical_features, window_size, overlap, set_data, augmented=False)
         x_data.append(x)
         y_data.append(y)
 
     return pd.concat(x_data, ignore_index=True), pd.concat(y_data, ignore_index=True)
 
 
-def extract_kinect_features(df: pd.DataFrame, window_size: int, overlap: float, trial: dict, augmented: bool = False):
+def extract_kinect_features(
+        df: pd.DataFrame,
+        statistical_features: bool,
+        window_size: int,
+        overlap: float,
+        trial: dict,
+        augmented: bool = False,
+):
     velocities_1d = calculate_1d_joint_velocities(df)
     velocities_3d = calculate_3d_joint_velocities(df)
     relative_coordinates = calculate_relative_coordinates_with_reference_joint(df, "PELVIS")
@@ -61,16 +74,17 @@ def extract_kinect_features(df: pd.DataFrame, window_size: int, overlap: float, 
     angles_velocity = angle.diff(axis=0).dropna(axis='index')
     angles_velocity.rename(lambda c: c + "_VELOCITY", axis='columns', inplace=True)
 
-    features = pd.concat([velocities_1d,
-                          velocities_3d,
-                          relative_coordinates.iloc[1:],
-                          angle.iloc[1:],
-                          angles_velocity,
-                          ], axis=1).reset_index()
+    X = pd.concat([velocities_1d,
+                   velocities_3d,
+                   relative_coordinates.iloc[1:],
+                   angle.iloc[1:],
+                   angles_velocity,
+                   ], axis=1).reset_index()
 
-    x = calculate_features_sliding_window(features, window_size=window_size, overlap=overlap)
+    if statistical_features:
+        X = calculate_features_sliding_window(X, window_size=window_size, overlap=overlap)
 
     y_values = [trial['subject_name'], trial['rpe'], trial['group'], trial['nr_set'], augmented]
-    y = pd.DataFrame(data=[y_values for _ in range(len(x))],
+    y = pd.DataFrame(data=[y_values for _ in range(len(X))],
                      columns=['name', 'rpe', 'group', 'set', 'augmented'])
-    return x, y
+    return X, y

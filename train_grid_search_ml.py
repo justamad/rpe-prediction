@@ -64,6 +64,7 @@ for win_size in window_sizes:
             y_orig = pd.read_csv(y_file, sep=';', index_col=False)
         else:
             X_orig, y_orig = calculate_kinect_feature_set(input_path=args.src_path,
+                                                          statistical_features=False,
                                                           window_size=win_size,
                                                           overlap=overlap,
                                                           nr_augmentation_iterations=args.nr_augment)
@@ -76,8 +77,8 @@ for win_size in window_sizes:
 
         X_scaled = normalize_features_z_score(X_orig)
         y_norm = normalize_rpe_values_min_max(y_orig, digitize=True, bins=args.borg_scale)
-        # plot_feature_distribution_as_pdf(X_orig, X_scaled,
-        #                                  join(result_path, f"features_win_{win_size}_overlap_{overlap}.pdf"))
+        plot_feature_distribution_as_pdf(X_orig, X_scaled,
+                                         join(result_path, f"features_win_{win_size}_overlap_{overlap}.pdf"))
 
         X_train, y_train, X_test, y_test = split_data_based_on_pseudonyms(X_scaled,
                                                                           y_orig,
