@@ -1,11 +1,13 @@
 from os.path import join
 
-from .data_loaders import (
-    SubjectDataCollector,
+from .data_collector import SubjectDataCollector
+
+from rpe_prediction.config.data_loaders import (
     LoadingException,
     StereoAzureSubjectLoader,
     RPESubjectLoader,
     FusedAzureSubjectLoader,
+    ECGLoader,
 )
 
 import os
@@ -14,7 +16,8 @@ import logging
 loader_names = {
     StereoAzureSubjectLoader: 'azure',
     RPESubjectLoader: 'rpe',
-    FusedAzureSubjectLoader: 'azure'
+    FusedAzureSubjectLoader: 'azure',
+    ECGLoader: 'ecg',
 }
 
 
