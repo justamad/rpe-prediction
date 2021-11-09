@@ -1,6 +1,12 @@
-from .data_loaders import SubjectDataCollector, LoadingException, StereoAzureSubjectLoader, RPESubjectLoader, \
-    FusedAzureSubjectLoader
 from os.path import join
+
+from .data_loaders import (
+    SubjectDataCollector,
+    LoadingException,
+    StereoAzureSubjectLoader,
+    RPESubjectLoader,
+    FusedAzureSubjectLoader,
+)
 
 import os
 import logging
@@ -14,7 +20,7 @@ loader_names = {
 
 class SubjectDataIterator(object):
 
-    def __init__(self, base_path):
+    def __init__(self, base_path: str):
         """
         Constructor for SubjectDataIterator
         @param base_path: the base path to experiment folder, e.g. ../data/raw/

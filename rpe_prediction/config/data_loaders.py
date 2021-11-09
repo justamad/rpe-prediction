@@ -23,7 +23,7 @@ class BaseSubjectLoader(object):
 
 class RPESubjectLoader(BaseSubjectLoader):
 
-    def __init__(self, root_path, subject):
+    def __init__(self, root_path: str, subject: str):
         super().__init__()
         json_file = join(root_path, "rpe.json")
         if not os.path.isfile(json_file):
@@ -49,7 +49,7 @@ class RPESubjectLoader(BaseSubjectLoader):
 
 class StereoAzureSubjectLoader(BaseSubjectLoader):
 
-    def __init__(self, root_path, subject):
+    def __init__(self, root_path: str, subject: str):
         super().__init__()
         self._azure_path = join(root_path, "azure")
         if not os.path.exists(self._azure_path):
@@ -78,7 +78,7 @@ class StereoAzureSubjectLoader(BaseSubjectLoader):
 
 class FusedAzureSubjectLoader(BaseSubjectLoader):
 
-    def __init__(self, root_path, subject):
+    def __init__(self, root_path: str, subject: str):
         super().__init__()
         if not os.path.exists(root_path):
             raise LoadingException(f"Azure file not present in {root_path}")
@@ -102,7 +102,7 @@ class FusedAzureSubjectLoader(BaseSubjectLoader):
 
 class SubjectDataCollector(object):
 
-    def __init__(self, subject_root_path, data_loaders, subject_name, nr_sets=12):
+    def __init__(self, subject_root_path: str, data_loaders: dict, subject_name: str, nr_sets: int = 12):
         self._file_loaders = {}
         for loader_name, loader in data_loaders.items():
             current_loader = loader(subject_root_path, subject_name)

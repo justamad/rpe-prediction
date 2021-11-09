@@ -6,12 +6,9 @@ from argparse import ArgumentParser
 
 from rpe_prediction.ml import (
     GridSearching,
-    SVRModelConfig,
-    RFModelConfig,
-    KNNModelConfig,
     split_data_based_on_pseudonyms,
     normalize_features_z_score,
-    eliminate_features_with_rfe,
+    normalize_rpe_values_min_max,
     eliminate_features_with_xgboost_coefficients,
     MLPModelConfig,
     GBRModelConfig,
@@ -36,6 +33,7 @@ parser.add_argument('--feature_path', type=str, dest='feature_path', default="da
 parser.add_argument('--result_path', type=str, dest='result_path', default="results")
 parser.add_argument('--nr_features', type=int, dest='nr_features', default=100)
 parser.add_argument('--nr_augment', type=int, dest='nr_augment', default=0)
+parser.add_argument('--borg_scale', type=int, dest='borg_scale', default=5)
 args = parser.parse_args()
 
 models = [MLPModelConfig(), GBRModelConfig()]
@@ -51,8 +49,8 @@ for model in models:
     create_folder_if_not_already_exists(join(result_path, str(model)))
 create_folder_if_not_already_exists(args.feature_path)
 
-window_sizes = [30, 60, 90, 120]  # 1s, 2s, 3s, 4s
-overlaps = [0.5, 0.7, 0.9]
+window_sizes = [30]  # , 60, 90, 120]  # 1s, 2s, 3s, 4s
+overlaps = [0.5]  # , 0.7, 0.9]
 
 for win_size in window_sizes:
     for overlap in reversed(overlaps):
@@ -66,10 +64,10 @@ for win_size in window_sizes:
             y_orig = pd.read_csv(y_file, sep=';', index_col=False)
         else:
             X_orig, y_orig = calculate_kinect_feature_set(input_path=args.src_path,
+                                                          statistical_features=False,
                                                           window_size=win_size,
                                                           overlap=overlap,
                                                           nr_augmentation_iterations=args.nr_augment)
-
             X_orig.to_csv(X_file, sep=';', index=False)
             y_orig.to_csv(y_file, sep=';', index=False)
 
@@ -78,7 +76,7 @@ for win_size in window_sizes:
         # plot_feature_correlation_heatmap(features)
 
         X_scaled = normalize_features_z_score(X_orig)
-        # y_norm = normalize_rpe_values_min_max(y_orig)
+        y_norm = normalize_rpe_values_min_max(y_orig, digitize=True, bins=args.borg_scale)
         # plot_feature_distribution_as_pdf(X_orig, X_scaled,
         #                                  join(result_path, f"features_win_{win_size}_overlap_{overlap}.pdf"))
 
@@ -91,7 +89,7 @@ for win_size in window_sizes:
                                                                        y_train['rpe'],
                                                                        X_test,
                                                                        y_test['rpe'],
-                                                                       analyze_features=True,
+                                                                       analyze_features=False,
                                                                        win_size=win_size,
                                                                        overlap=overlap,
                                                                        nr_features=args.nr_features,
