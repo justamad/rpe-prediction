@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
-from rpe_prediction.features import collect_all_trials_with_labels
-from rpe_prediction.ml import split_data_based_on_pseudonyms
+from src.features import collect_all_trials_with_labels
+from src.ml import split_data_based_on_pseudonyms
 from os.path import join
 
 import tensorflow as tf

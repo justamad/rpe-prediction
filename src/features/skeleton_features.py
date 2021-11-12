@@ -1,4 +1,4 @@
-from rpe_prediction.processing import calculate_angle_in_radians_between_vectors
+from src.processing import calculate_angle_in_radians_between_vectors
 
 import pandas as pd
 import numpy as np

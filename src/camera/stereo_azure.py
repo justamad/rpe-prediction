@@ -1,6 +1,6 @@
-from rpe_prediction.processing import apply_butterworth_filter
-from rpe_prediction.camera import AzureKinect
-from .icp import find_rigid_transformation_svd
+from src.processing import apply_butterworth_filter
+from src.camera import AzureKinect
+from src.camera.utils.icp import find_rigid_transformation_svd
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,35 +8,40 @@ import numpy as np
 
 class StereoAzure(object):
 
-    def __init__(self, master_path: str, sub_path: str, delay: float = 0.001):
-        self.master = AzureKinect(master_path)
-        self.sub = AzureKinect(sub_path)
+    def __init__(
+            self,
+            master_path: str,
+            sub_path: str,
+            delay: float = 0.001
+    ):
+        self._master = AzureKinect(master_path)
+        self._sub = AzureKinect(sub_path)
 
-        self.delay = delay
-        self.synchronize_temporal()
+        self._delay = delay
+        self._synchronize_temporal()
 
-    def synchronize_temporal(self):
-        self.sub.add_delta_to_timestamps(-self.delay)
-        start_point = self.master.timestamps[0]
-        self.master.add_delta_to_timestamps(-start_point)
-        self.sub.add_delta_to_timestamps(-start_point)
+    def _synchronize_temporal(self):
+        self._sub.add_delta_to_timestamps(-self._delay)
+        start_point = self._master.timestamps[0]
+        self._master.add_delta_to_timestamps(-start_point)
+        self._sub.add_delta_to_timestamps(-start_point)
 
         # Cut data based on same timestamps
-        minimum = int(np.argmin(np.abs(self.sub.timestamps)))
-        length = min(len(self.master.timestamps), len(self.sub.timestamps) - minimum)
-        self.master.cut_data_by_index(0, length)
-        self.sub.cut_data_by_index(minimum, minimum + length)
-        self.master.set_new_timestamps(self.sub.timestamps)
+        minimum = int(np.argmin(np.abs(self._sub.timestamps)))
+        length = min(len(self._master.timestamps), len(self._sub.timestamps) - minimum)
+        self._master.cut_data_by_index(0, length)
+        self._sub.cut_data_by_index(minimum, minimum + length)
+        self._master.set_new_timestamps(self._sub.timestamps)
 
     def apply_external_rotation(self, rotation: np.ndarray, translation: np.ndarray):
-        self.sub.apply_affine_transformation(rotation, translation)
+        self._sub.apply_affine_transformation(rotation, translation)
 
     def calculate_affine_transform_based_on_data(self, show: bool = False):
-        rotation, translation = find_rigid_transformation_svd(self.master.data.to_numpy().reshape(-1, 3),
-                                                              self.sub.data.to_numpy().reshape(-1, 3),
+        rotation, translation = find_rigid_transformation_svd(self._master.data.to_numpy().reshape(-1, 3),
+                                                              self._sub.data.to_numpy().reshape(-1, 3),
                                                               show=show)
 
-        self.master.apply_affine_transformation(rotation, translation)
+        self._master.apply_affine_transformation(rotation, translation)
 
     def fuse_cameras(self, show: bool = False, pp=None):
         df_sub = self.sub_position.reset_index(drop=True)
@@ -67,22 +72,22 @@ class StereoAzure(object):
         return average_f4.set_index(self.sub_position.index)
 
     def calculate_error_between_both_cameras(self):
-        diff = (self.sub.data.to_numpy() - self.master.data.to_numpy()) ** 2
+        diff = (self._sub.data.to_numpy() - self._master.data.to_numpy()) ** 2
         distances = np.sqrt(diff.reshape(-1, 3).sum(axis=1))
         return np.mean(distances), np.std(distances)
 
     def cut_skeleton_data(self, start_index: int, end_index: int):
-        self.sub.cut_data_by_label(start_index, end_index)
-        self.master.cut_data_by_label(start_index, end_index)
+        self._sub.cut_data_by_label(start_index, end_index)
+        self._master.cut_data_by_label(start_index, end_index)
 
     def reduce_skeleton_joints(self):
-        self.sub.remove_unnecessary_joints()
-        self.master.remove_unnecessary_joints()
+        self._sub.remove_unnecessary_joints()
+        self._master.remove_unnecessary_joints()
 
     @property
     def sub_position(self):
-        return self.sub.data
+        return self._sub.data
 
     @property
     def mas_position(self):
-        return self.master.data
+        return self._master.data

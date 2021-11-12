@@ -1,10 +1,10 @@
-from rpe_prediction.features import calculate_kinect_feature_set
-from rpe_prediction.plot import plot_feature_distribution_as_pdf, plot_feature_correlation_heatmap
+from src.features import calculate_kinect_feature_set
+from src.plot import plot_feature_distribution_as_pdf, plot_feature_correlation_heatmap
 from datetime import datetime
 from os.path import join, isfile
 from argparse import ArgumentParser
 
-from rpe_prediction.ml import (
+from src.ml import (
     GridSearching,
     split_data_based_on_pseudonyms,
     normalize_features_z_score,

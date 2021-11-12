@@ -26,7 +26,7 @@ class StereoAzureSubjectLoader(BaseSubjectLoader):
 
         sub = join(self._sub_trials[trial_nr], "positions_3d.csv")
         master = join(self._master_trials[trial_nr], "positions_3d.csv")
-        return sub, master
+        return {'sub': sub, 'master': master}
 
     def get_nr_of_sets(self):
         return min(len(self._sub_trials), len(self._master_trials))

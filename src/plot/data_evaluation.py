@@ -1,7 +1,7 @@
 from scipy.stats import pearsonr, spearmanr
 from matplotlib import ticker
 from pandas.api.types import is_numeric_dtype
-from rpe_prediction.processing import get_hsv_color
+from src.processing import get_hsv_color
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 import matplotlib.pyplot as plt

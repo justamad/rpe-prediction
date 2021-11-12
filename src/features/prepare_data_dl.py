@@ -1,7 +1,11 @@
-from rpe_prediction.config import SubjectDataIterator, RPESubjectLoader, FusedAzureSubjectLoader
+from src.config import (
+    SubjectDataIterator,
+    RPESubjectLoader,
+    FusedAzureSubjectLoader,
+)
 
-from rpe_prediction.processing import (
-    remove_columns_from_dataframe
+from src.processing import (
+    remove_columns_from_dataframe,
 )
 
 import pandas as pd

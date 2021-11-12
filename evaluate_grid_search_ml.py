@@ -1,7 +1,7 @@
-from rpe_prediction.plot import (
+from src.plot import (
     plot_parallel_coordinates,
     plot_ml_predictions_for_sets,
-    plot_ml_predictions_for_frames
+    plot_ml_predictions_for_frames,
 )
 
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error

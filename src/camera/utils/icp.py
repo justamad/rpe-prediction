@@ -5,8 +5,13 @@ import logging
 from mpl_toolkits.mplot3d import Axes3D
 
 
-def find_rigid_transformation_svd(points_a: np.ndarray, points_b: np.ndarray, weights: np.ndarray = None,
-                                  show=False, path=None):
+def find_rigid_transformation_svd(
+        points_a: np.ndarray,
+        points_b: np.ndarray,
+        weights: np.ndarray = None,
+        show=False,
+        path=None
+):
     """
     Calculate rigid transformation between two point sets, using singular value decomposition of covariance matrix
     Reference: http://nghiaho.com/?page_id=671

@@ -1,19 +1,20 @@
-from rpe_prediction.stereo_cam import StereoAzure
-from rpe_prediction.plot import PDFWriter
+from src.camera import AzureKinect, StereoAzure
+from src.plot import PDFWriter
 from os.path import join, isdir
 from functools import reduce
-from rpe_prediction.camera import AzureKinect
 
-from rpe_prediction.config import (
+from src.config import (
     SubjectDataIterator,
     StereoAzureSubjectLoader,
     RPESubjectLoader,
-    FusedAzureSubjectLoader)
+    FusedAzureSubjectLoader,
+)
 
-from rpe_prediction.processing import (
+from src.processing import (
     segment_1d_joint_on_example,
     compute_mean_and_std_of_joint_for_subjects,
-    align_skeleton_parallel_to_x_axis)
+    align_skeleton_parallel_to_x_axis,
+)
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -52,8 +53,8 @@ def fuse_both_kinect_cameras(pdf_file: str):
             if not os.path.exists(cur_path):
                 os.makedirs(cur_path)
 
-        sub_path, master_path = set_data['azure']
-        azure = StereoAzure(master_path=master_path, sub_path=sub_path)
+        azure_paths = set_data['azure']
+        azure = StereoAzure(master_path=azure_paths['master'], sub_path=azure_paths['sub'])
 
         repetitions = segment_1d_joint_on_example(joint_data=azure.sub_position['PELVIS (y)'],
                                                   exemplar=example, std_dev_p=0.5,

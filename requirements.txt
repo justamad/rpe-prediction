@@ -16,3 +16,5 @@ xgboost
 seaborn
 PyMoCapViewer
 python-dateutil
+neurokit2
+biosppy

@@ -1,9 +1,9 @@
-from rpe_prediction.processing import (
+from src.processing import (
     find_closest_timestamp,
     identify_and_fill_gaps_in_data,
     remove_columns_from_dataframe,
     apply_affine_transformation,
-    get_all_columns_for_joint
+    get_all_columns_for_joint,
 )
 
 from collections import OrderedDict

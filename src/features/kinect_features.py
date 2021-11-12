@@ -1,12 +1,12 @@
 from .sliding_window import calculate_features_sliding_window
 
-from rpe_prediction.config import (
+from src.config import (
     SubjectDataIterator,
     RPESubjectLoader,
     FusedAzureSubjectLoader,
 )
 
-from rpe_prediction.processing import (
+from src.processing import (
     create_rotation_matrix_y_axis,
     apply_affine_transformation,
     remove_columns_from_dataframe,
