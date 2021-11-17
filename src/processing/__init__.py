@@ -12,12 +12,12 @@ from .utils import (
 
 from .signal_processing import (
     normalize_signal,
-    upsample_data,
+    resample_data,
     identify_and_fill_gaps_in_data,
     apply_butterworth_filter,
     find_closest_timestamp,
     butterworth_filter_1d,
-    sample_data_uniformly
+    calculate_magnitude,
 )
 
 from .geometry import (
