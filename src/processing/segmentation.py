@@ -7,7 +7,12 @@ import numpy as np
 import pandas as pd
 
 
-def segment_1d_joint_on_example(joint_data: pd.Series, exemplar: np.array, std_dev_p: float, show: bool = False):
+def segment_1d_joint_on_example(
+        joint_data: pd.Series,
+        exemplar: np.array,
+        std_dev_p: float,
+        show: bool = False
+) -> list:
     exemplar = (exemplar - np.mean(exemplar)) / np.std(exemplar)
     joint_data = (joint_data - np.mean(joint_data)) / np.std(joint_data)
     peaks, _ = signal.find_peaks(joint_data, height=0, prominence=0.05)

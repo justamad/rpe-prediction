@@ -14,12 +14,17 @@ def calculate_magnitude(
     return la.norm(data, ord=norm, axis=1)
 
 
+def calculate_acceleration(df: pd.DataFrame) -> pd.DataFrame:
+    acc = np.gradient(np.gradient(df.to_numpy(), axis=0), axis=0)
+    return pd.DataFrame(acc, columns=df.columns, index=df.index)
+
+
 def resample_data(
         df: pd.DataFrame,
         cur_fs: int,
         new_fs: int,
         mode: str = 'cubic',
-):
+) -> pd.DataFrame:
     x = np.arange(len(df)) / cur_fs
     num = int(x[-1] * new_fs)  # Define new constant sampling points
     xx = np.linspace(x[0], x[-1], num)
@@ -57,7 +62,7 @@ def apply_butterworth_filter(
         cutoff: int,
         sampling_rate: int,
         order: int = 4,
-):
+) -> pd.DataFrame:
     sos = butter_bandpass(cutoff, sampling_rate, order)
     result = []
 
@@ -72,7 +77,7 @@ def identify_and_fill_gaps_in_data(
         sampling_rate: int,
         method: str = "quadratic",
         log: bool = False,
-):
+) -> pd.DataFrame:
     diffs = np.diff(df.index) / (1 / sampling_rate)
     diffs = (np.round(diffs) - 1).astype(np.uint32)
     if log:

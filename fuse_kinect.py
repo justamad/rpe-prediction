@@ -56,9 +56,13 @@ def fuse_both_kinect_cameras(pdf_file: str):
         azure_paths = set_data['azure']
         azure = StereoAzure(master_path=azure_paths['master'], sub_path=azure_paths['sub'])
 
-        repetitions = segment_1d_joint_on_example(joint_data=azure.sub_position['PELVIS (y)'],
-                                                  exemplar=example, std_dev_p=0.5,
-                                                  show=False)
+        repetitions = segment_1d_joint_on_example(
+            joint_data=azure.sub_position['PELVIS (y)'],
+            exemplar=example,
+            std_dev_p=0.5,
+            show=False,
+        )
+
         sum_repetitions += len(repetitions)
 
         # Cut Kinect data before first and right after last repetition

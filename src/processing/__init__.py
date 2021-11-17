@@ -1,4 +1,5 @@
 from .segmentation import segment_1d_joint_on_example
+from .synchronization import calculate_cross_correlation
 
 from .utils import (
     get_joint_names_from_columns_as_list,
@@ -7,7 +8,7 @@ from .utils import (
     compute_mean_and_std_of_joint_for_subjects,
     get_all_columns_for_joint,
     align_skeleton_parallel_to_x_axis,
-    check_angle_between_x_axis
+    check_angle_between_x_axis,
 )
 
 from .signal_processing import (
@@ -18,10 +19,11 @@ from .signal_processing import (
     find_closest_timestamp,
     butterworth_filter_1d,
     calculate_magnitude,
+    calculate_acceleration,
 )
 
 from .geometry import (
     create_rotation_matrix_y_axis,
     calculate_angle_in_radians_between_vectors,
-    apply_affine_transformation
+    apply_affine_transformation,
 )
