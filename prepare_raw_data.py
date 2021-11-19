@@ -1,4 +1,7 @@
 from src.camera import StereoAzure
+from src.utils import create_folder_if_not_already_exists
+from argparse import ArgumentParser
+from os.path import join
 
 from src.processing import (
     resample_data,
@@ -21,12 +24,23 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 
 
-iterator = SubjectDataIterator("data/raw").add_loader(StereoAzureSubjectLoader).add_loader(ECGLoader)
-for trial in iterator.iterate_over_specific_subjects("9AE368"):
+parser = ArgumentParser()
+parser.add_argument('--src_path', type=str, dest='src_path', default="data/raw")
+parser.add_argument('--log_path', type=str, dest='log_path', default="data/processed")
+args = parser.parse_args()
+
+
+iterator = SubjectDataIterator(args.src_path, args.log_path).add_loader(StereoAzureSubjectLoader).add_loader(ECGLoader)
+# for trial in iterator.iterate_over_specific_subjects("9AE368"):
+for trial in iterator.iterate_over_all_subjects():
     azure_paths = trial['azure']
     azure = StereoAzure(master_path=azure_paths['master'], sub_path=azure_paths['sub'])
     df = azure.fuse_cameras(show=False)
     df.index = pd.to_datetime(df.index, unit="s")
+
+    subject_log_path = trial['log_path']
+    create_folder_if_not_already_exists(subject_log_path)
+    df.to_csv(join(subject_log_path, f"{trial['nr_set']}_azure.csv"), sep=';')
 
     # IMU data
     imu = trial['ecg'][1]
@@ -60,13 +74,10 @@ for trial in iterator.iterate_over_specific_subjects("9AE368"):
     # Correct clocks
     imu.index += shift_dt
 
-    fig, axs = plt.subplots(4, 1, sharex=True)
-    fig.suptitle(trial['subject_name'])
-    axs[0].plot(imu, label=['X', 'Y', 'Z'])
-    axs[1].plot(hr_df)
-    axs[2].plot(spine_chest_acc)
+    # fig, axs = plt.subplots(4, 1, sharex=True)
+    # fig.suptitle(trial['subject_name'])
+    # axs[0].plot(imu, label=['X', 'Y', 'Z'])
+    # axs[1].plot(hr_df)
     # axs[2].plot(spine_chest_acc)
-    # axs[3].plot(np.arange(len(spine_chest_sync)) / 100, spine_chest_sync)
-    # axs[3].plot(np.arange(len(imu_sync)) / 100 + shift, imu_sync)
-    plt.legend()
-    plt.show()
+    # plt.legend()
+    # plt.show()

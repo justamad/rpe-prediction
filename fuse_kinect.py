@@ -43,7 +43,10 @@ example = np.loadtxt("data/example.np")
 
 def fuse_both_kinect_cameras(pdf_file: str):
     pdf_writer = PDFWriter(pdf_file)
-    file_iterator = SubjectDataIterator(args.src_path).add_loader(StereoAzureSubjectLoader).add_loader(RPESubjectLoader)
+    file_iterator = SubjectDataIterator(args.src_path, args.dst_path).\
+        add_loader(StereoAzureSubjectLoader).\
+        add_loader(RPESubjectLoader)
+
     sum_repetitions = 0
 
     for set_data in file_iterator.iterate_over_all_subjects():
@@ -69,7 +72,7 @@ def fuse_both_kinect_cameras(pdf_file: str):
         azure.cut_skeleton_data(repetitions[0][0], repetitions[-1][1])
         azure.calculate_affine_transform_based_on_data(show=False)
         mean, std = azure.calculate_error_between_both_cameras()
-        print(f"{sub_path}: Agreement: m={mean:.2f}, s={std:.2f} mm, Reps={len(repetitions)}")
+        print(f"{set_data['nr_set']}: Agreement: m={mean:.2f}, s={std:.2f} mm, Reps={len(repetitions)}")
         avg_df = azure.fuse_cameras(show=True, pp=pdf_writer)
         avg_df = align_skeleton_parallel_to_x_axis(avg_df)
         avg_df.to_csv(f"{os.path.join(dst_path, str(set_data['nr_set']))}_azure.csv", sep=';', index=True)
@@ -170,4 +173,4 @@ def normalize_data_plot(pdf_file: str):
 
 if __name__ == '__main__':
     fuse_both_kinect_cameras(pdf_file='results/raw_fusion.pdf')
-    plot_repetition_data(pdf_file='results/fusion_segmented.pdf')
+    # plot_repetition_data(pdf_file='results/fusion_segmented.pdf')

@@ -1,4 +1,4 @@
-from .sliding_window import calculate_features_sliding_window
+from .statistical_features import calculate_statistical_features_with_sliding_window
 
 from src.config import (
     SubjectDataIterator,
@@ -33,7 +33,7 @@ def calculate_kinect_feature_set(
         overlap: float = 0.5,
         nr_augmentation_iterations: int = 0,
 ):
-    file_iterator = SubjectDataIterator(input_path).add_loader(RPESubjectLoader).add_loader(FusedAzureSubjectLoader)
+    file_iterator = SubjectDataIterator(input_path, input_path).add_loader(RPESubjectLoader).add_loader(FusedAzureSubjectLoader)
     x_data = []
     y_data = []
 
@@ -82,9 +82,16 @@ def extract_kinect_features(
                    ], axis=1).reset_index()
 
     if statistical_features:
-        X = calculate_features_sliding_window(X, window_size=window_size, overlap=overlap)
+        X = calculate_statistical_features_with_sliding_window(
+            df=X,
+            window_size=window_size,
+            overlap=overlap
+        )
 
     y_values = [trial['subject_name'], trial['rpe'], trial['group'], trial['nr_set'], augmented]
-    y = pd.DataFrame(data=[y_values for _ in range(len(X))],
-                     columns=['name', 'rpe', 'group', 'set', 'augmented'])
+    y = pd.DataFrame(
+        data=[y_values for _ in range(len(X))],
+        columns=['name', 'rpe', 'group', 'set', 'augmented']
+    )
+
     return X, y

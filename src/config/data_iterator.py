@@ -22,8 +22,13 @@ loader_names = {
 
 class SubjectDataIterator(object):
 
-    def __init__(self, base_path: str):
+    def __init__(
+            self,
+            base_path: str,
+            log_path: str,
+    ):
         self._base_path = base_path
+        self._log_path = log_path
         self._data_loaders_dict = {}
 
     def add_loader(self, loader):
@@ -32,29 +37,25 @@ class SubjectDataIterator(object):
         return self
 
     def iterate_over_all_subjects(self):
-        subject_data_loaders = self._load_data_collectors()
+        subject_data_loaders = self._load_subject_data_collectors()
         logging.info(f"Found {len(subject_data_loaders)} subject folders.")
 
         for subject_id, (subject_name, data_loader) in enumerate(subject_data_loaders.items()):
-            for trial in data_loader.iterate_over_sets():
-                trial['group'] = subject_id
-                trial['subject_name'] = subject_name
+            for trial in data_loader.iterate_over_sets(log_path=self._log_path, group_id=subject_id):
                 yield trial
 
     def iterate_over_specific_subjects(self, *subjects):
-        subject_data_loaders = self._load_data_collectors(list(subjects))
+        subject_data_loaders = self._load_subject_data_collectors(list(subjects))
         logging.info(f"Found {len(subject_data_loaders)} subject folders.")
 
         for subject_id, subject_name in enumerate(subjects):
             if subject_name not in subject_data_loaders:
                 logging.warning(f"Couldn't load data for subject: {subject_name}")
                 continue
-            for trial in subject_data_loaders[subject_name].iterate_over_sets():
-                trial['group'] = subject_id
-                trial['subject_name'] = subject_name
+            for trial in subject_data_loaders[subject_name].iterate_over_sets(log_path=self._log_path, group_id=subject_id):
                 yield trial
 
-    def _load_data_collectors(self, subject_list: list = None) -> dict:
+    def _load_subject_data_collectors(self, subject_list: list = None) -> dict:
         data_loaders = {}
         subjects = os.listdir(self._base_path)
 

@@ -1,4 +1,4 @@
-from rpe_prediction.processing import get_joint_names_from_columns_as_list
+from src.processing import get_joint_names_from_columns_as_list
 from .pdf_writer import PDFWriter
 from scipy.stats import norm
 
