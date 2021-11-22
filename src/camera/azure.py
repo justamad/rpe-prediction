@@ -6,12 +6,10 @@ from src.processing import (
     get_all_columns_for_joint,
 )
 
-from collections import OrderedDict
 from enum import Enum
 
 import numpy as np
 import pandas as pd
-import json
 import os
 
 excluded_joints = ["EYE", "EAR", "NOSE", "HANDTIP", "THUMB", "CLAVICLE", "HAND"]
@@ -47,26 +45,25 @@ class AzureKinect(object):
         df = df.where(l_mask, np.NAN)
         df = df.interpolate(method='quadratic', order=4).bfill()
 
-        df = remove_columns_from_dataframe(df, excluded_joints)
+        # df = remove_columns_from_dataframe(df, excluded_joints)
+        # Invert coordinate system
+        df.loc[:, df.filter(like='(y)').columns] *= -1
+        df.loc[:, df.filter(like='(z)').columns] *= -1
 
         df.index *= 1e-6  # Convert microseconds to seconds
-        df = identify_and_fill_gaps_in_data(df, 30, method='linear', log=False)
+        df = identify_and_fill_gaps_in_data(df, 30, method='linear', log=True)
         self._data = df
 
-    def apply_affine_transformation(self, matrix: np.ndarray, translation: np.ndarray = np.array([0, 0, 0])):
+    def apply_affine_transformation(
+            self,
+            matrix: np.ndarray,
+            translation: np.ndarray = np.array([0, 0, 0]),
+    ):
         new_df = apply_affine_transformation(self._data, matrix, translation)
         self._data.update(new_df)
 
     def __getitem__(self, item: str):
         return get_all_columns_for_joint(self._data, item)
-
-    @staticmethod
-    def get_skeleton_joints():
-        skeleton_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "joints.json")
-        with open(skeleton_file) as f:
-            joints = json.load(f)
-
-        return list(map(lambda x: x.lower(), joints))
 
     def cut_data_based_on_time_stamps(self, start_time, end_time):
         start_idx = find_closest_timestamp(self._data.index, start_time)
@@ -98,23 +95,3 @@ class AzureKinect(object):
     @property
     def timestamps(self):
         return self._data.index
-
-    @staticmethod
-    def read_skeleton_definition_as_tuple(df: pd.DataFrame):
-        json_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "azure.json")
-        joints = AzureKinect.get_joints_as_list(df)
-        with open(json_file) as f:
-            connections = json.load(f)
-
-        skeleton = []
-        for j1, j2 in connections:
-            if j1 not in joints or j2 not in joints:
-                continue
-            skeleton.append((joints.index(j1), joints.index(j2)))
-
-        return skeleton
-
-    @staticmethod
-    def get_joints_as_list(df: pd.DataFrame):
-        columns = [column.replace(column[column.find(" ("):column.find(")") + 1], "") for column in df.columns]
-        return list(OrderedDict.fromkeys(columns))

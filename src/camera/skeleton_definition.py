@@ -1,4 +1,4 @@
-[
+SKELETON_DEFINITION = [
     [
         "HEAD",
         "NECK"

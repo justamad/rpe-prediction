@@ -22,22 +22,27 @@ joints_with_first_joint_as_origin = [("SPINE_CHEST", "NECK", "SPINE_NAVEL"),
                                      ("KNEE_LEFT", "HIP_LEFT", "ANKLE_LEFT")]
 
 
-def calculate_1d_joint_velocities(df: pd.DataFrame):
+def calculate_1d_joint_velocities(df: pd.DataFrame) -> pd.DataFrame:
     diff = df.diff(axis=0).dropna(axis='index')
     diff = diff.add_suffix('_1D_VELOCITY')
     return diff
 
 
-def calculate_3d_joint_velocities(df: pd.DataFrame):
+def calculate_3d_joint_velocities(df: pd.DataFrame) -> pd.DataFrame:
     diff = df.diff(axis=0).dropna(axis='index')
     euclidean_distances = np.sqrt(np.sum((diff.to_numpy() ** 2).reshape(-1, 3), axis=1))
     gradients = euclidean_distances.reshape(diff.shape[0], diff.shape[1] // 3)
-    return pd.DataFrame(data=gradients,
-                        columns=list(map(lambda x: x[:-4] + "_3D_VELOCITY", df.columns[::3])),
-                        index=diff.index)
+    return pd.DataFrame(
+        data=gradients,
+        columns=list(map(lambda x: x[:-4] + "_3D_VELOCITY", df.columns[::3])),
+        index=diff.index,
+    )
 
 
-def calculate_joint_angles_with_reference_joint(df: pd.DataFrame, reference: str = "PELVIS"):
+def calculate_joint_angles_with_reference_joint(
+        df: pd.DataFrame,
+        reference: str = "PELVIS",
+) -> pd.DataFrame:
     r = df[[c for c in df.columns if reference in c]].to_numpy()
     result = []
     columns = []
@@ -49,10 +54,14 @@ def calculate_joint_angles_with_reference_joint(df: pd.DataFrame, reference: str
         result.append(angles)
         columns.append(f"{j1}={j2}")
 
-    return pd.DataFrame(data=np.stack(result, axis=-1), columns=columns, index=df.index)
+    return pd.DataFrame(
+        data=np.stack(result, axis=-1),
+        columns=columns,
+        index=df.index,
+    )
 
 
-def calculate_angles_between_3_joints(df: pd.DataFrame):
+def calculate_angles_between_3_joints(df: pd.DataFrame) -> pd.DataFrame:
     result = []
     columns = []
     for j1, j2, j3 in joints_with_first_joint_as_origin:
@@ -66,11 +75,19 @@ def calculate_angles_between_3_joints(df: pd.DataFrame):
     return pd.DataFrame(data=np.stack(result, axis=-1), columns=columns, index=df.index)
 
 
-def calculate_relative_coordinates_with_reference_joint(df: pd.DataFrame, reference_joint: str = "PELVIS"):
+def calculate_relative_coordinates_with_reference_joint(
+        df: pd.DataFrame,
+        reference_joint: str = "PELVIS",
+) -> pd.DataFrame:
+    n_joints = df.shape[1] // 3
     ref_data = df[[c for c in df.columns if reference_joint in c]].to_numpy()
-    ref_data = np.tile(ref_data, df.shape[1] // 3)
+    ref_data = np.tile(ref_data, n_joints)
 
     data = df.to_numpy() - ref_data
-    new_df = pd.DataFrame(data=data, columns=[c + "_REL_POSITION" for c in df.columns], index=df.index)
+    new_df = pd.DataFrame(
+        data=data,
+        columns=[c + "_REL_POSITION" for c in df.columns],
+        index=df.index
+    )
     new_df.drop(list(new_df.filter(regex=reference_joint)), axis=1, inplace=True)
     return new_df

@@ -4,6 +4,7 @@ from src.camera.utils.icp import find_rigid_transformation_svd
 
 import matplotlib.pyplot as plt
 import numpy as np
+import logging
 
 
 class StereoAzure(object):
@@ -33,25 +34,37 @@ class StereoAzure(object):
         self._sub.cut_data_by_index(minimum, minimum + length)
         self._master.set_new_timestamps(self._sub.timestamps)
 
-    def apply_external_rotation(self, rotation: np.ndarray, translation: np.ndarray):
+    def apply_external_rotation(
+            self,
+            rotation: np.ndarray,
+            translation: np.ndarray
+    ):
         self._sub.apply_affine_transformation(rotation, translation)
 
-    def calculate_affine_transform_based_on_data(self, show: bool = False):
-        rotation, translation = find_rigid_transformation_svd(self._master.data.to_numpy().reshape(-1, 3),
-                                                              self._sub.data.to_numpy().reshape(-1, 3),
-                                                              show=show)
-
-        self._master.apply_affine_transformation(rotation, translation)
-
-    def fuse_cameras(self, show: bool = False, pp=None):
+    def fuse_cameras(
+            self,
+            show: bool = False,
+            pp=None
+    ):
         df_sub = self.sub_position.reset_index(drop=True)
         df_master = self.mas_position.reset_index(drop=True)
+
+        m_err_1, s_err_1 = self._calculate_error_between_both_cameras()
+        self._calculate_affine_transformation_based_on_data()
+        m_err_2, s_err_2 = self._calculate_error_between_both_cameras()
+
+        logging.info(f"Joint errors: m={m_err_1:.2f}, s={s_err_2:.2f} mm, after: m={m_err_2:.2f}, s={s_err_2:.2f}")
 
         # Variance average
         var_sub = df_sub.var()
         var_mas = df_master.var()
-        average_var = (var_sub * df_master + var_mas * df_sub) / (var_sub + var_mas)
-        average_f4 = apply_butterworth_filter(average_var, cutoff=4, sampling_rate=30, order=4)
+        averaged = (var_sub * df_master + var_mas * df_sub) / (var_sub + var_mas)
+        average_filtered = apply_butterworth_filter(
+            df=averaged,
+            cutoff=4,
+            sampling_rate=30,
+            order=4,
+        )
 
         if show:
             plt.close()
@@ -60,7 +73,7 @@ class StereoAzure(object):
             for joint in df_sub.columns:
                 plt.plot(df_sub[joint], color="red", label="Left Sensor")
                 plt.plot(df_master[joint], color="blue", label="Right Sensor")
-                plt.plot(average_f4[joint], label="Butterworth 4 Hz")
+                plt.plot(average_filtered[joint], label="Butterworth 4 Hz")
                 plt.xlabel("Frames [1/30 s]")
                 plt.ylabel("Distance [mm]")
                 plt.title(f"{joint.title().replace('_', ' ')}")
@@ -69,14 +82,29 @@ class StereoAzure(object):
                 pp.save_figure()
                 plt.clf()
 
-        return average_f4.set_index(self.sub_position.index)
+        return average_filtered.set_index(self.sub_position.index)
 
-    def calculate_error_between_both_cameras(self):
+    def _calculate_affine_transformation_based_on_data(
+            self,
+            show: bool = False,
+    ):
+        rotation, translation = find_rigid_transformation_svd(
+            self._master.data.to_numpy().reshape(-1, 3),
+            self._sub.data.to_numpy().reshape(-1, 3),
+            show=show
+        )
+        self._master.apply_affine_transformation(rotation, translation)
+
+    def _calculate_error_between_both_cameras(self):
         diff = (self._sub.data.to_numpy() - self._master.data.to_numpy()) ** 2
         distances = np.sqrt(diff.reshape(-1, 3).sum(axis=1))
         return np.mean(distances), np.std(distances)
 
-    def cut_skeleton_data(self, start_index: int, end_index: int):
+    def cut_skeleton_data(
+            self,
+            start_index: int,
+            end_index: int
+    ):
         self._sub.cut_data_by_label(start_index, end_index)
         self._master.cut_data_by_label(start_index, end_index)
 

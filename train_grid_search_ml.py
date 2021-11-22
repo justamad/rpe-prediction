@@ -103,12 +103,12 @@ if __name__ == '__main__':
 
             X_train, X_test = eliminate_features_with_rfe(
                 X_train=X_train,
-                y_train=y_train,
+                y_train=y_train['rpe'],
                 X_test=X_test,
-                y_test=y_test,
+                y_test=y_test['rpe'],
                 window_size=win_size,
                 path=result_path,
-                step=20,
+                step=100,
             )
 
             # Save train and test subjects to file

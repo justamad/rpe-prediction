@@ -57,7 +57,10 @@ def check_angle_between_x_axis(df: pd.DataFrame):
     return calculate_angle_in_radians_between_vectors(v1, v2)
 
 
-def align_skeleton_parallel_to_x_axis(df: pd.DataFrame, show: bool = False):
+def align_skeleton_parallel_to_x_axis(
+        df: pd.DataFrame,
+        show: bool = False
+) -> pd.DataFrame:
     angles_y = []
     angles_z = []
 

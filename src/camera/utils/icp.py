@@ -9,8 +9,8 @@ def find_rigid_transformation_svd(
         points_a: np.ndarray,
         points_b: np.ndarray,
         weights: np.ndarray = None,
-        show=False,
-        path=None
+        show: bool = False,
+        path: str = None,
 ):
     """
     Calculate rigid transformation between two point sets, using singular value decomposition of covariance matrix

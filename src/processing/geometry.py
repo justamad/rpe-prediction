@@ -23,10 +23,12 @@ def calculate_angle_in_radians_between_vectors(v1: np.ndarray, v2: np.ndarray):
     return np.arccos(dot) * 180 / np.pi
 
 
-def apply_affine_transformation(df: pd.DataFrame, matrix: np.ndarray, translation: np.ndarray = np.array([0, 0, 0])):
-    data = df.to_numpy()
-    samples, features = data.shape
-    result = matrix * data.reshape(-1, 3).T + translation.reshape(3, 1)
+def apply_affine_transformation(
+        df: pd.DataFrame,
+        matrix: np.ndarray,
+        translation: np.ndarray = np.array([0, 0, 0])
+) -> pd.DataFrame:
+    samples, features = df.shape
+    result = matrix * df.to_numpy().reshape(-1, 3).T + translation.reshape(3, 1)
     final_result = result.T.reshape(samples, features)
-    data = pd.DataFrame(data=final_result, columns=df.columns, index=df.index)
-    return data
+    return pd.DataFrame(data=final_result, columns=df.columns, index=df.index)

@@ -56,8 +56,10 @@ def fuse_both_kinect_cameras(pdf_file: str):
             if not os.path.exists(cur_path):
                 os.makedirs(cur_path)
 
-        azure_paths = set_data['azure']
-        azure = StereoAzure(master_path=azure_paths['master'], sub_path=azure_paths['sub'])
+        azure = StereoAzure(
+            master_path=set_data['azure']['master'],
+            sub_path=set_data['azure']['sub'],
+        )
 
         repetitions = segment_1d_joint_on_example(
             joint_data=azure.sub_position['PELVIS (y)'],
@@ -70,9 +72,6 @@ def fuse_both_kinect_cameras(pdf_file: str):
 
         # Cut Kinect data before first and right after last repetition
         azure.cut_skeleton_data(repetitions[0][0], repetitions[-1][1])
-        azure.calculate_affine_transform_based_on_data(show=False)
-        mean, std = azure.calculate_error_between_both_cameras()
-        print(f"{set_data['nr_set']}: Agreement: m={mean:.2f}, s={std:.2f} mm, Reps={len(repetitions)}")
         avg_df = azure.fuse_cameras(show=True, pp=pdf_writer)
         avg_df = align_skeleton_parallel_to_x_axis(avg_df)
         avg_df.to_csv(f"{os.path.join(dst_path, str(set_data['nr_set']))}_azure.csv", sep=';', index=True)
