@@ -14,8 +14,12 @@ import pandas as pd
 
 
 def collect_all_trials_with_labels(input_path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    file_iterator = SubjectDataIterator(input_path, input_path).add_loader(RPESubjectLoader).add_loader(
-        FusedAzureSubjectLoader)
+    file_iterator = SubjectDataIterator(
+        base_path=input_path,
+        log_path=input_path,
+        loaders=[RPESubjectLoader, FusedAzureSubjectLoader],
+    )
+
     x_data = []
     y_data = []
 

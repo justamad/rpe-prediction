@@ -1,3 +1,4 @@
+from src.processing import apply_butterworth_filter
 from .base_loader import BaseSubjectLoader, LoadingException
 from os.path import exists, join
 from datetime import datetime
@@ -39,8 +40,10 @@ class ECGSubjectLoader(BaseSubjectLoader):
         self._df_edf = pd.DataFrame({'ecg': signals[0]})
         self._df_edf.index = pd.to_datetime(self._df_edf.index, unit="ms")
 
-        self._df_acc = pd.read_csv(csv_file, sep=',', index_col="sensorTimestamp")
-        self._df_acc.index = pd.to_datetime(self._df_acc.index)
+        df_acc = pd.read_csv(csv_file, sep=',', index_col="sensorTimestamp")
+        df_acc.index = pd.to_datetime(df_acc.index)
+        df_acc = df_acc.drop(columns=['Acceleration Magnitude'])
+        self._df_acc = apply_butterworth_filter(df_acc, cutoff=4, order=4, sampling_rate=100)
 
         ecg_clean = nk.ecg_clean(self._df_edf['ecg'], sampling_rate=1000, method='neurokit')
         _, rpeaks = nk.ecg_peaks(ecg_clean, method='neurokit', sampling_rate=1000, correct_artifacts=True)
@@ -61,7 +64,12 @@ class ECGSubjectLoader(BaseSubjectLoader):
         result_acc_df = self._df_acc.loc[(self._df_acc.index > start_dt) & (self._df_acc.index < end_dt)]
         result_ecg_df = self._df_edf.loc[(self._df_edf.index > start_dt) & (self._df_edf.index < end_dt)]
         result_hr_df = self._df_hr.loc[(self._df_hr.index > start_dt) & (self._df_hr.index < end_dt)]
-        return result_ecg_df, result_acc_df, result_hr_df
+
+        return {
+            # 'ecg': result_ecg_df,
+            'imu': result_acc_df,
+            'hr': result_hr_df,
+        }
 
     def get_nr_of_sets(self):
         return len(self._sets)

@@ -43,9 +43,11 @@ example = np.loadtxt("data/example.np")
 
 def fuse_both_kinect_cameras(pdf_file: str):
     pdf_writer = PDFWriter(pdf_file)
-    file_iterator = SubjectDataIterator(args.src_path, args.dst_path).\
-        add_loader(StereoAzureSubjectLoader).\
-        add_loader(RPESubjectLoader)
+    file_iterator = SubjectDataIterator(
+        base_path=args.src_path,
+        log_path=args.dst_path,
+        loaders=[StereoAzureSubjectLoader, RPESubjectLoader],
+    )
 
     sum_repetitions = 0
 
@@ -142,7 +144,10 @@ def plot_repetition_data(pdf_file: str):
 
 
 def normalize_data_plot(pdf_file: str):
-    file_iterator = SubjectDataIterator(args.dst_path).add_loader(FusedAzureSubjectLoader)
+    file_iterator = SubjectDataIterator(
+        base_path=args.dst_path,
+        loaders=[FusedAzureSubjectLoader]
+    )
     means, std = compute_mean_and_std_of_joint_for_subjects(file_iterator.iterate_over_all_subjects())
     pdf_writer = PDFWriter(pdf_file)
 

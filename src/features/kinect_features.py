@@ -33,7 +33,12 @@ def calculate_kinect_feature_set(
         overlap: float = 0.5,
         nr_augmentation_iterations: int = 0,
 ):
-    file_iterator = SubjectDataIterator(input_path, input_path).add_loader(RPESubjectLoader).add_loader(FusedAzureSubjectLoader)
+    file_iterator = SubjectDataIterator(
+        base_path=input_path,
+        log_path=input_path,
+        loaders=[RPESubjectLoader, FusedAzureSubjectLoader],
+    )
+
     x_data = []
     y_data = []
 

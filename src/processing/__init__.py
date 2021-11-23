@@ -1,5 +1,5 @@
 from .segmentation import segment_1d_joint_on_example
-from .synchronization import calculate_cross_correlation
+from .synchronization import calculate_cross_correlation, calculate_cross_correlation_with_datetime
 
 from .utils import (
     get_joint_names_from_columns_as_list,

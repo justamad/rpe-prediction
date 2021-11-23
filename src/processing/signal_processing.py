@@ -15,8 +15,8 @@ def calculate_magnitude(
 
 
 def calculate_acceleration(df: pd.DataFrame) -> pd.DataFrame:
-    acc = np.gradient(np.gradient(df.to_numpy(), axis=0), axis=0)
-    return pd.DataFrame(acc, columns=df.columns, index=df.index)
+    acceleration_data = np.gradient(np.gradient(df.to_numpy(), axis=0), axis=0)
+    return pd.DataFrame(acceleration_data, columns=df.columns, index=df.index)
 
 
 def resample_data(
