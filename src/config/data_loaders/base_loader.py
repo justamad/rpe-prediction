@@ -4,8 +4,8 @@ class LoadingException(Exception):
 
 class BaseSubjectLoader(object):
 
-    def __init__(self):
-        pass
+    def __init__(self, subject_name: str):
+        self._subject_name = subject_name
 
     def get_nr_of_sets(self):
         raise NotImplementedError("This method is not implemented in base class.")

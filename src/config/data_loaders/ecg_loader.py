@@ -10,10 +10,10 @@ import neurokit2 as nk
 import json
 
 
-class ECGLoader(BaseSubjectLoader):
+class ECGSubjectLoader(BaseSubjectLoader):
 
-    def __init__(self, root_path: str, subject: str):
-        super().__init__()
+    def __init__(self, root_path: str, subject_name: str):
+        super().__init__(subject_name)
         if not exists(root_path):
             raise LoadingException(f"Azure file not present in {root_path}")
 
@@ -34,7 +34,6 @@ class ECGLoader(BaseSubjectLoader):
             data = json.load(json_content)
 
         self._sets = data["non_truncated_selection"]["set_times"]
-        self._subject = subject
 
         signals, signal_headers, header = highlevel.read_edf(ecg_file)
         self._df_edf = pd.DataFrame({'ecg': signals[0]})
@@ -68,4 +67,4 @@ class ECGLoader(BaseSubjectLoader):
         return len(self._sets)
 
     def __repr__(self):
-        return f"ECG Loader {self._subject}"
+        return f"ECG Loader {self._subject_name}"

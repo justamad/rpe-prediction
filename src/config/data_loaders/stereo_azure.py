@@ -6,8 +6,8 @@ import os
 
 class StereoAzureSubjectLoader(BaseSubjectLoader):
 
-    def __init__(self, root_path: str, subject: str):
-        super().__init__()
+    def __init__(self, root_path: str, subject_name: str):
+        super().__init__(subject_name)
         self._azure_path = join(root_path, "azure")
         if not exists(self._azure_path):
             raise LoadingException(f"Azure file not present in {self._azure_path}")
@@ -18,7 +18,6 @@ class StereoAzureSubjectLoader(BaseSubjectLoader):
 
         self._sub_trials = {int(v[-6:-4]) - 1: v for v in filter(lambda x: 'sub' in x, all_trials)}
         self._master_trials = {int(v[-9:-7]) - 1: v for v in filter(lambda x: 'master' in x, all_trials)}
-        self._subject = subject
 
     def get_trial_by_set_nr(self, trial_nr: int):
         if trial_nr not in self._sub_trials or trial_nr not in self._master_trials:
@@ -32,4 +31,4 @@ class StereoAzureSubjectLoader(BaseSubjectLoader):
         return min(len(self._sub_trials), len(self._master_trials))
 
     def __repr__(self):
-        return f"StereoAzureLoader {self._subject}"
+        return f"StereoAzureLoader {self._subject_name}"

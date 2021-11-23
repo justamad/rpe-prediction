@@ -6,8 +6,8 @@ import json
 
 class RPESubjectLoader(BaseSubjectLoader):
 
-    def __init__(self, root_path: str, subject: str):
-        super().__init__()
+    def __init__(self, root_path: str, subject_name: str):
+        super().__init__(subject_name)
         json_file = join(root_path, "rpe.json")
         if not isfile(json_file):
             raise LoadingException(f"RPE file {json_file} does not exists!")
@@ -16,7 +16,6 @@ class RPESubjectLoader(BaseSubjectLoader):
             rpe_values = json.load(f)
 
         self._trials = {k: v for k, v in enumerate(rpe_values['rpe_ratings'])}
-        self._subject = subject
 
     def get_nr_of_sets(self):
         return len(self._trials)
@@ -27,4 +26,4 @@ class RPESubjectLoader(BaseSubjectLoader):
         return self._trials[trial_nr]
 
     def __repr__(self):
-        return f"RPELoader {self._subject}"
+        return f"RPELoader {self._subject_name}"

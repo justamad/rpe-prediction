@@ -6,7 +6,8 @@ from src.config.data_loaders import (
     StereoAzureSubjectLoader,
     RPESubjectLoader,
     FusedAzureSubjectLoader,
-    ECGLoader,
+    ECGSubjectLoader,
+    IMUSubjectLoader,
 )
 
 import os
@@ -16,7 +17,8 @@ loader_names = {
     StereoAzureSubjectLoader: 'azure',
     RPESubjectLoader: 'rpe',
     FusedAzureSubjectLoader: 'azure',
-    ECGLoader: 'ecg',
+    ECGSubjectLoader: 'ecg',
+    IMUSubjectLoader: 'imu',
 }
 
 

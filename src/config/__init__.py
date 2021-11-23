@@ -5,5 +5,6 @@ from .data_loaders import (
     StereoAzureSubjectLoader,
     RPESubjectLoader,
     FusedAzureSubjectLoader,
-    ECGLoader,
+    ECGSubjectLoader,
+    IMUSubjectLoader,
 )
