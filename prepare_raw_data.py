@@ -18,7 +18,6 @@ from src.config import (
     IMUSubjectLoader,
 )
 
-import numpy as np
 import pandas as pd
 # import matplotlib
 # matplotlib.use("TkAgg")
@@ -49,16 +48,25 @@ for trial in iterator.iterate_over_all_subjects():
     create_folder_if_not_already_exists(subject_log_path)
     df.to_csv(join(subject_log_path, f"{trial['nr_set']}_azure.csv"), sep=';')
 
-    # IMU data
-    imu = trial['ecg']['imu']
-
-    # Kinect data
+    # Synchronize Gaitup <-> Kinect
+    gait_up = trial['imu']
     spine_chest = df.filter(['SPINE_CHEST (x)', 'SPINE_CHEST (y)', 'SPINE_CHEST (z)'], axis=1)
     spine_chest['SPINE_CHEST (y)'] *= -1
     spine_chest_acc = calculate_acceleration(spine_chest)
     shift_dt = calculate_cross_correlation_with_datetime(
-        reference_df=spine_chest_acc,
-        ref_sync_axis='SPINE_CHEST (y)',
+        reference_df=gait_up,
+        ref_sync_axis='CHEST_ACCELERATION_Y',
+        target_df=spine_chest_acc,
+        target_sync_axis='SPINE_CHEST (y)',
+        show=False,
+    )
+    spine_chest_acc.index += shift_dt
+
+    # Synchronize Gaitup <-> Faros
+    imu = trial['ecg']['imu']
+    shift_dt = calculate_cross_correlation_with_datetime(
+        reference_df=gait_up,
+        ref_sync_axis='CHEST_ACCELERATION_Y',
         target_df=imu,
         target_sync_axis='ACCELERATION_X',
         show=False,
@@ -67,16 +75,16 @@ for trial in iterator.iterate_over_all_subjects():
     # ECG data
     hr_df = trial['ecg']['hr']
     hr_df.index += shift_dt
-
-    # Correct clocks
     imu.index += shift_dt
 
     fig, axs = plt.subplots(4, 1, sharex=True)
     fig.suptitle(f"Subject: {trial['subject_name']}, Set: {trial['nr_set']}")
-    axs[0].plot(imu, label=['X', 'Y', 'Z'])
-    axs[0].set_title('Faros Acceleration')
-    axs[1].plot(hr_df)
-    axs[1].set_title('Neurokit2 HR')
-    axs[2].plot(spine_chest_acc)
-    axs[2].set_title('Kinect Acceleration')
+    axs[0].plot(spine_chest_acc)
+    axs[0].set_title('Kinect Acceleration')
+    axs[1].plot(gait_up["CHEST_ACCELERATION_Y"])
+    axs[1].set_title('Gaitup Acceleration')
+    axs[2].plot(imu, label=['X', 'Y', 'Z'])
+    axs[2].set_title('Faros Acceleration')
+    axs[3].plot(hr_df)
+    axs[3].set_title('Neurokit2 HR')
     plt.show()
