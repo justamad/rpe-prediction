@@ -39,34 +39,21 @@ class SubjectDataIterator(object):
         return self
 
     def iterate_over_all_subjects(self):
-        subject_data_loaders = self._load_subject_data_collectors()
-        logging.info(f"Found {len(subject_data_loaders)} subject folders.")
-
-        for subject_id, (subject_name, data_loader) in enumerate(subject_data_loaders.items()):
-            for trial in data_loader.iterate_over_sets(log_path=self._log_path, group_id=subject_id):
-                yield trial
+        return self.iterate_over_specific_subjects()
 
     def iterate_over_specific_subjects(self, *subjects):
-        subject_data_loaders = self._load_subject_data_collectors(list(subjects))
-        logging.info(f"Found {len(subject_data_loaders)} subject folders.")
-
-        for subject_id, subject_name in enumerate(subjects):
-            if subject_name not in subject_data_loaders:
-                logging.warning(f"Couldn't load data for subject: {subject_name}")
-                continue
-            for trial in subject_data_loaders[subject_name].iterate_over_sets(log_path=self._log_path, group_id=subject_id):
+        for subject_id, loader in enumerate(self._load_subject_data_collectors(list(subjects))):
+            for trial in loader.iterate_over_sets(log_path=self._log_path, group_id=subject_id):
                 yield trial
 
-    def _load_subject_data_collectors(self, subject_list: list = None) -> dict:
-        data_loaders = {}
+    def _load_subject_data_collectors(self, subject_list: list):
         subjects = os.listdir(self._base_path)
-
-        if subject_list is not None:
+        if subject_list:
             subjects = list(filter(lambda s: s in subject_list, subjects))
 
         for subject in subjects:
             try:
-                data_loaders[subject] = SubjectDataCollector(
+                yield SubjectDataCollector(
                     subject_root_path=join(self._base_path, subject),
                     data_loaders=self._data_loaders_dict,
                     subject_name=subject,
@@ -75,5 +62,3 @@ class SubjectDataIterator(object):
 
             except LoadingException as e:
                 logging.warning(f"Data Loader failed for subject {subject}: {e}")
-
-        return data_loaders
