@@ -4,15 +4,15 @@ from os.path import exists, join
 import os
 
 
-class FusedAzureSubjectLoader(BaseSubjectLoader):
+class DataFrameLoader(BaseSubjectLoader):
 
-    def __init__(self, root_path: str, subject_name: str):
+    def __init__(self, root_path: str, subject_name: str, sensor_name: str):
         super().__init__(subject_name)
         if not exists(root_path):
             raise LoadingException(f"Azure file not present in {root_path}")
 
         # Load data into dictionary: {trial_n: absolute_path, ...}
-        files = list(filter(lambda x: 'azure' in x, os.listdir(root_path)))
+        files = list(filter(lambda x: sensor_name in x, os.listdir(root_path)))
         self._trials = {int(v.split('_')[0]): join(root_path, v) for v in files}
 
     def get_trial_by_set_nr(self, trial_nr: int):
@@ -25,3 +25,21 @@ class FusedAzureSubjectLoader(BaseSubjectLoader):
 
     def __repr__(self):
         return f"FusedAzureLoader {self._subject_name}"
+
+
+class AzureDataFrameLoader(DataFrameLoader):
+
+    def __init__(self, root_path: str, subject_name: str):
+        super().__init__(root_path, subject_name, 'azure')
+
+
+class HeartRateDataFrameLoader(DataFrameLoader):
+
+    def __init__(self, root_path: str, subject_name: str):
+        super().__init__(root_path, subject_name, 'hr')
+
+
+class ImuDataFrameLoader(DataFrameLoader):
+
+    def __init__(self, root_path: str, subject_name: str):
+        super().__init__(root_path, subject_name, 'physilog')

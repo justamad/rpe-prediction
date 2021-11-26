@@ -11,7 +11,8 @@ def segment_1d_joint_on_example(
         joint_data: pd.Series,
         exemplar: np.array,
         std_dev_p: float,
-        show: bool = False
+        show: bool = False,
+        log_path: str = None,
 ) -> list:
     exemplar = (exemplar - np.mean(exemplar)) / np.std(exemplar)
     joint_data = (joint_data - np.mean(joint_data)) / np.std(joint_data)
@@ -39,6 +40,10 @@ def segment_1d_joint_on_example(
     final_segments = list(map(lambda x: x[1], filter(lambda x: x[0] < t, zip(dtw_costs, candidates))))
 
     if show:
+        plt.close()
+        plt.cla()
+        plt.clf()
+
         fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(20, 10))
         fig.suptitle(f'DTW: M={np.mean(dtw_costs):.1f}, SD={np.std(dtw_costs):.1f}, MD={dtw_median:.1f}, T={t:.1f}')
 
@@ -60,9 +65,13 @@ def segment_1d_joint_on_example(
             ax4.plot(joint_data.loc[t1:t2], color=get_hsv_color(counter, len(final_segments)))
 
         plt.tight_layout()
-        plt.show()
+        if log_path is not None:
+            plt.savefig(log_path)
+        else:
+            plt.show()
+
         plt.close()
-        plt.cla()
         plt.clf()
+        plt.cla()
 
     return final_segments

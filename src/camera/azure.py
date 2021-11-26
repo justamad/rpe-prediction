@@ -47,8 +47,8 @@ class AzureKinect(object):
 
         # df = remove_columns_from_dataframe(df, excluded_joints)
         # Invert coordinate system
-        df.loc[:, df.filter(like='(y)').columns] *= -1
-        df.loc[:, df.filter(like='(z)').columns] *= -1
+        # df.loc[:, df.filter(like='(y)').columns] *= -1
+        # df.loc[:, df.filter(like='(z)').columns] *= -1
 
         df.index *= 1e-6  # Convert microseconds to seconds
         df = identify_and_fill_gaps_in_data(df, 30, method='linear', log=True)

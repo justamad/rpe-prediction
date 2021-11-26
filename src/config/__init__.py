@@ -4,7 +4,9 @@ from .data_loaders import (
     BaseSubjectLoader,
     StereoAzureSubjectLoader,
     RPESubjectLoader,
-    FusedAzureSubjectLoader,
     ECGSubjectLoader,
     IMUSubjectLoader,
+    AzureDataFrameLoader,
+    HeartRateDataFrameLoader,
+    ImuDataFrameLoader,
 )

@@ -7,7 +7,7 @@ from src.config import (
     SubjectDataIterator,
     StereoAzureSubjectLoader,
     RPESubjectLoader,
-    FusedAzureSubjectLoader,
+    DataFrameLoader,
 )
 
 from src.processing import (
@@ -146,7 +146,7 @@ def plot_repetition_data(pdf_file: str):
 def normalize_data_plot(pdf_file: str):
     file_iterator = SubjectDataIterator(
         base_path=args.dst_path,
-        loaders=[FusedAzureSubjectLoader]
+        loaders=[DataFrameLoader]
     )
     means, std = compute_mean_and_std_of_joint_for_subjects(file_iterator.iterate_over_all_subjects())
     pdf_writer = PDFWriter(pdf_file)

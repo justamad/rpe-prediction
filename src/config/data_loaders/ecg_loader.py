@@ -42,8 +42,7 @@ class ECGSubjectLoader(BaseSubjectLoader):
 
         df_acc = pd.read_csv(csv_file, sep=',', index_col="sensorTimestamp")
         df_acc.index = pd.to_datetime(df_acc.index)
-        df_acc = df_acc.drop(columns=['Acceleration Magnitude'])
-        self._df_acc = apply_butterworth_filter(df_acc, cutoff=4, order=4, sampling_rate=100)
+        self._df_acc = df_acc.drop(columns=['Acceleration Magnitude'])
 
         ecg_clean = nk.ecg_clean(self._df_edf['ecg'], sampling_rate=1000, method='neurokit')
         _, rpeaks = nk.ecg_peaks(ecg_clean, method='neurokit', sampling_rate=1000, correct_artifacts=True)

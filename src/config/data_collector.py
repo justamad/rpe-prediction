@@ -1,4 +1,5 @@
 from .data_loaders import LoadingException
+from src.utils import create_folder_if_not_already_exists
 from os.path import join
 
 import logging
@@ -34,7 +35,9 @@ class SubjectDataCollector(object):
                 trial_dic['subject_name'] = self._subject_name
 
                 if log_path is not None:
-                    trial_dic['log_path'] = join(log_path, self._subject_name)
+                    cur_log_path = join(log_path, self._subject_name, f"{current_set}_set")
+                    create_folder_if_not_already_exists(cur_log_path)
+                    trial_dic['log_path'] = cur_log_path
 
                 yield trial_dic
             except LoadingException as e:

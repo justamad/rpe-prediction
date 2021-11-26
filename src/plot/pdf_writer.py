@@ -6,7 +6,7 @@ import io
 
 class PDFWriter(object):
 
-    def __init__(self, file_name):
+    def __init__(self, file_name: str):
         self.__pdf_buffer = io.BytesIO()
         self.__pp = PdfPages(self.__pdf_buffer)
         self.__bookmarks = []

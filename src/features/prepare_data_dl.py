@@ -3,7 +3,9 @@ from typing import Tuple
 from src.config import (
     SubjectDataIterator,
     RPESubjectLoader,
-    FusedAzureSubjectLoader,
+    AzureDataFrameLoader,
+    ImuDataFrameLoader,
+    HeartRateDataFrameLoader,
 )
 
 from src.processing import (
@@ -16,15 +18,16 @@ import pandas as pd
 def collect_all_trials_with_labels(input_path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     file_iterator = SubjectDataIterator(
         base_path=input_path,
-        log_path=input_path,
-        loaders=[RPESubjectLoader, FusedAzureSubjectLoader],
+        loaders=[RPESubjectLoader, AzureDataFrameLoader, ImuDataFrameLoader, HeartRateDataFrameLoader],
     )
 
     x_data = []
     y_data = []
 
     for trial in file_iterator.iterate_over_all_subjects():
-        X_df = pd.read_csv(trial['azure'], sep=';', index_col=False).set_index('timestamp', drop=True)
+        X_df = pd.read_csv(trial['azure'], sep=';').set_index('timestamp', drop=True)
+        imu_df = pd.read_csv(trial['imu'], sep=';').set_index('sensorTimestamp', drop=True)
+        hr_df = pd.read_csv(trial['ecg'], sep=';').set_index('timestamp', drop=True)
         X_df = remove_columns_from_dataframe(X_df, ["FOOT"])
 
         y_values = [trial['subject_name'], trial['rpe'], trial['group'], trial['nr_set']]

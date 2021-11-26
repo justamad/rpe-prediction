@@ -4,6 +4,7 @@ from src.camera.utils.icp import find_rigid_transformation_svd
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import logging
 
 
@@ -44,7 +45,7 @@ class StereoAzure(object):
     def fuse_cameras(
             self,
             show: bool = False,
-            pp=None
+            pp=None,
     ):
         df_sub = self.sub_position.reset_index(drop=True)
         df_master = self.mas_position.reset_index(drop=True)
@@ -82,7 +83,9 @@ class StereoAzure(object):
                 pp.save_figure()
                 plt.clf()
 
-        return average_filtered.set_index(self.sub_position.index)
+        average_filtered = average_filtered.set_index(self.sub_position.index)
+        average_filtered.index = pd.to_datetime(average_filtered.index, unit="s")
+        return average_filtered
 
     def _calculate_affine_transformation_based_on_data(
             self,

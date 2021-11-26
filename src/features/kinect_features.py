@@ -3,7 +3,7 @@ from .statistical_features import calculate_statistical_features_with_sliding_wi
 from src.config import (
     SubjectDataIterator,
     RPESubjectLoader,
-    FusedAzureSubjectLoader,
+    AzureDataFrameLoader,
 )
 
 from src.processing import (
@@ -36,7 +36,7 @@ def calculate_kinect_feature_set(
     file_iterator = SubjectDataIterator(
         base_path=input_path,
         log_path=input_path,
-        loaders=[RPESubjectLoader, FusedAzureSubjectLoader],
+        loaders=[RPESubjectLoader, AzureDataFrameLoader],
     )
 
     x_data = []
