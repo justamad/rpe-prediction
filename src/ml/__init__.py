@@ -8,6 +8,7 @@ from .ml_feature_extraction import (
 
 from .utils import (
     split_data_based_on_pseudonyms,
+    split_data_based_on_pseudonyms_multiple_inputs,
     normalize_rpe_values_min_max,
     normalize_features_z_score,
 )
@@ -18,4 +19,5 @@ from .ml_model_config import (
     RFModelConfig,
     GBRModelConfig,
     MLPModelConfig,
-    XGBoostConfig)
+    XGBoostConfig,
+)

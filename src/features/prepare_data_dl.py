@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, List
 
 from src.config import (
     SubjectDataIterator,
@@ -15,7 +15,7 @@ from src.processing import (
 import pandas as pd
 
 
-def collect_all_trials_with_labels(input_path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def collect_all_trials_with_labels(input_path: str) -> Tuple[List, pd.DataFrame]:
     file_iterator = SubjectDataIterator(
         base_path=input_path,
         loaders=[RPESubjectLoader, AzureDataFrameLoader, ImuDataFrameLoader, HeartRateDataFrameLoader],
@@ -31,12 +31,13 @@ def collect_all_trials_with_labels(input_path: str) -> Tuple[pd.DataFrame, pd.Da
         X_df = remove_columns_from_dataframe(X_df, ["FOOT"])
 
         y_values = [trial['subject_name'], trial['rpe'], trial['group'], trial['nr_set']]
-        y = pd.DataFrame(
-            data=[y_values for _ in range(len(X_df))],
-            columns=['name', 'rpe', 'group', 'set', ]
-        )
+        # y = pd.DataFrame(
+        #     data=[y_values for _ in range(len(X_df))],
+        #     columns=['name', 'rpe', 'group', 'set', ]
+        # )
 
-        x_data.append(X_df)
-        y_data.append(y)
+        x_data.append((X_df, imu_df))
+        y_data.append(y_values)
 
-    return pd.concat(x_data, ignore_index=True), pd.concat(y_data, ignore_index=True)
+    y_data = pd.DataFrame(data=y_data, columns=['name', 'rpe', 'group', 'nr_set'])
+    return x_data, y_data
