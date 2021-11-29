@@ -2,7 +2,7 @@ from src.features import collect_all_trials_with_labels
 from src.ml import split_data_based_on_pseudonyms_multiple_inputs
 from src.dl import TimeSeriesGenerator
 
-# from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
+from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
 from argparse import ArgumentParser
 from os.path import join
 from datetime import datetime
@@ -38,6 +38,8 @@ X_train, y_train, X_test, y_test = split_data_based_on_pseudonyms_multiple_input
 X_train, y_train, X_val, y_val = split_data_based_on_pseudonyms_multiple_inputs(X_train, y_train, train_p=0.7, random_seed=42)
 
 gen = TimeSeriesGenerator(X_train, y_train, sampling_frequencies=[32, 128])
+for g in gen.get_iterator():
+    print(g[1])
 
 # print(f'Training dimensions: {X_train.shape}, {y_train.shape}')
 # print(f'Validation dimensions: {X_val.shape}, {y_val.shape}')
