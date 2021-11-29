@@ -31,7 +31,7 @@ def build_fcn_regression_model(
     model.add(layers.Dropout(dropout))
 
     model.add(layers.GlobalAveragePooling1D())
-    model.add(layers.Dense(25, activation='relu', kernel_regularizer=l2(l2_factor)))
+    model.add(layers.Dense(32, activation='relu', kernel_regularizer=l2(l2_factor)))
     model.add(layers.Dense(1, activation=activation, kernel_regularizer=l2(l2_factor)))
     return model
 

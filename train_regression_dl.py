@@ -1,14 +1,14 @@
-from src.features import collect_all_trials_with_labels
 from src.ml import split_data_based_on_pseudonyms_multiple_inputs
-from src.dl import TimeSeriesGenerator
+from src.dl import TimeSeriesGenerator, build_branch_model, build_fcn_regression_model
+from src.utils import create_folder_if_not_already_exists
+from src.features import collect_all_trials_with_labels
 
-from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
 from argparse import ArgumentParser
 from os.path import join
 from datetime import datetime
 
 import numpy as np
-# import tensorflow as tf
+import tensorflow as tf
 import matplotlib.pyplot as plt
 import os
 
@@ -19,79 +19,57 @@ parser.add_argument('--n_features', type=int, dest='n_features', default=51)
 parser.add_argument('--n_frames', type=int, dest='n_frames', default=60)
 parser.add_argument('--n_filters', type=int, dest='n_filters', default=128)
 parser.add_argument('--batch_size', type=int, dest='batch_size', default=32)
-parser.add_argument('--epochs', type=int, dest='epochs', default=1)
+parser.add_argument('--epochs', type=int, dest='epochs', default=200)
 args = parser.parse_args()
 
-# model = build_fcn_regression_model(args.n_frames, args.n_features, args.n_filters, 'relu')
+model = build_branch_model(15, 64, args.n_filters)
+# model = build_fcn_regression_model(30, n_features=51)
 
-
-# def create_folder_if_not_already_exists(path: str):
-#     if not os.path.exists(path):
-#         os.makedirs(path)
-#
-
-# base_path = join(args.result_path, datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
-# create_folder_if_not_already_exists(base_path)
+base_path = join(args.result_path, datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
+create_folder_if_not_already_exists(base_path)
 
 X, y = collect_all_trials_with_labels(args.src_path)
 X_train, y_train, X_test, y_test = split_data_based_on_pseudonyms_multiple_inputs(X, y, train_p=0.7, random_seed=42)
 X_train, y_train, X_val, y_val = split_data_based_on_pseudonyms_multiple_inputs(X_train, y_train, train_p=0.7, random_seed=42)
 
-gen = TimeSeriesGenerator(X_train, y_train, sampling_frequencies=[32, 128])
-for g in gen.get_iterator():
-    print(g[1])
-
 # print(f'Training dimensions: {X_train.shape}, {y_train.shape}')
 # print(f'Validation dimensions: {X_val.shape}, {y_val.shape}')
 # print(f'Testing dimension {X_test.shape}, {y_test.shape}')
 
-# model.compile(
-#     loss='mean_squared_error',
-#     optimizer=tf.optimizers.Adam(lr=0.001),
-#     metrics=[tf.keras.metrics.MeanAbsoluteError(), tf.keras.metrics.MeanSquaredError()],
-# )
-# model.summary()
-#
-# # early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=50)
-# # reduce_lr = tf.keras.callbacks.ReduceLROnPlateau()
-# model_checkpoint = tf.keras.callbacks.ModelCheckpoint(
-#     filepath=join(base_path, 'checkpoints/'),
-#     save_weights_only=True,
-#     monitor='val_loss',
-#     mode='min',
-#     save_best_only=True,
-# )
-#
-# tensorboard_callback = tf.keras.callbacks.TensorBoard(
-#     log_dir=join(base_path, "logs"),
-#     histogram_freq=1,
-# )
-#
-# train_gen = TimeseriesGenerator(
-#     X_train.to_numpy(),
-#     y_train['rpe'].to_numpy(),
-#     length=args.n_frames,
-#     batch_size=args.batch_size,
-#     shuffle=True,
-# )
-#
-# val_gen = TimeseriesGenerator(
-#     X_val.to_numpy(),
-#     y_val['rpe'].to_numpy(),
-#     length=args.n_frames,
-#     batch_size=args.batch_size,
-#     shuffle=True,
-# )
-#
-# history = model.fit(
-#     train_gen,
-#     epochs=args.epochs,
-#     verbose=1,
-#     validation_data=val_gen,
-#     # callbacks=[early_stopping, model_checkpoint, reduce_lr, tensorboard_callback],
-#     callbacks=[model_checkpoint, tensorboard_callback],
-# )
-#
+model.compile(
+    loss='mean_squared_error',
+    optimizer=tf.optimizers.Adam(lr=0.001),
+    metrics=[tf.keras.metrics.MeanAbsoluteError(), tf.keras.metrics.MeanSquaredError()],
+)
+model.summary()
+
+# early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=50)
+# reduce_lr = tf.keras.callbacks.ReduceLROnPlateau()
+model_checkpoint = tf.keras.callbacks.ModelCheckpoint(
+    filepath=join(base_path, 'checkpoints/'),
+    save_weights_only=True,
+    monitor='val_loss',
+    mode='min',
+    save_best_only=True,
+)
+
+tensorboard_callback = tf.keras.callbacks.TensorBoard(
+    log_dir=join(base_path, "logs"),
+    histogram_freq=1,
+)
+
+train_gen = TimeSeriesGenerator(X_train, y_train)
+val_gen = TimeSeriesGenerator(X_val, y_val)
+
+history = model.fit(
+    train_gen,
+    epochs=args.epochs,
+    verbose=1,
+    # validation_data=val_gen,
+    # callbacks=[early_stopping, model_checkpoint, reduce_lr, tensorboard_callback],
+    callbacks=[model_checkpoint, tensorboard_callback],
+)
+
 # # Save trained model to file
 # model_name = join(base_path, "models")
 # model.save(model_name)
