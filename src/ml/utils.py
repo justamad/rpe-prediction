@@ -12,7 +12,12 @@ def split_data_based_on_pseudonyms(
         train_p: float = 0.8,
         random_seed: int = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    train_mask = get_subject_names_random_split(y, train_p, random_seed)
+    train_mask = get_subject_names_random_split(
+        y=y,
+        train_p=train_p,
+        random_seed=random_seed,
+    )
+
     return (
         X.loc[train_mask].copy(),
         y.loc[train_mask].copy(),
@@ -27,7 +32,12 @@ def split_data_based_on_pseudonyms_multiple_inputs(
         train_p: float = 0.8,
         random_seed: int = None,
 ) -> Tuple[List, pd.DataFrame, List, pd.DataFrame]:
-    train_mask = get_subject_names_random_split(y_data, train_p, random_seed)
+    train_mask = get_subject_names_random_split(
+        y=y_data,
+        train_p=train_p,
+        random_seed=random_seed,
+    )
+
     X_train = list(compress(X_data, train_mask))
     X_test = list(compress(X_data, ~train_mask))
     return (
