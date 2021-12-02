@@ -14,7 +14,7 @@ class StereoAzure(object):
             self,
             master_path: str,
             sub_path: str,
-            delay: float = 0.001
+            delay: float = 0.001,
     ):
         self._master = AzureKinect(master_path)
         self._sub = AzureKinect(sub_path)
@@ -38,7 +38,7 @@ class StereoAzure(object):
     def apply_external_rotation(
             self,
             rotation: np.ndarray,
-            translation: np.ndarray
+            translation: np.ndarray,
     ):
         self._sub.apply_affine_transformation(rotation, translation)
 

@@ -23,12 +23,12 @@ logging.getLogger('my_logger').addHandler(console)
 
 parser = ArgumentParser()
 parser.add_argument('--src_path', type=str, dest='src_path', default="data/processed")
-parser.add_argument('--result_path', type=str, dest='result_path', default="results")
+parser.add_argument('--result_path', type=str, dest='result_path', default="models")
 parser.add_argument('--n_features', type=int, dest='n_features', default=51)
 parser.add_argument('--n_frames', type=int, dest='n_frames', default=60)
-parser.add_argument('--n_filters', type=int, dest='n_filters', default=128)
+parser.add_argument('--n_filters', type=int, dest='n_filters', default=32)
 parser.add_argument('--batch_size', type=int, dest='batch_size', default=32)
-parser.add_argument('--epochs', type=int, dest='epochs', default=10)
+parser.add_argument('--epochs', type=int, dest='epochs', default=50)
 args = parser.parse_args()
 
 base_path = join(args.result_path, datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
@@ -42,7 +42,7 @@ train_gen = TimeSeriesGenerator(
     X_train,
     y_train,
     batch_size=args.batch_size,
-    win_size=2,
+    win_size=1,
     overlap=0.9,
 )
 
@@ -50,7 +50,7 @@ val_gen = TimeSeriesGenerator(
     X_val,
     y_val,
     batch_size=args.batch_size,
-    win_size=2,
+    win_size=1,
     overlap=0.9,
 )
 
@@ -58,7 +58,7 @@ test_gen = TimeSeriesGenerator(
     X_test,
     y_test,
     batch_size=args.batch_size,
-    win_size=2,
+    win_size=1,
     overlap=0.9,
     shuffle=False,
     balance=False,
@@ -73,8 +73,6 @@ model.compile(
 )
 model.summary()
 
-# early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=50)
-# reduce_lr = tf.keras.callbacks.ReduceLROnPlateau()
 model_checkpoint = tf.keras.callbacks.ModelCheckpoint(
     filepath=join(base_path, 'checkpoints/'),
     save_weights_only=True,
@@ -88,14 +86,14 @@ tensorboard_callback = tf.keras.callbacks.TensorBoard(
     histogram_freq=1,
 )
 
-
+early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=50)
+reduce_lr = tf.keras.callbacks.ReduceLROnPlateau()
 history = model.fit(
     train_gen,
     epochs=args.epochs,
     verbose=1,
     validation_data=val_gen,
-    # callbacks=[early_stopping, model_checkpoint, reduce_lr, tensorboard_callback],
-    callbacks=[model_checkpoint, tensorboard_callback],
+    callbacks=[early_stopping, model_checkpoint, reduce_lr, tensorboard_callback],
 )
 
 # Save trained model to file

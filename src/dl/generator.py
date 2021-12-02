@@ -78,10 +78,8 @@ class TimeSeriesGenerator(Sequence):
             X2_data.append(imu.iloc[win_1:win_1 + self._imu_size])
             y_data.append(rpe)
 
-        X1_data = np.array(X1_data)  # To clear numpy warnings...
-        X2_data = np.array(X2_data)
         y = np.array(y_data).reshape(-1, 1)
-        return [X1_data, X2_data], y
+        return [np.array(X1_data), np.array(X2_data)], y
 
     def __calculate_indices(self, X: np.ndarray, y: pd.Series, win_id: int):
         n_windows = min(
