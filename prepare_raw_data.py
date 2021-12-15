@@ -1,6 +1,7 @@
 from src.camera import StereoAzure
 from argparse import ArgumentParser
 from os.path import join
+from src.utils import create_folder_if_not_already_exists
 
 from src.processing import (
     apply_butterworth_filter,
@@ -70,7 +71,7 @@ for trial in iterator.iterate_over_all_subjects():
         log_path=join(trial['log_path'], "segmentation.png"),
     )
 
-    # Trim data
+    # Truncate data
     cut_beginning = max(repetitions[0][0], physilog.index[0])
     cut_end = min(repetitions[-1][1], physilog.index[-1])
     azure_df = azure_df.loc[(azure_df.index > cut_beginning) & (azure_df.index < cut_end)]
@@ -93,6 +94,9 @@ for trial in iterator.iterate_over_all_subjects():
     plt.cla()
     plt.clf()
 
-    azure_df.to_csv(join(args.dst_path, trial['subject_name'], f"{trial['nr_set']}_azure.csv"), sep=';')
-    hr_df.to_csv(join(args.dst_path, trial['subject_name'], f"{trial['nr_set']}_hr.csv"), sep=';')
-    physilog.to_csv(join(args.dst_path, trial['subject_name'], f"{trial['nr_set']}_physilog.csv"), sep=';')
+    subject_path = join(args.dst_path, trial["subject_name"])
+    create_folder_if_not_already_exists(subject_path)
+
+    azure_df.to_csv(join(subject_path, f"{trial['nr_set']}_azure.csv"), sep=';')
+    hr_df.to_csv(join(subject_path, f"{trial['nr_set']}_hr.csv"), sep=';')
+    physilog.to_csv(join(subject_path, f"{trial['nr_set']}_physilog.csv"), sep=';')

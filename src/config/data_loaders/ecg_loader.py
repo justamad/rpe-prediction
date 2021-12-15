@@ -1,4 +1,3 @@
-from src.processing import apply_butterworth_filter
 from .base_loader import BaseSubjectLoader, LoadingException
 from os.path import exists, join
 from datetime import datetime
@@ -9,6 +8,10 @@ from biosppy.signals.tools import get_heart_rate
 import pandas as pd
 import neurokit2 as nk
 import json
+import matplotlib
+
+matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
 
 
 class ECGSubjectLoader(BaseSubjectLoader):
@@ -44,9 +47,30 @@ class ECGSubjectLoader(BaseSubjectLoader):
         df_acc.index = pd.to_datetime(df_acc.index)
         self._df_acc = df_acc.drop(columns=['Acceleration Magnitude'])
 
-        ecg_clean = nk.ecg_clean(self._df_edf['ecg'], sampling_rate=1000, method='neurokit')
-        _, rpeaks = nk.ecg_peaks(ecg_clean, method='neurokit', sampling_rate=1000, correct_artifacts=True)
-        peaks = rpeaks['ECG_R_Peaks']
+        ecg_cleaned = nk.ecg_clean(self._df_edf['ecg'], sampling_rate=1000, method='elgendi2010')
+        _, r_peaks = nk.ecg_peaks(ecg_cleaned, method='elgendi2010', sampling_rate=1000, correct_artifacts=True)
+        peaks = r_peaks['ECG_R_Peaks']
+
+        # methods = [
+        #     # "neurokit",
+        #     # "biosppy",
+        #     # "pantompkins1985",
+        #     "hamilton2002",
+        #     "elgendi2010",
+        #     # "engzeemod2012",
+        # ]
+        #
+        # cleaned = {}
+        # for method in methods:
+        #     cleaned[method] = nk.ecg_clean(self._df_edf["ecg"], sampling_rate=1000, method=method)
+        #
+        # for method in methods:
+        #     _, r_peaks = nk.ecg_peaks(cleaned[method], sampling_rate=1000, correct_artifacts=True, method=method)
+        #     hr_x, hr = get_heart_rate(r_peaks['ECG_R_Peaks'], sampling_rate=1000, smooth=False)
+        #     plt.plot(hr_x, hr, label=method)
+        #
+        # plt.legend()
+        # plt.show()
 
         hr_x, hr = get_heart_rate(peaks, sampling_rate=1000, smooth=False)
         self._df_hr = pd.DataFrame({'timestamp': hr_x, 'hr': hr}).set_index('timestamp', drop=True)
@@ -61,13 +85,13 @@ class ECGSubjectLoader(BaseSubjectLoader):
         end_dt = datetime.strptime(set_1['end'], '%H:%M:%S.%f') + relativedelta(years=+70, seconds=4)
 
         result_acc_df = self._df_acc.loc[(self._df_acc.index > start_dt) & (self._df_acc.index < end_dt)]
-        result_ecg_df = self._df_edf.loc[(self._df_edf.index > start_dt) & (self._df_edf.index < end_dt)]
+        # result_ecg_df = self._df_edf.loc[(self._df_edf.index > start_dt) & (self._df_edf.index < end_dt)]
         result_hr_df = self._df_hr.loc[(self._df_hr.index > start_dt) & (self._df_hr.index < end_dt)]
 
         return {
             # 'ecg': result_ecg_df,
-            'imu': result_acc_df,
-            'hr': result_hr_df,
+            "imu": result_acc_df,
+            "hr": result_hr_df,
         }
 
     def get_nr_of_sets(self):

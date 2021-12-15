@@ -1,4 +1,4 @@
-from src.features import calculate_kinect_feature_set
+from src.features import calculate_kinect_feature_set, calculate_all_features
 from src.utils import create_folder_if_not_already_exists
 from src.plot import plot_feature_distribution_as_pdf, plot_feature_correlation_heatmap
 from datetime import datetime
@@ -48,7 +48,7 @@ if __name__ == '__main__':
         create_folder_if_not_already_exists(join(result_path, str(model)))
     create_folder_if_not_already_exists(args.feature_path)
 
-    window_sizes = [30]  # , 60, 90, 120]  # 1s, 2s, 3s, 4s
+    window_sizes = [1]  # , 60, 90, 120]  # 1s, 2s, 3s, 4s
     overlaps = [0.5]  # , 0.7, 0.9]
 
     for win_size in window_sizes:
@@ -62,12 +62,12 @@ if __name__ == '__main__':
                 X_orig = pd.read_csv(X_file, sep=';', index_col=False)
                 y_orig = pd.read_csv(y_file, sep=';', index_col=False)
             else:
-                X_orig, y_orig = calculate_kinect_feature_set(
+                X_orig, y_orig = calculate_all_features(
                     input_path=args.src_path,
-                    statistical_features=True,
+                    # statistical_features=True,
                     window_size=win_size,
                     overlap=overlap,
-                    nr_augmentation_iterations=args.nr_augment
+                    # nr_augmentation_iterations=args.nr_augment
                 )
 
                 X_orig.to_csv(X_file, sep=';', index=False)

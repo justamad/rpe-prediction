@@ -1,3 +1,4 @@
 from .kinect_features import calculate_kinect_feature_set
 from .prepare_data_dl import collect_all_trials_with_labels
 from .normalization import normalize_skeleton_positions
+from .all_features import calculate_all_features

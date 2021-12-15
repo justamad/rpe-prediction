@@ -101,7 +101,8 @@ def fuse_both_kinect_cameras(pdf_file: str):
     subs.to_csv(join("results", "conf_sub.csv"), sep=';', index=False)
     master.to_csv(join("results", "conf_master.csv"), sep=';', index=False)
 
-    os.system('cd data/raw;find . -type f -name "*.json" -exec install -v {} ../processed/{} \\;')
+    os.system("find . -name '*.json' | cpio -pdm ../processed/")
+    # os.system('cd data/raw;find . -type f -name "*.json" -exec install -v {} ../processed/{} \\;')
 
 
 def plot_repetition_data(pdf_file: str):

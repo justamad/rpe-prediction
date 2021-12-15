@@ -1,12 +1,18 @@
 from .base_loader import BaseSubjectLoader, LoadingException
 from os.path import exists, join
 
+import pandas as pd
 import os
 
 
 class DataFrameLoader(BaseSubjectLoader):
 
-    def __init__(self, root_path: str, subject_name: str, sensor_name: str):
+    def __init__(
+            self,
+            root_path: str,
+            subject_name: str,
+            sensor_name: str,
+    ):
         super().__init__(subject_name)
         if not exists(root_path):
             raise LoadingException(f"Azure file not present in {root_path}")
@@ -18,7 +24,10 @@ class DataFrameLoader(BaseSubjectLoader):
     def get_trial_by_set_nr(self, trial_nr: int):
         if trial_nr not in self._trials:
             raise LoadingException(f"{str(self)}: Could not load trial: {trial_nr}")
-        return self._trials[trial_nr]
+
+        df = pd.read_csv(self._trials[trial_nr], sep=';').set_index('timestamp', drop=True)
+        df.index = pd.to_datetime(df.index)
+        return df
 
     def get_nr_of_sets(self):
         return len(self._trials)
@@ -43,3 +52,11 @@ class ImuDataFrameLoader(DataFrameLoader):
 
     def __init__(self, root_path: str, subject_name: str):
         super().__init__(root_path, subject_name, 'physilog')
+
+    def get_trial_by_set_nr(self, trial_nr: int):
+        if trial_nr not in self._trials:
+            raise LoadingException(f"{str(self)}: Could not load trial: {trial_nr}")
+
+        df = pd.read_csv(self._trials[trial_nr], sep=';').set_index('sensorTimestamp', drop=True)
+        df.index = pd.to_datetime(df.index)
+        return df

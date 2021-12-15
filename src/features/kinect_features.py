@@ -1,4 +1,5 @@
 from .statistical_features import calculate_statistical_features_with_sliding_window
+from typing import Tuple
 
 from src.config import (
     SubjectDataIterator,
@@ -32,7 +33,7 @@ def calculate_kinect_feature_set(
         window_size: int = 30,
         overlap: float = 0.5,
         nr_augmentation_iterations: int = 0,
-):
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     file_iterator = SubjectDataIterator(
         base_path=input_path,
         log_path=input_path,
