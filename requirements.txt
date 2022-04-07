@@ -18,3 +18,5 @@ PyMoCapViewer
 python-dateutil
 neurokit2
 biosppy
+pyEDFlib
+pyhrv

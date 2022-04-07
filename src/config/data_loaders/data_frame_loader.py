@@ -25,8 +25,8 @@ class DataFrameLoader(BaseSubjectLoader):
         if trial_nr not in self._trials:
             raise LoadingException(f"{str(self)}: Could not load trial: {trial_nr}")
 
-        df = pd.read_csv(self._trials[trial_nr], sep=';').set_index('timestamp', drop=True)
-        df.index = pd.to_datetime(df.index)
+        df = pd.read_csv(self._trials[trial_nr], sep=";", index_col="timestamp")
+        df.index = pd.to_datetime(df.index, unit="s")
         return df
 
     def get_nr_of_sets(self):
@@ -39,24 +39,18 @@ class DataFrameLoader(BaseSubjectLoader):
 class AzureDataFrameLoader(DataFrameLoader):
 
     def __init__(self, root_path: str, subject_name: str):
-        super().__init__(root_path, subject_name, 'azure')
-
-
-class HeartRateDataFrameLoader(DataFrameLoader):
-
-    def __init__(self, root_path: str, subject_name: str):
-        super().__init__(root_path, subject_name, 'hr')
+        super().__init__(root_path, subject_name, "azure")
 
 
 class ImuDataFrameLoader(DataFrameLoader):
 
     def __init__(self, root_path: str, subject_name: str):
-        super().__init__(root_path, subject_name, 'physilog')
+        super().__init__(root_path, subject_name, "physilog")
 
     def get_trial_by_set_nr(self, trial_nr: int):
         if trial_nr not in self._trials:
             raise LoadingException(f"{str(self)}: Could not load trial: {trial_nr}")
 
-        df = pd.read_csv(self._trials[trial_nr], sep=';').set_index('sensorTimestamp', drop=True)
+        df = pd.read_csv(self._trials[trial_nr], sep=";", index_col="sensorTimestamp")
         df.index = pd.to_datetime(df.index)
         return df

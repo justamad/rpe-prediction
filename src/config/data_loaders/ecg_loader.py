@@ -3,15 +3,10 @@ from os.path import exists, join
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from pyedflib import highlevel
-from biosppy.signals.tools import get_heart_rate
 
 import pandas as pd
 import neurokit2 as nk
 import json
-import matplotlib
-
-matplotlib.use("TkAgg")
-import matplotlib.pyplot as plt
 
 
 class ECGSubjectLoader(BaseSubjectLoader):
@@ -19,9 +14,9 @@ class ECGSubjectLoader(BaseSubjectLoader):
     def __init__(self, root_path: str, subject_name: str):
         super().__init__(subject_name)
         if not exists(root_path):
-            raise LoadingException(f"Azure file not present in {root_path}")
+            raise LoadingException(f"Given folder {root_path} does not exist.")
 
-        ecg_file = join(root_path, "ecg.edf")
+        ecg_file = join(root_path, f"ecg-{subject_name}.edf")
         csv_file = join(root_path, "FAROS.csv")
         json_file = join(root_path, "time_selection.json")
 
@@ -51,47 +46,20 @@ class ECGSubjectLoader(BaseSubjectLoader):
         _, r_peaks = nk.ecg_peaks(ecg_cleaned, method='elgendi2010', sampling_rate=1000, correct_artifacts=True)
         peaks = r_peaks['ECG_R_Peaks']
 
-        # methods = [
-        #     # "neurokit",
-        #     # "biosppy",
-        #     # "pantompkins1985",
-        #     "hamilton2002",
-        #     "elgendi2010",
-        #     # "engzeemod2012",
-        # ]
-        #
-        # cleaned = {}
-        # for method in methods:
-        #     cleaned[method] = nk.ecg_clean(self._df_edf["ecg"], sampling_rate=1000, method=method)
-        #
-        # for method in methods:
-        #     _, r_peaks = nk.ecg_peaks(cleaned[method], sampling_rate=1000, correct_artifacts=True, method=method)
-        #     hr_x, hr = get_heart_rate(r_peaks['ECG_R_Peaks'], sampling_rate=1000, smooth=False)
-        #     plt.plot(hr_x, hr, label=method)
-        #
-        # plt.legend()
-        # plt.show()
-
-        hr_x, hr = get_heart_rate(peaks, sampling_rate=1000, smooth=False)
-        self._df_hr = pd.DataFrame({'timestamp': hr_x, 'hr': hr}).set_index('timestamp', drop=True)
-        self._df_hr.index = pd.to_datetime(self._df_hr.index, unit="ms")
-
     def get_trial_by_set_nr(self, trial_nr: int):
         if trial_nr >= len(self._sets):
             raise LoadingException(f"Couldn't load data for trial {trial_nr}.")
 
         set_1 = self._sets[trial_nr]
-        start_dt = datetime.strptime(set_1['start'], '%H:%M:%S.%f') + relativedelta(years=+70, seconds=-4)
+        start_dt = datetime.strptime(set_1['start'], '%H:%M:%S.%f') + relativedelta(years=+70, seconds=-40)
         end_dt = datetime.strptime(set_1['end'], '%H:%M:%S.%f') + relativedelta(years=+70, seconds=4)
 
         result_acc_df = self._df_acc.loc[(self._df_acc.index > start_dt) & (self._df_acc.index < end_dt)]
-        # result_ecg_df = self._df_edf.loc[(self._df_edf.index > start_dt) & (self._df_edf.index < end_dt)]
-        result_hr_df = self._df_hr.loc[(self._df_hr.index > start_dt) & (self._df_hr.index < end_dt)]
+        result_ecg_df = self._df_edf.loc[(self._df_edf.index > start_dt) & (self._df_edf.index < end_dt)]
 
         return {
-            # 'ecg': result_ecg_df,
+            "ecg": result_ecg_df,
             "imu": result_acc_df,
-            "hr": result_hr_df,
         }
 
     def get_nr_of_sets(self):

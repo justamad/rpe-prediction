@@ -7,5 +7,4 @@ from .imu_loader import IMUSubjectLoader
 from .data_frame_loader import (
     AzureDataFrameLoader,
     ImuDataFrameLoader,
-    HeartRateDataFrameLoader,
 )

@@ -8,7 +8,6 @@ from src.config.data_loaders import (
     RPESubjectLoader,
     AzureDataFrameLoader,
     ImuDataFrameLoader,
-    HeartRateDataFrameLoader,
     ECGSubjectLoader,
     IMUSubjectLoader,
 )
@@ -17,13 +16,12 @@ import os
 import logging
 
 loader_names = {
-    StereoAzureSubjectLoader: 'azure',
-    RPESubjectLoader: 'rpe',
-    AzureDataFrameLoader: 'azure',
-    ECGSubjectLoader: 'ecg',
-    IMUSubjectLoader: 'imu',
-    ImuDataFrameLoader: 'imu',
-    HeartRateDataFrameLoader: 'ecg',
+    StereoAzureSubjectLoader: "azure",
+    RPESubjectLoader: "rpe",
+    AzureDataFrameLoader: "azure",
+    ECGSubjectLoader: "ecg",
+    IMUSubjectLoader: "imu",
+    ImuDataFrameLoader: "imu",
 }
 
 
