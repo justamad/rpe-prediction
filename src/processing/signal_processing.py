@@ -49,6 +49,7 @@ def butterworth_filter_1d(data: np.ndarray, fs, fc, order=4):
 
 
 def normalize_signal(data: np.ndarray):
+    # return (data - data.min()) / (data.max() - data.min())
     return (data - data.mean()) / data.std()
 
 
@@ -75,20 +76,27 @@ def apply_butterworth_filter(
 def identify_and_fill_gaps_in_data(
         df: pd.DataFrame,
         sampling_rate: int,
-        method: str = "quadratic",
-        log: bool = False,
+        log: bool = True,
 ) -> pd.DataFrame:
     diffs = np.diff(df.index) / (1 / sampling_rate)
     diffs = (np.round(diffs) - 1).astype(np.uint32)
+
+    nr_missing_frames = np.sum(diffs)
     if log:
-        logging.info(f'Number of missing data points: {np.sum(diffs)}')
+        logging.info(f"Number of missing frames points: {nr_missing_frames}")
+
+    if nr_missing_frames == 0:
+        return df
 
     df.reset_index(drop=False, inplace=True)
-    df_new = pd.DataFrame(columns=df.columns)
+    df_new = pd.DataFrame(columns=df.columns, dtype=np.float64)
     for idx, missing_frames in enumerate(diffs):
-        df_new = df_new.append(df.iloc[idx])
+        sub_df = df.iloc[idx, :].to_frame().T
+        df_new = pd.concat([df_new, sub_df])
 
         for _ in range(missing_frames):
-            df_new = df_new.append(pd.Series(), ignore_index=True)
+            df_new = pd.concat([df_new, pd.DataFrame([[np.nan] * df.shape[1]], columns=df.columns)])
 
-    return df_new.interpolate(method=method).set_index('timestamp', drop=True)
+    df_new.reset_index(inplace=True, drop=True)
+    df_inter = df_new.interpolate(method="polynomial", order=2)
+    return df_inter.set_index("timestamp", drop=True)

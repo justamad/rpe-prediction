@@ -51,15 +51,15 @@ def calculate_cross_correlation(
     if show:
         plt.close()
         fig, axs = plt.subplots(2, 1)
-        axs[0].plot(reference_signal, label=f"Reference Signal")
-        axs[0].plot(target_signal, label=f"Target Signal")
-        axs[1].plot(reference_signal, label=f"Reference Signal")
-        axs[1].plot(np.arange(len(target_signal)) + shift_in_samples, target_signal, label=f"Target Signal")
+        axs[0].plot(reference_signal_norm, label=f"Reference Signal")
+        axs[0].plot(target_signal_norm, label=f"Target Signal")
+        axs[1].plot(reference_signal_norm, label=f"Reference Signal")
+        axs[1].plot(np.arange(len(target_signal)) + shift_in_samples, target_signal_norm, label=f"Target Signal")
         plt.legend()
         if log_path is not None:
             plt.savefig(log_path)
         else:
-            plt.show()
+            plt.show(block=True)
 
     return shift_in_samples / sampling_frequency
 
@@ -67,4 +67,6 @@ def calculate_cross_correlation(
 def infer_sampling_frequency(series: pd.DatetimeIndex) -> int:
     diffs = series[1:] - series[:-1]
     total_seconds = diffs.total_seconds()
-    return int(np.mean(1.0 / total_seconds))
+    diffs = 1.0 / total_seconds
+    mean_diff = np.mean(diffs)
+    return int(mean_diff + 0.5)

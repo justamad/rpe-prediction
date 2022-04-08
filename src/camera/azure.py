@@ -1,3 +1,5 @@
+from enum import Enum
+
 from src.processing import (
     find_closest_timestamp,
     identify_and_fill_gaps_in_data,
@@ -6,9 +8,8 @@ from src.processing import (
     get_all_columns_for_joint,
 )
 
-from enum import Enum
-
 import numpy as np
+import logging
 import pandas as pd
 import os
 
@@ -51,7 +52,10 @@ class AzureKinect(object):
         # df.loc[:, df.filter(like='(z)').columns] *= -1
 
         df.index *= 1e-6  # Convert microseconds to seconds
-        df = identify_and_fill_gaps_in_data(df, 30, method='linear', log=True)
+        logging.info(f"Vicon NaN values before correction: {df.isna().sum().sum()}")
+        df = identify_and_fill_gaps_in_data(df, sampling_rate=30, log=True)
+        df = df.fillna(0)
+        logging.info(f"Vicon NaN vales after correction: {df.isna().sum().sum()}")
         self._data = df
 
     def apply_affine_transformation(

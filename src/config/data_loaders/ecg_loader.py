@@ -16,7 +16,7 @@ class ECGSubjectLoader(BaseSubjectLoader):
         if not exists(root_path):
             raise LoadingException(f"Given folder {root_path} does not exist.")
 
-        ecg_file = join(root_path, f"ecg-{subject_name}.edf")
+        ecg_file = join(root_path, f"ecg.edf")
         csv_file = join(root_path, "FAROS.csv")
         json_file = join(root_path, "time_selection.json")
 
@@ -38,13 +38,14 @@ class ECGSubjectLoader(BaseSubjectLoader):
         self._df_edf = pd.DataFrame({'ecg': signals[0]})
         self._df_edf.index = pd.to_datetime(self._df_edf.index, unit="ms")
 
-        df_acc = pd.read_csv(csv_file, sep=',', index_col="sensorTimestamp")
+        df_acc = pd.read_csv(csv_file, sep=",", index_col="sensorTimestamp")
         df_acc.index = pd.to_datetime(df_acc.index)
-        self._df_acc = df_acc.drop(columns=['Acceleration Magnitude'])
+        # self._df_acc = df_acc
+        self._df_acc = df_acc.drop(columns=["Acceleration Magnitude"])
 
-        ecg_cleaned = nk.ecg_clean(self._df_edf['ecg'], sampling_rate=1000, method='elgendi2010')
-        _, r_peaks = nk.ecg_peaks(ecg_cleaned, method='elgendi2010', sampling_rate=1000, correct_artifacts=True)
-        peaks = r_peaks['ECG_R_Peaks']
+        ecg_cleaned = nk.ecg_clean(self._df_edf['ecg'], sampling_rate=1000, method="neurokit2")
+        _, r_peaks = nk.ecg_peaks(ecg_cleaned, method="neurokit2", sampling_rate=1000, correct_artifacts=True)
+        peaks = r_peaks["ECG_R_Peaks"]
 
     def get_trial_by_set_nr(self, trial_nr: int):
         if trial_nr >= len(self._sets):
