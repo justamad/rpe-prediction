@@ -20,3 +20,4 @@ neurokit2
 biosppy
 pyEDFlib
 pyhrv
+pyqt5
