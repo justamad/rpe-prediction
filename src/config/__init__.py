@@ -7,5 +7,6 @@ from .data_loaders import (
     ECGSubjectLoader,
     IMUSubjectLoader,
     AzureDataFrameLoader,
-    ImuDataFrameLoader,
+    IMUDataFrameLoader,
+    ECGDataFrameLoader,
 )

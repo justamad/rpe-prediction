@@ -5,8 +5,7 @@ from src.config import (
     SubjectDataIterator,
     RPESubjectLoader,
     AzureDataFrameLoader,
-    HeartRateDataFrameLoader,
-    ImuDataFrameLoader,
+    IMUDataFrameLoader,
 )
 
 import numpy as np
@@ -20,7 +19,7 @@ def calculate_all_features(
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     iterator = SubjectDataIterator(
         base_path=input_path,
-        loaders=[RPESubjectLoader, AzureDataFrameLoader, HeartRateDataFrameLoader, ImuDataFrameLoader],
+        loaders=[RPESubjectLoader, AzureDataFrameLoader, IMUDataFrameLoader],
     )
 
     x_data = []

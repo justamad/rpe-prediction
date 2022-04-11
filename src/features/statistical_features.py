@@ -100,7 +100,11 @@ def calculate_statistical_features_with_sliding_window_time_based(
     return features
 
 
-def calculate_window_parameters(length: float, window_size: float, overlap: float) -> Tuple[int, int]:
+def calculate_window_parameters(
+        length: float,
+        window_size: float,
+        overlap: float,
+) -> Tuple[int, int]:
     stride = int(window_size - (window_size * overlap))
     n_windows = math.floor((length - window_size) / stride) + 1
     return n_windows, stride
