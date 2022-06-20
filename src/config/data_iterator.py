@@ -7,9 +7,10 @@ from src.config.data_loaders import (
     StereoAzureSubjectLoader,
     RPESubjectLoader,
     AzureDataFrameLoader,
-    ImuDataFrameLoader,
+    IMUDataFrameLoader,
     ECGSubjectLoader,
     IMUSubjectLoader,
+    ECGDataFrameLoader,
 )
 
 import os
@@ -21,7 +22,8 @@ loader_names = {
     AzureDataFrameLoader: "azure",
     ECGSubjectLoader: "ecg",
     IMUSubjectLoader: "imu",
-    ImuDataFrameLoader: "imu",
+    IMUDataFrameLoader: "imu",
+    ECGDataFrameLoader: "ecg",
 }
 
 
