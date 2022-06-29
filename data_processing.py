@@ -18,14 +18,13 @@ from src.config import (
 )
 
 import numpy as np
-import matplotlib
 import logging
-
+import matplotlib
 matplotlib.use("Qt5Agg")
 import matplotlib.pyplot as plt
 
 parser = ArgumentParser()
-parser.add_argument("--src_path", type=str, dest="src_path", default="data/raw")
+parser.add_argument("--src_path", type=str, dest="src_path", default="../../../../Volumes/INTENSO/RPE_Data")
 parser.add_argument("--log_path", type=str, dest="log_path", default="results")
 parser.add_argument("--dst_path", type=str, dest="dst_path", default="data/processed")
 parser.add_argument("--show", type=bool, dest="show", default=True)
@@ -35,6 +34,7 @@ iterator = SubjectDataIterator(
     base_path=args.src_path,
     log_path=args.log_path,
     loaders=[StereoAzureSubjectLoader, ECGSubjectLoader, IMUSubjectLoader]
+    # loaders=[ECGSubjectLoader]
 )
 
 example = np.loadtxt("data/example.np")
@@ -56,7 +56,7 @@ for trial in iterator.iterate_over_all_subjects():
     # Synchronize Faros <-> Kinect
     physilog = trial["imu"]
     faros_imu = trial["ecg"]["imu"]
-    ecg_df = trial["ecg"]["ecg"]
+    hrv_df = trial["ecg"]["hrv"]
 
     azure_acceleration = calculate_acceleration(azure_df)
     shift_dt = calculate_cross_correlation_with_datetime(
@@ -70,13 +70,13 @@ for trial in iterator.iterate_over_all_subjects():
     azure_acceleration.index += shift_dt
     azure_df.index += shift_dt
 
-    repetitions = segment_1d_joint_on_example(
-        joint_data=azure_df["PELVIS (y)"],
-        exemplar=example,
-        std_dev_p=0.5,
-        show=False,
-        log_path=join(trial["log_path"], "segmentation.png"),
-    )
+    # repetitions = segment_1d_joint_on_example(
+    #     joint_data=azure_df["PELVIS (y)"],
+    #     exemplar=example,
+    #     std_dev_p=0.5,
+    #     show=False,
+    #     log_path=join(trial["log_path"], "segmentation.png"),
+    # )
 
     # Truncate data
     # cut_beginning = max(repetitions[0][0], physilog.index[0])
@@ -89,15 +89,15 @@ for trial in iterator.iterate_over_all_subjects():
     fig, axs = plt.subplots(4, 1, sharex=True, figsize=(15, 12))
     fig.suptitle(f"Subject: {trial['subject_name']}, Set: {trial['nr_set']}")
     axs[0].plot(azure_df.filter(['SPINE_CHEST (x)', 'SPINE_CHEST (y)', 'SPINE_CHEST (z)'], axis=1))
-    axs[0].set_title('Kinect Acceleration')
+    axs[0].set_title("Kinect Acceleration")
     axs[1].plot(physilog.filter(['CHEST_ACCELERATION_X', 'CHEST_ACCELERATION_Y', 'CHEST_ACCELERATION_Z'], axis=1))
-    axs[1].set_title('Gaitup Acceleration')
+    axs[1].set_title("Gaitup Acceleration")
     axs[2].plot(faros_imu, label=['X', 'Y', 'Z'])
-    axs[2].set_title('Faros Acceleration')
-    axs[3].plot(ecg_df)
-    axs[3].set_title('Faros ECG')
+    axs[2].set_title("Faros Acceleration")
+    axs[3].plot(hrv_df)
+    axs[3].set_title("Faros ECG")
     plt.savefig(join(trial['log_path'], "result.png"))
-    # plt.show(block=True)
+    plt.show(block=True)
     plt.close()
     plt.cla()
     plt.clf()
@@ -106,6 +106,6 @@ for trial in iterator.iterate_over_all_subjects():
     create_folder_if_not_already_exists(subject_path)
 
     azure_df.to_csv(join(subject_path, f"{trial['nr_set']:02d}_azure.csv"), sep=";")
-    ecg_df.to_csv(join(subject_path, f"{trial['nr_set']:02d}_ecg.csv"), sep=";")
+    hrv_df.to_csv(join(subject_path, f"{trial['nr_set']:02d}_hrv.csv"), sep=";")
     physilog.to_csv(join(subject_path, f"{trial['nr_set']:02d}_imu.csv"), sep=";")
     faros_imu.to_csv(join(subject_path, f"{trial['nr_set']:02d}_faros_imu.csv"), sep=";")
