@@ -34,7 +34,6 @@ iterator = SubjectDataIterator(
     base_path=args.src_path,
     log_path=args.log_path,
     loaders=[StereoAzureSubjectLoader, ECGSubjectLoader, IMUSubjectLoader]
-    # loaders=[ECGSubjectLoader]
 )
 
 example = np.loadtxt("data/example.np")
@@ -60,7 +59,7 @@ for trial in iterator.iterate_over_all_subjects():
 
     azure_acceleration = calculate_acceleration(azure_df)
     shift_dt = calculate_cross_correlation_with_datetime(
-        reference_df=apply_butterworth_filter(physilog, cutoff=4, order=4, sampling_rate=128),
+        reference_df=apply_butterworth_filter(physilog, cutoff=6, order=4, sampling_rate=128),
         ref_sync_axis="CHEST_ACCELERATION_Z",
         target_df=azure_acceleration * -1,
         target_sync_axis="SPINE_CHEST (y)",
@@ -97,7 +96,7 @@ for trial in iterator.iterate_over_all_subjects():
     axs[3].plot(hrv_df)
     axs[3].set_title("Faros ECG")
     plt.savefig(join(trial['log_path'], "result.png"))
-    plt.show(block=True)
+    # plt.show(block=True)
     plt.close()
     plt.cla()
     plt.clf()

@@ -6,11 +6,8 @@ from src.config.data_loaders import (
     LoadingException,
     StereoAzureSubjectLoader,
     RPESubjectLoader,
-    AzureDataFrameLoader,
-    IMUDataFrameLoader,
     ECGSubjectLoader,
     IMUSubjectLoader,
-    ECGDataFrameLoader,
 )
 
 import os
@@ -19,11 +16,8 @@ import logging
 loader_names = {
     StereoAzureSubjectLoader: "azure",
     RPESubjectLoader: "rpe",
-    AzureDataFrameLoader: "azure",
     ECGSubjectLoader: "ecg",
     IMUSubjectLoader: "imu",
-    IMUDataFrameLoader: "imu",
-    ECGDataFrameLoader: "ecg",
 }
 
 

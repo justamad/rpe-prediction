@@ -1,3 +1,5 @@
+import pyhrv.hrv
+
 from .base_loader import BaseSubjectLoader, LoadingException
 from os.path import exists, join
 from datetime import datetime
@@ -62,13 +64,16 @@ class ECGSubjectLoader(BaseSubjectLoader):
             hrv_window_size=30,
         )
 
-        index = ecg_df.index[::250]
+        index = ecg_df.index[30 * 1000::250]
         hrv_df.index = index[:len(hrv_df)]
         self._hrv_df = hrv_df
 
         # for column in self._hrv_df.columns:
         #     plt.plot(self._hrv_df[column], label=column)
         #
+
+        # plt.plot(self._hrv_df["HRV_MeanNN"], label="heart rate")
+        # plt.plot(self._acc_df["ACCELERATION_X"], label="imu")
         # plt.legend()
         # plt.show()
 
@@ -111,8 +116,12 @@ class ECGSubjectLoader(BaseSubjectLoader):
         for index in tqdm(range(0, len(peaks) - win_size, step_size)):
             try:
                 sub_array = peaks[index:index + win_size]
-                hrv_time = nk.hrv_time(sub_array, sampling_rate=ecg_sampling_rate, show=False)
-                df = pd.concat([df, hrv_time], ignore_index=False)
+                # hrv_time = nk.hrv_time(sub_array, sampling_rate=ecg_sampling_rate, show=False)
+                # hrv_freq = nk.hrv_frequency(sub_array, sampling_rate=ecg_sampling_rate, show=False, normalize=False)
+                # hrv_non_linear = nk.hrv_nonlinear(sub_array, sampling_rate=ecg_sampling_rate, show=False)
+                sub_df = nk.hrv(sub_array, sampling_rate=1000, show=False)
+                # sub_df = pd.concat([hrv_time, hrv_freq, hrv_non_linear], axis=1)
+                df = pd.concat([df, sub_df], ignore_index=False)
 
             except Exception as e:
                 print(f"Error for window: {index} with message {e}")
