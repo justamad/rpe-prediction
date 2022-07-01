@@ -74,25 +74,30 @@ def plot_data_frame_column_wise_as_pdf(df: pd.DataFrame, file_name: str):
     pp.close_and_save_file(add_bookmarks=False)
 
 
-def plot_feature_distribution_as_pdf(df: pd.DataFrame, df_norm: pd.DataFrame, file_name: str):
+def plot_feature_distribution_as_pdf(df: pd.DataFrame, file_name: str,):
     pp = PDFWriter(file_name)
+    df.sort_values(by=["set"], ignore_index=True, inplace=True)
 
-    for column in df:
+    for column in df.columns[:20]:
         fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(25, 15))
-        data = df[column]
-        ax1.plot(data)
+        column_df = df[[column, "set"]]
+
+        ax1.plot(column_df[column])
         ax1.set_title("Raw Feature")
 
         # Plot distribution
-        mu, std = norm.fit(data)
-        ax2.hist(data, bins=100, density=True, alpha=0.6, color='g')
-        x = np.linspace(min(data), max(data), 100)
+        column_series = column_df[column]
+        mu, std = norm.fit(column_series)
+        ax2.hist(column_series, bins=100, density=True, alpha=0.6, color='g')
+        x = np.linspace(min(column_series), max(column_series), 100)
         p = norm.pdf(x, mu, std)
         ax2.plot(x, p, 'k', linewidth=2)
         ax2.set_title(f"Gaussian Fit: mu={mu:.2f}, std={std:.2f}")
 
-        ax3.plot(df_norm[column])
-        ax3.set_title("Normalized Feature")
+        ax3.scatter(column_df.index, column_df[column], s=10, c=column_df["set"], cmap="Greens")
+
+        # ax3.plot(df_norm[column])
+        # ax3.set_title("Normalized Feature")
 
         fig.suptitle(f"{column}")
         pp.save_figure()

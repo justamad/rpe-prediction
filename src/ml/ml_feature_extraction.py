@@ -83,15 +83,17 @@ def eliminate_features_with_rfecv(
 ):
     estimator = XGBRegressor()
     logo = LeaveOneGroupOut()
-    rfe = RFECV(estimator,
-                min_features_to_select=nr_features,
-                step=0.1,
-                n_jobs=-1,
-                verbose=10,
-                scoring='neg_mean_squared_error',
-                cv=logo.get_n_splits(groups=y_train['group']))
+    rfe = RFECV(
+        estimator,
+        min_features_to_select=nr_features,
+        step=0.1,
+        n_jobs=-1,
+        verbose=10,
+        scoring="neg_mean_squared_error",
+        cv=logo.get_n_splits(groups=y_train["group"]),
+    )
 
-    rfe.fit(X_train, y_train['rpe'])
+    rfe.fit(X_train, y_train["rpe"])
 
     # Save RFECV results for later
     rfe_df = pd.DataFrame(rfe.ranking_, index=X_train.columns, columns=['Rank']).sort_values(by='Rank', ascending=True)
@@ -124,8 +126,8 @@ def eliminate_features_with_rfe(
     rfe_df = pd.DataFrame(
         data=selector.ranking_,
         index=X_train.columns,
-        columns=['Rank']
-    ).sort_values(by='Rank', ascending=True)
+        columns=["Rank"]
+    ).sort_values(by="Rank", ascending=True)
 
     rfe_df.index.names = ["Feature"]
     rfe_df.to_csv(join(path, f"rfe_fe_win_{window_size}_overlap_{overlap}.csv"), sep=';')

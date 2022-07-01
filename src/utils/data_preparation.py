@@ -1,5 +1,6 @@
 from typing import Tuple, List
 from itertools import compress
+from scipy import stats
 
 import numpy as np
 import pandas as pd
@@ -48,15 +49,19 @@ def split_data_based_on_pseudonyms_multiple_inputs(
     )
 
 
-def get_subject_names_random_split(y: pd.DataFrame, train_p: float = 0.7, random_seed: int = None):
-    subject_names = sorted(y['name'].unique())
+def get_subject_names_random_split(
+        y: pd.DataFrame,
+        train_p: float = 0.7,
+        random_seed: int = None,
+):
+    subject_names = sorted(y["name"].unique())
     nr_subjects = math.ceil(len(subject_names) * train_p)
 
     if random_seed is not None:
         np.random.seed(random_seed)
 
     train_subjects = np.random.choice(subject_names, nr_subjects, replace=False)
-    train_idx = y['name'].isin(train_subjects)
+    train_idx = y["name"].isin(train_subjects)
     return train_idx
 
 
@@ -79,12 +84,11 @@ def normalize_rpe_values_min_max(
     return df
 
 
-def normalize_features_z_score(
-        df: pd.DataFrame,
-        z_score: int = 3,
-):
-    mean = df.mean()
-    std_dev = df.std()
-    df = (df - mean) / (z_score * std_dev)
-    df = df.clip(-1.0, 1.0)
-    return df
+def filter_outliers_z_scores(df: pd.DataFrame):
+    z_scores = stats.zscore(df)
+    z_scores = z_scores.dropna(axis=1, how='all')
+    abs_z_scores = np.abs(z_scores)
+    filtered_entries = (abs_z_scores < 3).all(axis=1)
+    return filtered_entries
+    # new_df = df[filtered_entries]
+    # return new_df
