@@ -122,6 +122,6 @@ def eliminate_features_with_rfe(
         index=X_train.columns,
         columns=["Rank"],
     ).sort_values(by="Rank", ascending=True)
-
     rfe_df.index.names = ["Feature"]
+
     return X_train.loc[:, mask]

@@ -1,6 +1,7 @@
 from datetime import datetime
-from os.path import join, isfile
 from argparse import ArgumentParser
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from os.path import join
 
 from src.utils import (
     create_folder_if_not_already_exists,
@@ -16,16 +17,18 @@ from src.ml import (
     eliminate_features_with_rfe,
     MLPModelConfig,
     GBRModelConfig,
+    SVRModelConfig,
 )
 
 import pandas as pd
 import numpy as np
 import logging
+import os
 
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(asctime)s %(name)-8s %(levelname)-8s %(message)s',
-    datefmt='%m-%d %H:%M:%S',
+    format="%(asctime)s %(name)-8s %(levelname)-8s %(message)s",
+    datefmt="%m-%d %H:%M:%S",
 )
 
 console = logging.StreamHandler()
@@ -47,46 +50,55 @@ def impute_dataframe(df: pd.DataFrame):
     return df
 
 
-df = pd.read_csv("X.csv", sep=";", index_col=0)
+def train_model(
+        train_df: pd.DataFrame,
+        log_path: str,
+):
+    X = train_df.iloc[:, :-4]
+    y = train_df.iloc[:, -4:]
 
-mask = filter_outliers_z_scores(df)
-df = impute_dataframe(df)
-df = df[mask]
-df = normalize_data_by_subject(df)
-df = df.dropna(axis=1, how="all")
-
-
-def train_model(train_df: pd.DataFrame):
-    X, y = train_df.iloc[:, :-4], train_df.iloc[:, -4:]
     X = eliminate_features_with_rfe(
         X_train=X,
         y_train=y["rpe"],
-        step=3,
-        nr_features=5,
+        step=10,
+        nr_features=30,
     )
 
-    # X_train, y_train, X_test, y_test = split_data_based_on_pseudonyms(
-    #     X=X,
-    #     y=y,
-    #     train_p=0.6,
-    #     random_seed=42,
-    # )
+    # X["nr_set"] = y["nr_set"]
+
+    # scaler = StandardScaler()
+    scaler = MinMaxScaler()
+    X = scaler.fit_transform(X)
 
     for model_config in models:
+        create_folder_if_not_already_exists(log_path)
         param_dict = model_config.get_trial_data_dict()
         grid_search = GridSearching(groups=y["group"], **param_dict)
-        # file_name = join(result_path, str(model_config), f"win_{win_size}_overlap_{overlap}.csv")
-        best_model = grid_search.perform_grid_search_with_cv(X, y["rpe"], output_file="output.csv")
+        best_model, result_df = grid_search.perform_grid_search_with_cv(X, y["rpe"])
+        result_df.to_csv(join(log_path, "result.csv"), sep=";")
         # logging.info(best_model.predict(X_test))
         # logging.info(best_model.score(X_test, y_test["rpe"]))
 
 
 if __name__ == "__main__":
-    models = [MLPModelConfig()]  # , GBRModelConfig()]
+    models = [SVRModelConfig()]  # , GBRModelConfig()]
 
-    result_path = join(args.result_path, datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
-    # for model in models:
-    #     create_folder_if_not_already_exists(join(result_path, str(model)))
-    # create_folder_if_not_already_exists(args.feature_path)
+    for file in os.listdir(args.src_path):
+        logging.info(f"Train on file: {file}")
+        log_path = join(args.result_path, f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_{file.replace('.csv', '')}")
 
-    train_model(df)
+        df = pd.read_csv(join(args.src_path, file), sep=";", index_col=0)
+
+        mask = filter_outliers_z_scores(df)
+        df = df[mask]
+        df = impute_dataframe(df)
+        df = normalize_data_by_subject(df)
+        df = df.dropna(axis=1, how="all")
+        df = impute_dataframe(df)
+
+        df.replace([np.inf, -np.inf], np.nan, inplace=True)
+        df.fillna(df.mean(), inplace=True)
+        # print(np.any(np.isnan(df)))
+        # print(np.all(np.isfinite(df)))
+
+        train_model(df, log_path)

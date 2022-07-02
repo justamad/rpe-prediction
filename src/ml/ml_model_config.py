@@ -1,4 +1,5 @@
 from xgboost import XGBRegressor
+from typing import Dict
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
@@ -13,21 +14,23 @@ class LearningModelBase(object):
         self.__grid_search_params = grid_search_params
         self.__balancer = RandomOverSampler()
 
-    def get_trial_data_dict(self):
+    def get_trial_data_dict(self) -> Dict:
         return {
-            'model': self.__model,
-            'parameters': self.__grid_search_params,
-            'learner_name': str(self),
-            'balancer': self.__balancer,
+            "model": self.__model,
+            "parameters": self.__grid_search_params,
+            "learner_name": str(self),
+            "balancer": self.__balancer,
         }
 
 
 class SVRModelConfig(LearningModelBase):
 
     def __init__(self):
-        tuned_parameters = {f'{str(self)}__kernel': ('linear', 'rbf'),
-                            f'{str(self)}__gamma': [1e-3, 1e-4],
-                            f'{str(self)}__C': [1e0, 1e1, 1e2, 1e3], }
+        tuned_parameters = {
+            # f"{str(self)}__kernel": ('linear', 'rbf'),
+            # f"{str(self)}__gamma": [1e-3, 1e-4],
+            # f"{str(self)}__C": [1e0, 1e1, 1e2, 1e3],
+        }
 
         model = SVR()
         super().__init__(model=model, grid_search_params=tuned_parameters)

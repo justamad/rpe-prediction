@@ -5,8 +5,6 @@ from src.config import ProcessedDataGenerator
 
 import pandas as pd
 
-# import os
-
 parser = ArgumentParser()
 parser.add_argument("--src_path", type=str, dest="src_path", default="data/processed")
 parser.add_argument("--dst_path", type=str, dest="dst_path", default="data/features")
@@ -50,9 +48,4 @@ if __name__ == "__main__":
     window_size = 1
     overlap = 0.9
     df = calculate_features(window_size=window_size, overlap=overlap)
-    # plot_feature_distribution_as_pdf(
-    # X_orig, X_scaled,
-    #                                  join(result_path, f"features_win_{win_size}_overlap_{overlap}.pdf"))
-    # X_scaled = filter_outliers_z_scores(X_orig)
-
     df.to_csv("X.csv", sep=";", index=False)
