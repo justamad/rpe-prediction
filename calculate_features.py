@@ -1,10 +1,11 @@
 from argparse import ArgumentParser
 from src.config import ProcessedDataGenerator
-from src.features import calculate_statistical_features_with_sliding_window_time_based
-from os.path import join
+# from src.features import calculate_statistical_features_with_sliding_window_time_based
+# from os.path import join
 
 import pandas as pd
-import os
+
+# import os
 
 parser = ArgumentParser()
 parser.add_argument("--src_path", type=str, dest="src_path", default="data/processed")
@@ -16,7 +17,7 @@ args = parser.parse_args()
 
 def calculate_features(
         window_size: int,
-        overlap: float
+        overlap: float,
 ) -> pd.DataFrame:
     gen = ProcessedDataGenerator(args.src_path)
     df = pd.DataFrame()
@@ -24,21 +25,15 @@ def calculate_features(
         print(set_data["subject"])
         print(set_data["nr_set"])
         hrv = set_data["hrv"]
-        hrv = impute_dataframe(hrv)
-        set_df = calculate_statistical_features_with_sliding_window_time_based(
-            [hrv],  # set_data["ecg"], set_data["imu"]],
-            window_size=window_size,
-            overlap=overlap,
-        )
+        set_df = impute_dataframe(hrv)
+        # set_df = calculate_statistical_features_with_sliding_window_time_based(
+        #     [hrv],  # set_data["ecg"], set_data["imu"]],
+        #     window_size=window_size,
+        #     overlap=overlap,
+        # )
 
         for column in ["subject", "rpe", "group", "nr_set"]:
-           set_df[column] = set_data[column]
-
-        # y_values = [set_data["subject"], set_data["rpe"], set_data["group"], set_data["nr_set"]]
-        # y = pd.DataFrame(
-        #     data=[y_values for _ in range(len(X))],
-        #     columns=["name", "rpe", "group", "set"],
-        # )
+            set_df[column] = set_data[column]
 
         df = pd.concat([df, set_df], ignore_index=True)
 
@@ -60,4 +55,4 @@ if __name__ == "__main__":
     #                                  join(result_path, f"features_win_{win_size}_overlap_{overlap}.pdf"))
     # X_scaled = filter_outliers_z_scores(X_orig)
 
-    df.to_csv("X.csv", sep=";")
+    df.to_csv("X.csv", sep=";", index=False)

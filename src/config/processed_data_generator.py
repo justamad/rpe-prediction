@@ -2,6 +2,7 @@ from os.path import join
 
 import pandas as pd
 import os
+import json
 
 
 class ProcessedDataGenerator(object):
@@ -12,6 +13,11 @@ class ProcessedDataGenerator(object):
 
     def generate(self):
         for group_id, subject in enumerate(self._subjects):
+            json_file = join(self._path.replace("processed", "raw"), subject, "rpe_ratings.json")
+            with open(json_file) as f:
+                rpe_values = json.load(f)
+                rpe_values = rpe_values["rpe_ratings"]
+
             files = os.listdir(join(self._path, subject))
             files = sorted(filter(lambda x: "hrv" in x, files))
             for file in files:
@@ -21,12 +27,11 @@ class ProcessedDataGenerator(object):
                 hrv_df = pd.read_csv(join(self._path, subject, file), sep=";", index_col=0, parse_dates=True)
                 # azure.index = pd.to_datetime(azure.index)
 
-                dic = {
+                yield {
                     # "azure": azure,
                     "hrv": hrv_df,
                     "subject": subject,
                     "nr_set": nr_set,
-                    "rpe": 15,
                     "group": group_id,
+                    "rpe": rpe_values[nr_set],
                 }
-                yield dic

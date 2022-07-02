@@ -76,11 +76,11 @@ def plot_data_frame_column_wise_as_pdf(df: pd.DataFrame, file_name: str):
 
 def plot_feature_distribution_as_pdf(df: pd.DataFrame, file_name: str,):
     pp = PDFWriter(file_name)
-    df.sort_values(by=["set"], ignore_index=True, inplace=True)
+    df.sort_values(by=["rpe"], ignore_index=True, inplace=True)
 
-    for column in df.columns[:20]:
+    for column in df.columns[:-4]:
         fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(25, 15))
-        column_df = df[[column, "set"]]
+        column_df = df[[column, "rpe"]]
 
         ax1.plot(column_df[column])
         ax1.set_title("Raw Feature")
@@ -94,7 +94,7 @@ def plot_feature_distribution_as_pdf(df: pd.DataFrame, file_name: str,):
         ax2.plot(x, p, 'k', linewidth=2)
         ax2.set_title(f"Gaussian Fit: mu={mu:.2f}, std={std:.2f}")
 
-        ax3.scatter(column_df.index, column_df[column], s=10, c=column_df["set"], cmap="Greens")
+        ax3.scatter(column_df.index, column_df[column], s=10, c=column_df["rpe"], cmap="Greens")
 
         # ax3.plot(df_norm[column])
         # ax3.set_title("Normalized Feature")

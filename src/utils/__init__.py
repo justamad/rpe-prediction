@@ -5,4 +5,5 @@ from .data_preparation import (
     get_subject_names_random_split,
     filter_outliers_z_scores,
     normalize_rpe_values_min_max,
+    normalize_data_by_subject,
 )

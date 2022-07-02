@@ -60,11 +60,11 @@ class ECGSubjectLoader(BaseSubjectLoader):
         hrv_df = self.calculate_hrv_features(
             ecg_df["ECG"].to_numpy(),
             ecg_sampling_rate=1000,
-            hrv_sampling_rate=4,
+            hrv_sampling_rate=1,
             hrv_window_size=30,
         )
 
-        index = ecg_df.index[30 * 1000::250]
+        index = ecg_df.index[30 * 1000::1000]
         hrv_df.index = index[:len(hrv_df)]
         self._hrv_df = hrv_df
 

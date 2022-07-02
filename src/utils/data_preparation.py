@@ -54,14 +54,14 @@ def get_subject_names_random_split(
         train_p: float = 0.7,
         random_seed: int = None,
 ):
-    subject_names = sorted(y["name"].unique())
+    subject_names = sorted(y["subject"].unique())
     nr_subjects = math.ceil(len(subject_names) * train_p)
 
     if random_seed is not None:
         np.random.seed(random_seed)
 
     train_subjects = np.random.choice(subject_names, nr_subjects, replace=False)
-    train_idx = y["name"].isin(train_subjects)
+    train_idx = y["subject"].isin(train_subjects)
     return train_idx
 
 
@@ -84,9 +84,19 @@ def normalize_rpe_values_min_max(
     return df
 
 
+def normalize_data_by_subject(df: pd.DataFrame) -> pd.DataFrame:
+    total_df = pd.DataFrame()
+    for name, group in df.groupby("subject"):
+        sub_df = group.iloc[:, :-4]
+        group.iloc[:, :-4] = (sub_df - sub_df.min()) / (sub_df.max() - sub_df.min())
+        total_df = pd.concat([total_df, group], ignore_index=True)
+
+    return total_df
+
+
 def filter_outliers_z_scores(df: pd.DataFrame):
-    z_scores = stats.zscore(df)
-    z_scores = z_scores.dropna(axis=1, how='all')
+    z_scores = stats.zscore(df.iloc[:, :-4])
+    z_scores = z_scores.dropna(axis=1, how="all")
     abs_z_scores = np.abs(z_scores)
     filtered_entries = (abs_z_scores < 3).all(axis=1)
     return filtered_entries

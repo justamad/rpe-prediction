@@ -105,17 +105,11 @@ def eliminate_features_with_rfecv(
 def eliminate_features_with_rfe(
         X_train: pd.DataFrame,
         y_train: pd.DataFrame,
-        X_test: pd.DataFrame,
-        y_test: pd.DataFrame,
-        window_size: int,
         step: int = 10,
         nr_features: int = 100,
-        overlap: float = 0.5,
-        path: str = None,
 ):
-    estimator = XGBRegressor()
     selector = RFE(
-        estimator=estimator,
+        estimator=XGBRegressor(),
         n_features_to_select=nr_features,
         step=step,
         verbose=10,
@@ -126,9 +120,8 @@ def eliminate_features_with_rfe(
     rfe_df = pd.DataFrame(
         data=selector.ranking_,
         index=X_train.columns,
-        columns=["Rank"]
+        columns=["Rank"],
     ).sort_values(by="Rank", ascending=True)
 
     rfe_df.index.names = ["Feature"]
-    rfe_df.to_csv(join(path, f"rfe_fe_win_{window_size}_overlap_{overlap}.csv"), sep=';')
-    return X_train.loc[:, mask], X_test.loc[:, mask]
+    return X_train.loc[:, mask]
