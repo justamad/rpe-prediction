@@ -1,3 +1,4 @@
+from typing import Tuple
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_squared_error
 from sklearn.feature_selection import SelectFromModel
@@ -107,7 +108,7 @@ def eliminate_features_with_rfe(
         y_train: pd.DataFrame,
         step: int = 10,
         nr_features: int = 100,
-):
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     selector = RFE(
         estimator=XGBRegressor(),
         n_features_to_select=nr_features,
@@ -124,4 +125,4 @@ def eliminate_features_with_rfe(
     ).sort_values(by="Rank", ascending=True)
     rfe_df.index.names = ["Feature"]
 
-    return X_train.loc[:, mask]
+    return X_train.loc[:, mask], rfe_df

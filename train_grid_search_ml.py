@@ -12,12 +12,9 @@ from src.utils import (
 )
 
 from src.ml import (
-    GridSearching,
+    MLOptimization,
     eliminate_features_with_xgboost_coefficients,
     eliminate_features_with_rfe,
-    MLPModelConfig,
-    GBRModelConfig,
-    SVRModelConfig,
 )
 
 import pandas as pd
@@ -56,10 +53,13 @@ def train_model(
 ):
     X = train_df.iloc[:, :-4]
     y = train_df.iloc[:, -4:]
+    labels = y["rpe"]
+    labels[labels <= 17] = 0
+    labels[labels != 0] = 1
 
-    X = eliminate_features_with_rfe(
+    X, _report = eliminate_features_with_rfe(
         X_train=X,
-        y_train=y["rpe"],
+        y_train=labels,
         step=10,
         nr_features=30,
     )
@@ -67,25 +67,31 @@ def train_model(
     # X["nr_set"] = y["nr_set"]
 
     # scaler = StandardScaler()
-    scaler = MinMaxScaler()
-    X = scaler.fit_transform(X)
+    # scaler = MinMaxScaler()
+    # X = scaler.fit_transform(X)
 
-    for model_config in models:
-        create_folder_if_not_already_exists(log_path)
-        param_dict = model_config.get_trial_data_dict()
-        grid_search = GridSearching(groups=y["group"], **param_dict)
-        best_model, result_df = grid_search.perform_grid_search_with_cv(X, y["rpe"])
-        result_df.to_csv(join(log_path, "result.csv"), sep=";")
-        # logging.info(best_model.predict(X_test))
-        # logging.info(best_model.score(X_test, y_test["rpe"]))
+    ml_optimization = MLOptimization(
+        groups=y["group"],
+        task="classification",
+        X_train=X,
+        y_train=labels,
+        mode="grid",
+    )
+    ml_optimization.perform_grid_search_with_cv(log_path=log_path)
+
+    # for model_config in models:
+    #     create_folder_if_not_already_exists(log_path)
+    #     param_dict = model_config.get_trial_data_dict()
+    #     grid_search = MLOptimization(groups=y["group"], **param_dict)
+    #     best_model, result_df = grid_search.perform_grid_search_with_cv(X, labels)
+    #     result_df.to_csv(join(log_path, "result.csv"), sep=";")
 
 
 if __name__ == "__main__":
-    models = [SVRModelConfig()]  # , GBRModelConfig()]
-
     for file in os.listdir(args.src_path):
         logging.info(f"Train on file: {file}")
         log_path = join(args.result_path, f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_{file.replace('.csv', '')}")
+        create_folder_if_not_already_exists(log_path)
 
         df = pd.read_csv(join(args.src_path, file), sep=";", index_col=0)
 
