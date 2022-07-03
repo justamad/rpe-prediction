@@ -2,6 +2,7 @@ from typing import List
 from imblearn.pipeline import Pipeline
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, LeaveOneGroupOut
+from sklearn.metrics import make_scorer, f1_score, accuracy_score, recall_score, precision_score
 from os.path import join
 
 from .ml_model_config import (
@@ -20,12 +21,12 @@ metrics = {
         "neg_mean_absolute_error",
         "max_error",
     ],
-    "classification": [
-        "accuracy",
-        "f1",
-        "precision",
-        "recall",
-    ]
+    "classification": {
+        "f1_score": make_scorer(f1_score, average="micro"),
+        "precision_score": make_scorer(precision_score, average="micro"),
+        "recall_score": make_scorer(recall_score, average="micro"),
+        "accuracy_score": make_scorer(accuracy_score),
+    }
 }
 
 models = {
@@ -83,19 +84,19 @@ class MLOptimization(object):
                     verbose=10,
                     scoring=metrics[self._task],
                     error_score="raise",
-                    refit=metrics[self._task][0],
+                    refit="accuracy_score",
                 )
             else:
                 grid_search = RandomizedSearchCV(
                     estimator=pipe,
                     param_distributions=parameters,
-                    n_iter=10,
+                    n_iter=20,
                     cv=logo.get_n_splits(groups=self._groups),
                     n_jobs=-1,
                     verbose=10,
                     scoring=metrics[self._task],
                     error_score="raise",
-                    refit=metrics[self._task][0],
+                    refit="accuracy_score",
                 )
 
             logging.info(grid_search)

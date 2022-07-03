@@ -54,8 +54,9 @@ def train_model(
     X = train_df.iloc[:, :-4]
     y = train_df.iloc[:, -4:]
     labels = y["rpe"]
-    labels[labels <= 17] = 0
-    labels[labels != 0] = 1
+    labels[labels <= 15] = 0
+    labels[(labels > 15) & (labels <= 18)] = 1
+    labels[labels > 18] = 2
 
     X, _report = eliminate_features_with_rfe(
         X_train=X,
@@ -75,7 +76,7 @@ def train_model(
         task="classification",
         X_train=X,
         y_train=labels,
-        mode="grid",
+        mode="random",
     )
     ml_optimization.perform_grid_search_with_cv(log_path=log_path)
 
