@@ -94,7 +94,7 @@ class MLOptimization(object):
                     grid_search = RandomizedSearchCV(
                         estimator=pipe,
                         param_distributions=model_config.parameters,
-                        n_iter=20,
+                        n_iter=10,
                         cv=logo.get_n_splits(groups=y_train["group"]),
                         n_jobs=-1,
                         verbose=10,
@@ -116,6 +116,6 @@ class MLOptimization(object):
                 r_df = r_df.drop(["params"], axis=1)
                 r_df["test_subject"] = subject
                 r_df["test_score"] = subject_accuracy
-                result_df = pd.concat([result_df, r_df], axis=1)
+                result_df = pd.concat([result_df, r_df], axis=0, ignore_index=True)
 
             result_df.to_csv(join(log_path, str(model_config) + ".csv"), sep=";")
