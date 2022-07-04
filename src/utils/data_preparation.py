@@ -1,5 +1,4 @@
-from typing import Tuple, List
-from itertools import compress
+from typing import Tuple
 from scipy import stats
 
 import numpy as np
@@ -24,28 +23,6 @@ def split_data_based_on_pseudonyms(
         y.loc[train_mask].copy(),
         X.loc[~train_mask].copy(),
         y.loc[~train_mask].copy(),
-    )
-
-
-def split_data_based_on_pseudonyms_multiple_inputs(
-        X_data: list,
-        y_data: pd.DataFrame,
-        train_p: float = 0.8,
-        random_seed: int = None,
-) -> Tuple[List, pd.DataFrame, List, pd.DataFrame]:
-    train_mask = get_subject_names_random_split(
-        y=y_data,
-        train_p=train_p,
-        random_seed=random_seed,
-    )
-
-    X_train = list(compress(X_data, train_mask))
-    X_test = list(compress(X_data, ~train_mask))
-    return (
-        X_train,
-        y_data.loc[train_mask].copy().reset_index(drop=True),
-        X_test,
-        y_data.loc[~train_mask].copy().reset_index(drop=True),
     )
 
 

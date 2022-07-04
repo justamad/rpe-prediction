@@ -57,13 +57,16 @@ def train_model(
     labels[labels <= 15] = 0
     labels[(labels > 15) & (labels <= 18)] = 1
     labels[labels > 18] = 2
+    y["rpe"] = labels
 
     X, _report = eliminate_features_with_rfe(
         X_train=X,
-        y_train=labels,
-        step=10,
-        nr_features=30,
+        y_train=y["rpe"],
+        step=20,
+        nr_features=10,
     )
+    df = pd.concat([X, y], axis=1)
+    df.to_csv(join(log_path, "X_rfe.csv"), sep=";", index=False)
 
     # X["nr_set"] = y["nr_set"]
 
@@ -72,11 +75,10 @@ def train_model(
     # X = scaler.fit_transform(X)
 
     ml_optimization = MLOptimization(
-        groups=y["group"],
+        X=X,
+        y=y,
         task="classification",
-        X_train=X,
-        y_train=labels,
-        mode="random",
+        mode="grid",
     )
     ml_optimization.perform_grid_search_with_cv(log_path=log_path)
 

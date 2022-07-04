@@ -45,11 +45,10 @@ class MLOptimization(object):
 
     def __init__(
             self,
-            groups: List,
+            X: pd.DataFrame,
+            y: pd.Series,
             task: str,
             mode: str,
-            X_train: pd.DataFrame,
-            y_train: pd.Series,
     ):
         if task not in ["regression", "classification"]:
             raise AttributeError(f"Unknown ML task given: {task}")
@@ -57,55 +56,66 @@ class MLOptimization(object):
         if mode not in ["grid", "random"]:
             raise AttributeError(f"Unknown ML mode given: {mode}")
 
-        self._groups = groups
+        self._X = X
+        self._y = y
         self._task = task
         self._mode = mode
-        self._X_train = X_train
-        self._y_train = y_train
 
     def perform_grid_search_with_cv(self, log_path: str):
         for model_config in models[self._task]:
-            steps = [
-                ("balance_sampling", RandomOverSampler()),
-                (str(model_config), model_config.model),
-            ]
+            result_df = pd.DataFrame()
 
-            parameters = model_config.parameters
+            for subject in self._y["subject"].unique():
+                logging.info(f"Leave out subject: {subject}")
+                mask = self._y["subject"] == subject
+                X_train, y_train = self._X[~mask], self._y[~mask]
+                X_test, y_test = self._X[mask], self._y[mask]
 
-            pipe = Pipeline(steps=steps)
-            logo = LeaveOneGroupOut()
+                steps = [
+                    ("balance_sampling", RandomOverSampler()),
+                    (str(model_config), model_config.model),
+                ]
 
-            if self._mode == "grid":
-                grid_search = GridSearchCV(
-                    estimator=pipe,
-                    param_grid=parameters,
-                    cv=logo.get_n_splits(groups=self._groups),
-                    n_jobs=-1,
-                    verbose=10,
-                    scoring=metrics[self._task],
-                    error_score="raise",
-                    refit="accuracy_score",
-                )
-            else:
-                grid_search = RandomizedSearchCV(
-                    estimator=pipe,
-                    param_distributions=parameters,
-                    n_iter=20,
-                    cv=logo.get_n_splits(groups=self._groups),
-                    n_jobs=-1,
-                    verbose=10,
-                    scoring=metrics[self._task],
-                    error_score="raise",
-                    refit="accuracy_score",
-                )
+                pipe = Pipeline(steps=steps)
+                logo = LeaveOneGroupOut()
 
-            logging.info(grid_search)
-            logging.info(f"Input shape: {self._X_train.shape}")
+                if self._mode == "grid":
+                    grid_search = GridSearchCV(
+                        estimator=pipe,
+                        param_grid=model_config.parameters,
+                        cv=logo.get_n_splits(groups=y_train["group"]),
+                        n_jobs=-1,
+                        verbose=10,
+                        scoring=metrics[self._task],
+                        error_score="raise",
+                        refit="accuracy_score",
+                    )
+                else:
+                    grid_search = RandomizedSearchCV(
+                        estimator=pipe,
+                        param_distributions=model_config.parameters,
+                        n_iter=20,
+                        cv=logo.get_n_splits(groups=y_train["group"]),
+                        n_jobs=-1,
+                        verbose=10,
+                        scoring=metrics[self._task],
+                        error_score="raise",
+                        refit="accuracy_score",
+                    )
 
-            grid_search.fit(self._X_train, self._y_train)
-            logging.info(f"Best parameter (CV score={grid_search.best_score_:.5f})")
-            logging.info(grid_search.best_params_)
+                logging.info(grid_search)
+                logging.info(f"Input shape: {X_train.shape}")
 
-            result_df = pd.DataFrame(grid_search.cv_results_)
-            result_df = result_df.drop(["params"], axis=1)
+                grid_search.fit(X_train, y_train["rpe"])
+                logging.info(f"Best CV score: {grid_search.best_score_:.5f}, achieved by {grid_search.best_params_}")
+                y_pred = grid_search.predict(X_test)
+                subject_accuracy = accuracy_score(y_test["rpe"], y_pred)
+                logging.info(f"Test subject {subject}, accuracy: {subject_accuracy:.5f}")
+
+                r_df = pd.DataFrame(grid_search.cv_results_)
+                r_df = r_df.drop(["params"], axis=1)
+                r_df["test_subject"] = subject
+                r_df["test_score"] = subject_accuracy
+                result_df = pd.concat([result_df, r_df], axis=1)
+
             result_df.to_csv(join(log_path, str(model_config) + ".csv"), sep=";")
