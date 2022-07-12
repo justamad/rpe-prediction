@@ -1,21 +1,15 @@
 from datetime import datetime
 from argparse import ArgumentParser
+from src.ml import (MLOptimization, eliminate_features_with_xgboost_coefficients, eliminate_features_with_rfe)
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from os.path import join
 
 from src.utils import (
     create_folder_if_not_already_exists,
-    split_data_based_on_pseudonyms,
-    normalize_rpe_values_min_max,
     filter_outliers_z_scores,
     normalize_data_by_subject,
 )
 
-from src.ml import (
-    MLOptimization,
-    eliminate_features_with_xgboost_coefficients,
-    eliminate_features_with_rfe,
-)
 
 import pandas as pd
 import numpy as np
@@ -62,9 +56,10 @@ def train_model(
     X, _report = eliminate_features_with_rfe(
         X_train=X,
         y_train=y["rpe"],
-        step=20,
-        nr_features=10,
+        step=25,
+        nr_features=50,
     )
+    _report.to_csv(join(log_path, "rfe_report.csv"), sep=";")
     df = pd.concat([X, y], axis=1)
     df.to_csv(join(log_path, "X_rfe.csv"), sep=";", index=False)
 
@@ -78,7 +73,7 @@ def train_model(
         X=X,
         y=y,
         task="classification",
-        mode="grid",
+        mode="random",
     )
     ml_optimization.perform_grid_search_with_cv(log_path=log_path)
 
@@ -107,7 +102,5 @@ if __name__ == "__main__":
 
         df.replace([np.inf, -np.inf], np.nan, inplace=True)
         df.fillna(df.mean(), inplace=True)
-        # print(np.any(np.isnan(df)))
-        # print(np.all(np.isfinite(df)))
 
         train_model(df, log_path)

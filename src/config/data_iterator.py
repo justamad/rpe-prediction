@@ -12,6 +12,7 @@ from src.config.data_loaders import (
 
 import os
 import logging
+import shutil
 
 loader_names = {
     StereoAzureSubjectLoader: "azure",
@@ -26,10 +27,12 @@ class SubjectDataIterator(object):
     def __init__(
             self,
             base_path: str,
+            dst_path: str,
             loaders: List,
             log_path: str = None,
     ):
         self._base_path = base_path
+        self._dst = dst_path
         self._log_path = log_path
         self._data_loaders_dict = {loader_names[loader_type]: loader_type for loader_type in loaders}
 
@@ -53,6 +56,10 @@ class SubjectDataIterator(object):
                     data_loaders=self._data_loaders_dict,
                     subject_name=subject,
                     nr_sets=12,
+                )
+                shutil.copy(
+                    src=join(self._base_path, subject, "rpe_ratings.json"),
+                    dst=join(self._dst, subject, "rpe_ratings.json"),
                 )
 
             except LoadingException as e:

@@ -7,7 +7,6 @@ from src.processing import (
     apply_butterworth_filter,
     calculate_acceleration,
     calculate_cross_correlation_with_datetime,
-    segment_1d_joint_on_example,
 )
 
 from src.config import (
@@ -24,7 +23,7 @@ matplotlib.use("Qt5Agg")
 import matplotlib.pyplot as plt
 
 parser = ArgumentParser()
-parser.add_argument("--src_path", type=str, dest="src_path", default="data/raw")
+parser.add_argument("--src_path", type=str, dest="src_path", default="../../../../Volumes/INTENSO/RPE_Data")
 parser.add_argument("--log_path", type=str, dest="log_path", default="results")
 parser.add_argument("--dst_path", type=str, dest="dst_path", default="data/processed")
 parser.add_argument("--show", type=bool, dest="show", default=True)
@@ -33,6 +32,7 @@ args = parser.parse_args()
 iterator = SubjectDataIterator(
     base_path=args.src_path,
     log_path=args.log_path,
+    dst_path=args.dst_path,
     loaders=[StereoAzureSubjectLoader, ECGSubjectLoader, IMUSubjectLoader]
 )
 

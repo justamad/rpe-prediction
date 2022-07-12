@@ -65,7 +65,8 @@ def normalize_data_by_subject(df: pd.DataFrame) -> pd.DataFrame:
     total_df = pd.DataFrame()
     for name, group in df.groupby("subject"):
         sub_df = group.iloc[:, :-4]
-        group.iloc[:, :-4] = (sub_df - sub_df.min()) / (sub_df.max() - sub_df.min())
+        # group.iloc[:, :-4] = (sub_df - sub_df.min()) / (sub_df.max() - sub_df.min())
+        group.iloc[:, :-4] = (sub_df - sub_df.mean()) / (sub_df.std())
         total_df = pd.concat([total_df, group], ignore_index=True)
 
     return total_df
