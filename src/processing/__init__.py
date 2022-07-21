@@ -1,4 +1,4 @@
-from .segmentation import segment_1d_joint_on_example
+from .segmentation import segment_signal_peak_detection
 from .synchronization import calculate_cross_correlation, calculate_cross_correlation_with_datetime
 
 from .utils import (
