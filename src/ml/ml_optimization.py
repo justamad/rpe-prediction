@@ -1,9 +1,19 @@
-from typing import List
 from imblearn.pipeline import Pipeline
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, LeaveOneGroupOut
-from sklearn.metrics import make_scorer, f1_score, accuracy_score, recall_score, precision_score
 from os.path import join
+
+from sklearn.metrics import (
+    make_scorer,
+    f1_score,
+    accuracy_score,
+    recall_score,
+    precision_score,
+    r2_score,
+    mean_squared_error,
+    mean_absolute_error,
+    max_error,
+)
 
 from .ml_model_config import (
     SVRModelConfig,
@@ -15,18 +25,28 @@ import pandas as pd
 import logging
 
 metrics = {
-    "regression": [
-        "r2",
-        "neg_mean_squared_error",
-        "neg_mean_absolute_error",
-        "max_error",
-    ],
+    "regression": {
+        "r2": make_scorer(r2_score),
+        "neg_mean_squared_error": make_scorer(mean_squared_error),
+        "neg_mean_absolute_error": make_scorer(mean_absolute_error),
+        "max_error": make_scorer(max_error),
+    },
     "classification": {
         "f1_score": make_scorer(f1_score, average="micro"),
         "precision_score": make_scorer(precision_score, average="micro"),
         "recall_score": make_scorer(recall_score, average="micro"),
         "accuracy_score": make_scorer(accuracy_score),
     }
+}
+
+refit_metrics = {
+    "regression": "r2",
+    "classification": "f1_score",
+}
+
+evaluation_metric = {
+    "regression": r2_score,
+    "classification": make_scorer(f1_score, average="micro"),
 }
 
 models = {
@@ -57,6 +77,8 @@ class MLOptimization(object):
             raise AttributeError(f"Unknown ML mode given: {mode}")
 
         self._X = X
+        subjects = y["subject"].unique()
+        y["group"] = y["subject"].replace(dict(zip(subjects, range(len(subjects)))))
         self._y = y
         self._task = task
         self._mode = mode
@@ -80,7 +102,7 @@ class MLOptimization(object):
                 logo = LeaveOneGroupOut()
 
                 if self._mode == "grid":
-                    grid_search = GridSearchCV(
+                    ml_search = GridSearchCV(
                         estimator=pipe,
                         param_grid=model_config.parameters,
                         cv=logo.get_n_splits(groups=y_train["group"]),
@@ -88,34 +110,35 @@ class MLOptimization(object):
                         verbose=10,
                         scoring=metrics[self._task],
                         error_score="raise",
-                        refit="accuracy_score",
+                        refit=refit_metrics[self._task],
                     )
                 else:
-                    grid_search = RandomizedSearchCV(
+                    ml_search = RandomizedSearchCV(
                         estimator=pipe,
                         param_distributions=model_config.parameters,
-                        n_iter=10,
+                        n_iter=12,
                         cv=logo.get_n_splits(groups=y_train["group"]),
                         n_jobs=-1,
                         verbose=10,
                         scoring=metrics[self._task],
                         error_score="raise",
-                        refit="accuracy_score",
+                        refit=refit_metrics[self._task],
                     )
 
-                logging.info(grid_search)
+                logging.info(ml_search)
                 logging.info(f"Input shape: {X_train.shape}")
 
-                grid_search.fit(X_train, y_train["rpe"])
-                logging.info(f"Best CV score: {grid_search.best_score_:.5f}, achieved by {grid_search.best_params_}")
-                y_pred = grid_search.predict(X_test)
-                subject_accuracy = accuracy_score(y_test["rpe"], y_pred)
-                logging.info(f"Test subject {subject}, accuracy: {subject_accuracy:.5f}")
+                ml_search.fit(X_train, y_train["rpe"])
 
-                r_df = pd.DataFrame(grid_search.cv_results_)
+                # Evaluate the trained model
+                logging.info(f"Best CV score: {ml_search.best_score_:.5f}, achieved by {ml_search.best_params_}")
+                test_score = evaluation_metric[self._task](ml_search, X_test, y_test["rpe"])
+                logging.info(f"Test subject {subject}, accuracy: {test_score:.5f}")
+
+                r_df = pd.DataFrame(ml_search.cv_results_)
                 r_df = r_df.drop(["params"], axis=1)
                 r_df["test_subject"] = subject
-                r_df["test_score"] = subject_accuracy
+                r_df["test_score"] = test_score
                 result_df = pd.concat([result_df, r_df], axis=0, ignore_index=True)
 
             result_df.to_csv(join(log_path, str(model_config) + ".csv"), sep=";")
