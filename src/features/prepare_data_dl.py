@@ -1,7 +1,7 @@
 from .normalization import normalize_skeleton_positions
 from typing import Tuple, List
 
-from src.config import (
+from src.dataset import (
     SubjectDataIterator,
     RPESubjectLoader,
 )

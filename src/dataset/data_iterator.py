@@ -2,7 +2,7 @@ from .data_collector import SubjectDataCollector
 from os.path import join
 from typing import List
 
-from src.config.data_loaders import (
+from src.dataset.data_loaders import (
     LoadingException,
     StereoAzureSubjectLoader,
     RPESubjectLoader,

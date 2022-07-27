@@ -9,7 +9,7 @@ from src.processing import (
     calculate_cross_correlation_with_datetime,
 )
 
-from src.config import (
+from src.dataset import (
     SubjectDataIterator,
     ECGSubjectLoader,
     StereoAzureSubjectLoader,

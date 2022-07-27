@@ -1,4 +1,5 @@
 from src.ml import (MLOptimization, eliminate_features_with_rfe)
+from src.dataset import extract_dataset_input_output, normalize_subject_rpe
 from datetime import datetime
 from argparse import ArgumentParser
 from os.path import join
@@ -42,13 +43,8 @@ def train_model(
         train_df: pd.DataFrame,
         log_path: str,
 ):
-    X = train_df.iloc[:, :-3]
-    y = train_df.iloc[:, -3:]
-    labels = y["rpe"]
-    labels[labels <= 15] = 0
-    labels[(labels > 15) & (labels <= 18)] = 1
-    labels[labels > 18] = 2
-    y["rpe"] = labels
+    X, y = extract_dataset_input_output(train_df)
+    y = normalize_subject_rpe(y)
 
     # X, _report = eliminate_features_with_rfe(
     #     X_train=X,
@@ -60,14 +56,10 @@ def train_model(
     # df = pd.concat([X, y], axis=1)
     # df.to_csv(join(log_path, "X_rfe.csv"), sep=";", index=False)
 
-    # scaler = StandardScaler()
-    # scaler = MinMaxScaler()
-    # X = scaler.fit_transform(X)
-
     ml_optimization = MLOptimization(
         X=X,
         y=y,
-        task="classification",
+        task="regression",
         mode="grid",
     )
     ml_optimization.perform_grid_search_with_cv(log_path=log_path)

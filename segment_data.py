@@ -1,4 +1,4 @@
-from src.config import ProcessedDataGenerator
+from src.dataset import ProcessedDataGenerator
 from src.processing import segment_signal_peak_detection, apply_butterworth_filter
 from src.features import calculate_angles_between_3_joints
 from tsfresh.feature_extraction import MinimalFCParameters

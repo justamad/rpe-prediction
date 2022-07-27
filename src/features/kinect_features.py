@@ -1,7 +1,7 @@
 from .statistical_features import calculate_statistical_features_with_sliding_window
 from typing import Tuple
 
-from src.config import (
+from src.dataset import (
     SubjectDataIterator,
     RPESubjectLoader,
 )

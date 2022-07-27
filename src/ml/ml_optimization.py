@@ -13,6 +13,7 @@ from sklearn.metrics import (
     mean_squared_error,
     mean_absolute_error,
     max_error,
+    mean_absolute_percentage_error,
 )
 
 from .ml_model_config import (
@@ -30,6 +31,7 @@ metrics = {
         "neg_mean_squared_error": make_scorer(mean_squared_error),
         "neg_mean_absolute_error": make_scorer(mean_absolute_error),
         "max_error": make_scorer(max_error),
+        "mean_absolute_percentage_error": make_scorer(mean_absolute_percentage_error),
     },
     "classification": {
         "f1_score": make_scorer(f1_score, average="micro"),
@@ -45,7 +47,7 @@ refit_metrics = {
 }
 
 evaluation_metric = {
-    "regression": r2_score,
+    "regression": make_scorer(r2_score),
     "classification": make_scorer(f1_score, average="micro"),
 }
 
@@ -66,7 +68,7 @@ class MLOptimization(object):
     def __init__(
             self,
             X: pd.DataFrame,
-            y: pd.Series,
+            y: pd.DataFrame,
             task: str,
             mode: str,
     ):
@@ -94,9 +96,11 @@ class MLOptimization(object):
                 X_test, y_test = self._X[mask], self._y[mask]
 
                 steps = [
-                    ("balance_sampling", RandomOverSampler()),
                     (str(model_config), model_config.model),
                 ]
+
+                if self._task == "classification":
+                    steps.insert(0, ("balance_sampling", RandomOverSampler()))
 
                 pipe = Pipeline(steps=steps)
                 logo = LeaveOneGroupOut()
@@ -141,4 +145,4 @@ class MLOptimization(object):
                 r_df["test_score"] = test_score
                 result_df = pd.concat([result_df, r_df], axis=0, ignore_index=True)
 
-            result_df.to_csv(join(log_path, str(model_config) + ".csv"), sep=";")
+            result_df.to_csv(join(log_path, str(model_config) + ".csv"), index=False)
