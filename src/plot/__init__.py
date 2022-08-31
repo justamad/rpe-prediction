@@ -2,7 +2,7 @@ from .pdf_writer import PDFWriter
 from .confidence import plot_confidence_values
 
 from .data_evaluation import (
-    plot_ml_predictions_for_sets,
+    plot_prediction_results_for_sets,
     plot_ml_predictions_for_frames,
     plot_parallel_coordinates,
 )

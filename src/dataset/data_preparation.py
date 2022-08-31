@@ -6,6 +6,32 @@ import pandas as pd
 import math
 
 
+def extract_dataset_input_output(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    lst = ["subject", "rpe", "nr_rep", "nr_set"]
+    inputs = df.drop(lst, axis=1, inplace=False, errors="ignore")
+    outputs = df[df.columns.intersection(lst)]
+    return inputs, outputs
+
+
+def normalize_subject_rpe(df: pd.DataFrame) -> pd.DataFrame:
+    for subject in df["subject"].unique():
+        mask = df["subject"] == subject
+        rpe_values = df.loc[mask, "rpe"].to_numpy()
+        rpe_norm = (rpe_values - rpe_values.min()) / (rpe_values.max() - rpe_values.min())
+        df.loc[mask, "rpe"] = rpe_norm
+
+    return df
+
+
+def discretize_subject_rpe(df: pd.DataFrame) -> pd.DataFrame:
+    labels = df["rpe"]
+    labels[labels <= 15] = 0
+    labels[(labels > 15) & (labels <= 18)] = 1
+    labels[labels > 18] = 2
+    df["rpe"] = labels
+    return df
+
+
 def split_data_based_on_pseudonyms(
         X: pd.DataFrame,
         y: pd.DataFrame,
@@ -47,16 +73,16 @@ def normalize_rpe_values_min_max(
         digitize: bool = False,
         bins: int = 10,
 ):
-    subjects = df['name'].unique()
+    subjects = df["name"].unique()
     for subject_name in subjects:
-        mask = df['name'] == subject_name
-        rpe_values = df.loc[mask, 'rpe'].to_numpy()
+        mask = df["name"] == subject_name
+        rpe_values = df.loc[mask, "rpe"].to_numpy()
         rpe_norm = (rpe_values - rpe_values.min()) / (rpe_values.max() - rpe_values.min())
 
         if digitize:
             rpe_norm = np.digitize(rpe_norm, bins=np.arange(bins) / bins)
 
-        df.loc[mask, 'rpe'] = rpe_norm
+        df.loc[mask, "rpe"] = rpe_norm
 
     return df
 
@@ -64,7 +90,7 @@ def normalize_rpe_values_min_max(
 def normalize_data_by_subject(df: pd.DataFrame) -> pd.DataFrame:
     total_df = pd.DataFrame()
     for name, group in df.groupby("subject"):
-        sub_df = group.iloc[:, :-4]
+        sub_df = group.iloc[:, :-2]
         # group.iloc[:, :-4] = (sub_df - sub_df.min()) / (sub_df.max() - sub_df.min())
         group.iloc[:, :-4] = (sub_df - sub_df.mean()) / (sub_df.std())
         total_df = pd.concat([total_df, group], ignore_index=True)
