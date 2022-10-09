@@ -12,7 +12,7 @@ from sklearn.model_selection import StratifiedKFold
 
 from src.plot import (
     plot_parallel_coordinates,
-    plot_ml_predictions_for_sets,
+    plot_prediction_results_for_sets,
     plot_ml_predictions_for_frames,
 )
 
@@ -26,8 +26,8 @@ import os
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--src_path", type=str, dest="src_path", default="results/2022-07-05-09-59-40_X")
-parser.add_argument("--model", type=str, dest="model", default="svm")
+parser.add_argument("--src_path", type=str, dest="src_path", default="results/2022-07-25-11-27-00_flywheel_mean")
+parser.add_argument("--model", type=str, dest="model", default="svr")
 args = parser.parse_args()
 
 

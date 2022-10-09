@@ -1,6 +1,7 @@
 from os.path import join
 from scipy.stats import pearsonr, spearmanr
 from scipy.integrate import simps
+from src.dataset import discretize_subject_rpe
 
 import pandas as pd
 import numpy as np
@@ -8,7 +9,7 @@ import json
 import os
 import plotly.express as px
 import matplotlib
-matplotlib.use("WebAgg")
+# matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 
 
@@ -41,6 +42,7 @@ def read_kmeter_json_file(path, subject, aggregate=False):
         if not aggregate:
             set_df["nr_rep"] = np.arange(len(set_df))
 
+        set_df = set_df.astype(float)
         # set_df = set_df[(set_df["duration"] > 2) & (set_df["duration"] < 5)]
         # set_df = set_df[set_df["rep_range"] > 30.0]
 
@@ -52,6 +54,7 @@ def read_kmeter_json_file(path, subject, aggregate=False):
 
         set_df["nr_set"] = set_counter
         set_df["rpe"] = rpe_values[set_counter]
+        # set_df = discretize_subject_rpe(set_df)
         total_df = pd.concat([total_df, set_df], ignore_index=True)
 
     total_df["subject"] = subject
@@ -62,7 +65,7 @@ def read_kmeter_json_file(path, subject, aggregate=False):
     return total_df
 
 
-def plot_data(df, subject):
+def plot_data(df: pd.DataFrame, subject):
     params = ["peakSpeed", "powerAvg", "powerCon", "powerEcc", "rep_force", "rep_range", "duration"]
     fig, axs = plt.subplots(1, len(params), figsize=(20, 10))
 
@@ -86,14 +89,33 @@ def plot_data(df, subject):
     # plt.close()
 
 
-def plot_interactive(df, subject):
+def plot_split_by_set(df: pd.DataFrame, subject):
+    sets = df["nr_set"].unique()
+    colors = plt.cm.jet(np.linspace(0, 1, len(sets)))
+
+    # for param in ["peakSpeed", "powerAvg", "powerCon", "powerEcc", "rep_force", "rep_range", "duration"]:
+
+    for n, set in enumerate(sets):
+        set_df = df[df["nr_set"] == set]
+        set_df["powerAvg"] = set_df["powerAvg"] - set_df["powerAvg"].mean()
+        # plt.scatter(set_df["rpe"], set_df["powerAvg"], label=f"set {set}", color=colors[n])
+        plt.hist(set_df["powerAvg"], label=f"set {set}")  #, color=colors[n])
+
+    # plt.title(f"{subject} - {param}")
+    plt.title(f"{subject}")
+    # plt.legend()
+    plt.show()
+    plt.close()
+
+
+def plot_interactive(df: pd.DataFrame, subject):
     fig = px.scatter(
         data_frame=df,
-        x=df.index,
-        y="peakSpeed",
-        color="nr_rep",
-        # size="speed",
-        hover_data=["duration", "peakSpeed", "powerAvg", "powerCon", "powerEcc", "rep_force", "rep_range", "nr_rep", "rpe"],
+        x="duration",
+        y="powerAvg",
+        color="peakSpeed",
+        # size="subject",
+        hover_data=["duration", "peakSpeed", "powerAvg", "powerCon", "powerEcc", "rep_force", "rep_range", "nr_rep", "rpe", "nr_set", "subject"],
         title=f"{subject}",
         # opacity=0.2,
         width=1000,
@@ -104,12 +126,13 @@ def plot_interactive(df, subject):
 
 path = "../../../../Volumes/INTENSO/RPE_Data/"
 total_df = pd.DataFrame()
-for subject in os.listdir(path):
-    df = read_kmeter_json_file(path, subject, aggregate=False)
-    plot_data(df, subject)
+for subject in filter(lambda x: not x.startswith("_"), os.listdir(path)):
+    cur_df = read_kmeter_json_file(path, subject, aggregate=False)
+    # plot_data(cur_df, subject)
     # plot_interactive(df, subject)
-    total_df = pd.concat([total_df, df], ignore_index=True)
+    # plot_split_by_set(cur_df, subject)
+    total_df = pd.concat([total_df, cur_df], ignore_index=True)
 
 # total_df = read_kmeter_json_file(path, "857F1E")
-# plot_data(total_df, "all")
-# total_df.to_csv("flywheel.csv", index=False)
+# plot_interactive(total_df, "all")
+total_df.to_csv("flywheel.csv", index=False)
