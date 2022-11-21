@@ -4,17 +4,17 @@ import numpy as np
 import seaborn as sns
 import matplotlib
 matplotlib.use('WebAgg')
+import plot_settings as ps
 import matplotlib.pyplot as plt
+#
+# plt.rcParams.update({
+#     "text.usetex": True,
+#     "font.family": "serif",
+#     "font.serif": ["Palatino"],
+#     "font.size": 11,
+# })
 
-plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "serif",
-    "font.serif": ["Palatino"],
-    "font.size": 11,
-})
 
-cm = 1/2.54  # centimeters in inches
-image_width = 13.858 / 2
 subject_path = "data"
 
 rpe_heatmap = []
@@ -35,7 +35,7 @@ def create_heatmap(data, mask):
     a = [i if i % 2 == 1 else "" for i in range(1, 13)]
     colormap = sns.color_palette("Reds")
 
-    plt.figure(figsize=(image_width * cm, image_width * cm), dpi=300)
+    plt.figure(figsize=(ps.image_width * ps.cm, ps.image_width * ps.cm), dpi=300)
     ax = sns.heatmap(data, vmin=11, vmax=20, mask=mask, linewidth=0.5, yticklabels=a, xticklabels=a, cmap=colormap)
     plt.ylabel("Subject")
     plt.xlabel("Set")
@@ -49,7 +49,7 @@ def create_histogram(data):
     minimum = min(data)
     maximum = max(data)
 
-    plt.figure(figsize=(image_width * cm, image_width * cm), dpi=300)
+    plt.figure(figsize=(ps.image_width * ps.cm, ps.image_width * ps.cm), dpi=300)
     counts, edges, bars = plt.hist(data, bins=range(minimum, maximum + 2))
     plt.xticks(np.arange(minimum, maximum + 1) + 0.5, np.arange(minimum, maximum + 1))
     plt.xlabel("RPE")
