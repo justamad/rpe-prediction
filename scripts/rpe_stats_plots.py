@@ -1,3 +1,5 @@
+from os.path import join
+
 import os
 import json
 import numpy as np
@@ -6,21 +8,14 @@ import matplotlib
 matplotlib.use('WebAgg')
 import plot_settings as ps
 import matplotlib.pyplot as plt
-#
-# plt.rcParams.update({
-#     "text.usetex": True,
-#     "font.family": "serif",
-#     "font.serif": ["Palatino"],
-#     "font.size": 11,
-# })
 
 
-subject_path = "data"
+subject_path = "/media/ch/Data/RPE_DATA_SET_PAPER"
 
 rpe_heatmap = []
 rpe_flat = []
 for subject in os.listdir(subject_path):
-    with open("data/" + subject + "/rpe_ratings.json", "r") as f:
+    with open(join(subject_path, subject, "rpe_ratings.json"), "r") as f:
         data = json.load(f)
 
     cur_list = data["rpe_ratings"]
@@ -33,10 +28,11 @@ for subject in os.listdir(subject_path):
 
 def create_heatmap(data, mask):
     a = [i if i % 2 == 1 else "" for i in range(1, 13)]
-    colormap = sns.color_palette("Reds")
+    # colormap = sns.color_palette("Reds")
+    cmap = sns.cm.rocket_r
 
     plt.figure(figsize=(ps.image_width * ps.cm, ps.image_width * ps.cm), dpi=300)
-    ax = sns.heatmap(data, vmin=11, vmax=20, mask=mask, linewidth=0.5, yticklabels=a, xticklabels=a, cmap=colormap)
+    ax = sns.heatmap(data, vmin=11, vmax=20, mask=mask, linewidth=0.5, yticklabels=a, xticklabels=a, cmap=cmap)
     plt.ylabel("Subject")
     plt.xlabel("Set")
     # plt.show()
