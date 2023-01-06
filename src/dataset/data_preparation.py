@@ -53,18 +53,18 @@ def split_data_based_on_pseudonyms(
 
 
 def get_subject_names_random_split(
-        y: pd.DataFrame,
+        df: pd.DataFrame,
         train_p: float = 0.7,
         random_seed: int = None,
 ):
-    subject_names = sorted(y["subject"].unique())
+    subject_names = sorted(df["subject"].unique())
     nr_subjects = math.ceil(len(subject_names) * train_p)
 
     if random_seed is not None:
         np.random.seed(random_seed)
 
     train_subjects = np.random.choice(subject_names, nr_subjects, replace=False)
-    train_idx = y["subject"].isin(train_subjects)
+    train_idx = df["subject"].isin(train_subjects)
     return train_idx
 
 

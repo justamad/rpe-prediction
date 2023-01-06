@@ -15,23 +15,23 @@ def build_fcn_regression_model(
     model = tf.keras.Sequential()
     model.add(layers.Input(shape=(n_samples, n_features)))
 
-    model.add(layers.Conv1D(filters=nr_filter, kernel_size=8, padding='same', kernel_regularizer=l2(l2_factor)))
+    model.add(layers.Conv1D(filters=nr_filter, kernel_size=64, padding="same", kernel_regularizer=l2(l2_factor)))
     model.add(layers.BatchNormalization())
-    model.add(layers.Activation(activation='relu'))
+    model.add(layers.Activation(activation="relu"))
     model.add(layers.Dropout(dropout))
 
-    model.add(layers.Conv1D(filters=nr_filter * 2, kernel_size=5, padding='same', kernel_regularizer=l2(l2_factor)))
+    model.add(layers.Conv1D(filters=nr_filter * 2, kernel_size=32, padding="same", kernel_regularizer=l2(l2_factor)))
     model.add(layers.BatchNormalization())
-    model.add(layers.Activation(activation='relu'))
+    model.add(layers.Activation(activation="relu"))
     model.add(layers.Dropout(dropout))
 
-    model.add(layers.Conv1D(filters=nr_filter, kernel_size=3, padding='same', kernel_regularizer=l2(l2_factor)))
+    model.add(layers.Conv1D(filters=nr_filter, kernel_size=16, padding="same", kernel_regularizer=l2(l2_factor)))
     model.add(layers.BatchNormalization())
-    model.add(layers.Activation(activation='relu'))
+    model.add(layers.Activation(activation="relu"))
     model.add(layers.Dropout(dropout))
 
     model.add(layers.GlobalAveragePooling1D())
-    model.add(layers.Dense(32, activation='relu', kernel_regularizer=l2(l2_factor)))
+    model.add(layers.Dense(32, activation="relu", kernel_regularizer=l2(l2_factor)))
     model.add(layers.Dense(1, activation=activation, kernel_regularizer=l2(l2_factor)))
     return model
 
