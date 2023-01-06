@@ -1,28 +1,17 @@
+import os.path
 from argparse import ArgumentParser
 from os.path import join
-from src.utils import create_folder_if_not_already_exists
-
-from src.processing import (
-    apply_butterworth_filter,
-    calculate_acceleration,
-    calculate_cross_correlation_with_datetime,
-)
-
-from src.dataset import (
-    SubjectDataIterator,
-    ECGSubjectLoader,
-    StereoAzureSubjectLoader,
-    IMUSubjectLoader,
-)
+from src.dataset import SubjectDataIterator
 
 import numpy as np
+import pandas as pd
 import logging
 import matplotlib
 matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 
 parser = ArgumentParser()
-parser.add_argument("--src_path", type=str, dest="src_path", default="/media/ch/Data/RPE_DATA_SET_PAPER")
+parser.add_argument("--src_path", type=str, dest="src_path", default="/media/ch/Data/RPE_Analysis")
 parser.add_argument("--log_path", type=str, dest="log_path", default="results")
 parser.add_argument("--dst_path", type=str, dest="dst_path", default="data/processed")
 parser.add_argument("--show", type=bool, dest="show", default=True)
@@ -32,10 +21,9 @@ iterator = SubjectDataIterator(
     base_path=args.src_path,
     # log_path=args.log_path,
     dst_path=args.dst_path,
-    loaders=[
-        StereoAzureSubjectLoader,
-        # ECGSubjectLoader,
-        IMUSubjectLoader,
+    data_loader=[
+        SubjectDataIterator.STEREO_AZURE,
+        SubjectDataIterator.RPE,
     ]
 )
 
@@ -45,32 +33,48 @@ logging.basicConfig(
     datefmt="%m-%d %H:%M:%S",
 )
 
-for trial in iterator.iterate_over_all_subjects():
-    azure = trial["azure"]
-    # azure.reduce_skeleton_joints()
-    azure_df = azure._fused
 
-    # Synchronize Faros <-> Kinect
-    physilog = trial["imu"]
-    # faros_imu = trial["ecg"]["imu"]
-    # hrv_df = trial["ecg"]["hrv"]
+def prepare_data_for_dl(dst_path: str):
+    total_df = pd.DataFrame()
 
-    azure_acc_df = calculate_acceleration(azure_df)
-    shift_dt = calculate_cross_correlation_with_datetime(
-        reference_df=apply_butterworth_filter(physilog, cutoff=6, order=4, sampling_rate=128),
-        ref_sync_axis="CHEST_ACCELERATION_Z",
-        target_df=azure_acc_df,
-        target_sync_axis="SPINE_CHEST (y)",
-        show=args.show,
-        # log_path=join(trial["log_path"], "cross_correlation.png"),
-        log_path=join("plots/sync", f"{trial['subject_name']}_{trial['nr_set']}_cross_correlation.png"),
-    )
-    azure_acc_df.index += shift_dt
-    azure_df.index += shift_dt
+    for set_id, trial in enumerate(iterator.iterate_over_all_subjects()):
+        print("A new set")
+        cur_df = trial[SubjectDataIterator.STEREO_AZURE]
+        cur_df["rpe"] = trial[SubjectDataIterator.RPE]
+        cur_df["subject"] = trial["subject"]
+        cur_df["set_id"] = set_id
 
-    output_path = join(args.log_path, trial["subject_name"], "azure")
-    create_folder_if_not_already_exists(output_path)
-    azure_df.to_csv(join(output_path, f"azure_{trial['nr_set'] + 1}.csv"))
+        total_df = pd.concat([total_df, cur_df], ignore_index=True)
+
+    total_df.to_csv(join(dst_path, "train_dl_test.csv"))
+
+
+# for trial in iterator.iterate_over_all_subjects():
+#     azure = trial["azure"]
+#     # azure.reduce_skeleton_joints()
+#     azure_df = azure._fused
+#
+#     # Synchronize Faros <-> Kinect
+#     physilog = trial["imu"]
+#     # faros_imu = trial["ecg"]["imu"]
+#     # hrv_df = trial["ecg"]["hrv"]
+#
+#     azure_acc_df = calculate_acceleration(azure_df)
+#     shift_dt = calculate_cross_correlation_with_datetime(
+#         reference_df=apply_butterworth_filter(physilog, cutoff=6, order=4, sampling_rate=128),
+#         ref_sync_axis="CHEST_ACCELERATION_Z",
+#         target_df=azure_acc_df,
+#         target_sync_axis="SPINE_CHEST (y)",
+#         show=args.show,
+#         # log_path=join(trial["log_path"], "cross_correlation.png"),
+#         log_path=join("plots/sync", f"{trial['subject_name']}_{trial['nr_set']}_cross_correlation.png"),
+#     )
+#     azure_acc_df.index += shift_dt
+#     azure_df.index += shift_dt
+#
+#     output_path = join(args.log_path, trial["subject_name"], "azure")
+#     create_folder_if_not_already_exists(output_path)
+#     azure_df.to_csv(join(output_path, f"azure_{trial['nr_set'] + 1}.csv"))
 
     # repetitions = segment_1d_joint_on_example(
     #     joint_data=azure_df["PELVIS (y)"],
@@ -113,3 +117,9 @@ for trial in iterator.iterate_over_all_subjects():
     # hrv_df.to_csv(join(subject_path, f"{trial['nr_set']:02d}_hrv.csv"), sep=";")
     # physilog.to_csv(join(subject_path, f"{trial['nr_set']:02d}_imu.csv"), sep=";")
     # faros_imu.to_csv(join(subject_path, f"{trial['nr_set']:02d}_faros_imu.csv"), sep=";")
+
+
+if not os.path.exists(args.dst_path):
+    os.makedirs(args.dst_path)
+
+prepare_data_for_dl(args.dst_path)

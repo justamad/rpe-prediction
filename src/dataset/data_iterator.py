@@ -14,27 +14,32 @@ import os
 import logging
 import shutil
 
-loader_names = {
-    StereoAzureSubjectLoader: "azure",
-    RPESubjectLoader: "rpe",
-    ECGSubjectLoader: "ecg",
-    IMUSubjectLoader: "imu",
-}
-
 
 class SubjectDataIterator(object):
+
+    STEREO_AZURE = "azure"
+    RPE = "rpe"
+    ECG = "ecg"
+    IMU = "imu"
+
+    loader_names = {
+        STEREO_AZURE: StereoAzureSubjectLoader,
+        RPE: RPESubjectLoader,
+        ECG: ECGSubjectLoader,
+        IMU: IMUSubjectLoader,
+    }
 
     def __init__(
             self,
             base_path: str,
             dst_path: str,
-            loaders: List,
+            data_loader: List[str],
             log_path: str = None,
     ):
         self._base_path = base_path
         self._dst = dst_path
         self._log_path = log_path
-        self._data_loaders_dict = {loader_names[loader_type]: loader_type for loader_type in loaders}
+        self._data_loaders_dict = {self.loader_names[loader_name]: loader_name for loader_name in data_loader}
 
     def iterate_over_all_subjects(self):
         return self.iterate_over_specific_subjects()
@@ -45,6 +50,7 @@ class SubjectDataIterator(object):
                 yield trial
 
     def _load_subject_data_collectors(self, subject_list: List):
+        cur_dir = os.getcwd()
         subjects = os.listdir(self._base_path)
         if subject_list:
             subjects = list(filter(lambda s: s in subject_list, subjects))
@@ -54,13 +60,13 @@ class SubjectDataIterator(object):
                 yield SubjectDataCollector(
                     subject_root_path=join(self._base_path, subject),
                     data_loaders=self._data_loaders_dict,
-                    subject_name=subject,
+                    subject=subject,
                     nr_sets=12,
                 )
-                shutil.copy(
-                    src=join(self._base_path, subject, "rpe_ratings.json"),
-                    dst=join(self._dst, subject, "rpe_ratings.json"),
-                )
+                # shutil.copy(
+                #     src=join(self._base_path, subject, "rpe_ratings.json"),
+                #     dst=join(self._dst, subject, "rpe_ratings.json"),
+                # )
 
             except LoadingException as e:
                 logging.warning(f"Data Loader failed for subject {subject}: {e}")

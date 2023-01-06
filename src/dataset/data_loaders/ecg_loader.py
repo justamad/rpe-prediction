@@ -1,5 +1,3 @@
-import pyhrv.hrv
-
 from .base_loader import BaseSubjectLoader, LoadingException
 from os.path import exists, join
 from datetime import datetime
@@ -12,7 +10,7 @@ import numpy as np
 import neurokit2 as nk
 import json
 import matplotlib
-matplotlib.use("Qt5Agg")
+matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 
 

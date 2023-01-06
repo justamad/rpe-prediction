@@ -16,6 +16,10 @@ class IMUSubjectLoader(BaseSubjectLoader):
         if not exists(root_path):
             raise LoadingException(f"Given directory does not exist: {root_path}")
 
+        # imu_path = join(root_path, "physilog")
+        # if not exists(imu_path):
+        #    raise LoadingException(f"Given directory does not exist: {imu_path}")
+
         json_file = join(root_path, "time_selection.json")
         if not exists(json_file):
             raise LoadingException(f"Time selection file {json_file} does not exists.")
