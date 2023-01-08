@@ -3,15 +3,14 @@ from src.plot import PDFWriter
 from os.path import join, isdir
 from functools import reduce
 
-from src.config import (
+from src.dataset import (
     SubjectDataIterator,
     StereoAzureSubjectLoader,
     RPESubjectLoader,
-    DataFrameLoader,
 )
 
 from src.processing import (
-    segment_1d_joint_on_example,
+    segment_signal_peak_detection,
     compute_mean_and_std_of_joint_for_subjects,
     align_skeleton_parallel_to_x_axis,
 )
@@ -63,8 +62,8 @@ def fuse_both_kinect_cameras(pdf_file: str):
             sub_path=set_data['azure']['sub'],
         )
 
-        repetitions = segment_1d_joint_on_example(
-            joint_data=azure.sub_position['PELVIS (y)'],
+        repetitions = segment_signal_peak_detection(
+            joint_series=azure.sub_position['PELVIS (y)'],
             exemplar=example,
             std_dev_p=0.5,
             show=False,

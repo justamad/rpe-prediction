@@ -22,9 +22,30 @@ class StereoAzure(object):
         self._delay = delay
         self._synchronize_temporal()
 
+        m_err_1, s_err_1 = self._calculate_error_between_both_cameras()
+        self._calculate_affine_transformation_based_on_data()
+        m_err_2, s_err_2 = self._calculate_error_between_both_cameras()
+
+        logging.info(f"Joint errors: m={m_err_1:.2f}, s={s_err_2:.2f} mm, after: m={m_err_2:.2f}, s={s_err_2:.2f}")
+
+        df_sub = self.sub_position.reset_index(drop=True)
+        df_master = self.mas_position.reset_index(drop=True)
+
+        averaged = self.fuse_skeleton_gradients(df_master, df_sub)
+        average_filtered = apply_butterworth_filter(
+            df=averaged,
+            cutoff=4,
+            sampling_rate=30,
+            order=4,
+        )
+
+        average_filtered = average_filtered.set_index(self.sub_position.index)
+        average_filtered.index = pd.to_datetime(average_filtered.index, unit="s")
+        self._fused = average_filtered
+
     def _synchronize_temporal(self):
         self._sub.add_delta_to_timestamps(-self._delay)
-        start_point = self._master.timestamps[0]
+        start_point = self._master._df.index[0]
         self._master.add_delta_to_timestamps(-start_point)
         self._sub.add_delta_to_timestamps(-start_point)
 
@@ -35,6 +56,43 @@ class StereoAzure(object):
         self._sub.cut_data_by_index(minimum, minimum + length)
         self._master.set_new_timestamps(self._sub.timestamps)
 
+    def fuse_skeleton_gradients(
+            self,
+            df1: pd.DataFrame,
+            df2: pd.DataFrame,
+            exp: float = 1.4
+    ):
+        x1 = df1.values
+        x2 = df2.values
+
+        initial_poses = 20
+        result = np.zeros(x1.shape)
+        result[:initial_poses, :] = (x1[:initial_poses, :] + x2[:initial_poses, :]) / 2
+        for frame in range(initial_poses, len(x1)):
+            for joint in range(x1.shape[1] // 3):
+                last_point = result[frame - 1, joint * 3:joint * 3 + 3]
+
+                p1 = x1[frame, joint * 3:joint * 3 + 3]
+                p2 = x2[frame, joint * 3:joint * 3 + 3]
+
+                # Distance with respect to last averaged point
+                dist1 = np.linalg.norm(p1 - last_point) ** exp
+                dist2 = np.linalg.norm(p2 - last_point) ** exp
+
+                dist1 = 1e-3 if dist1 < 1e-5 else dist1
+                dist2 = 1e-3 if dist2 < 1e-5 else dist2
+
+                w1 = 1.0 / dist1
+                w2 = 1.0 / dist2
+
+                weight_sum = w1 + w2
+                w1 /= weight_sum
+                w2 /= weight_sum
+
+                result[frame, joint * 3:joint * 3 + 3] = w1 * p1 + w2 * p2
+
+        return pd.DataFrame(result, columns=df1.columns)
+
     def apply_external_rotation(
             self,
             rotation: np.ndarray,
@@ -42,58 +100,13 @@ class StereoAzure(object):
     ):
         self._sub.apply_affine_transformation(rotation, translation)
 
-    def fuse_cameras(
-            self,
-            show: bool = False,
-            pp=None,
-    ):
-        df_sub = self.sub_position.reset_index(drop=True)
-        df_master = self.mas_position.reset_index(drop=True)
-
-        m_err_1, s_err_1 = self._calculate_error_between_both_cameras()
-        self._calculate_affine_transformation_based_on_data()
-        m_err_2, s_err_2 = self._calculate_error_between_both_cameras()
-
-        logging.info(f"Joint errors: m={m_err_1:.2f}, s={s_err_2:.2f} mm, after: m={m_err_2:.2f}, s={s_err_2:.2f}")
-
-        # Variance average
-        var_sub = df_sub.var()
-        var_mas = df_master.var()
-        averaged = (var_sub * df_master + var_mas * df_sub) / (var_sub + var_mas)
-        average_filtered = apply_butterworth_filter(
-            df=averaged,
-            cutoff=4,
-            sampling_rate=30,
-            order=4,
-        )
-
-        if show:
-            plt.close()
-            plt.figure()
-
-            for joint in df_sub.columns:
-                plt.plot(df_sub[joint], color="red", label="Left Sensor")
-                plt.plot(df_master[joint], color="blue", label="Right Sensor")
-                plt.plot(average_filtered[joint], label="Butterworth 4 Hz")
-                plt.xlabel("Frames [1/30 s]")
-                plt.ylabel("Distance [mm]")
-                plt.title(f"{joint.title().replace('_', ' ')}")
-                plt.legend()
-                plt.tight_layout()
-                pp.save_figure()
-                plt.clf()
-
-        average_filtered = average_filtered.set_index(self.sub_position.index)
-        average_filtered.index = pd.to_datetime(average_filtered.index, unit="s")
-        return average_filtered
-
     def _calculate_affine_transformation_based_on_data(
             self,
             show: bool = False,
     ):
         rotation, translation = find_rigid_transformation_svd(
-            self._master.data.to_numpy().reshape(-1, 3),
-            self._sub.data.to_numpy().reshape(-1, 3),
+            self._master.data.to_numpy().reshape(-1, 3)[:20000],
+            self._sub.data.to_numpy().reshape(-1, 3)[:20000],
             show=show
         )
         self._master.apply_affine_transformation(rotation, translation)

@@ -1,7 +1,6 @@
 numpy
 pandas
 matplotlib
-vtk
 scipy
 fastdtw
 pyEDFlib
@@ -19,4 +18,3 @@ neurokit2
 biosppy
 pyEDFlib
 pyhrv
-pyqt5
