@@ -1,3 +1,4 @@
+from typing import Tuple
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_squared_error
 from sklearn.feature_selection import SelectFromModel
@@ -83,15 +84,17 @@ def eliminate_features_with_rfecv(
 ):
     estimator = XGBRegressor()
     logo = LeaveOneGroupOut()
-    rfe = RFECV(estimator,
-                min_features_to_select=nr_features,
-                step=0.1,
-                n_jobs=-1,
-                verbose=10,
-                scoring='neg_mean_squared_error',
-                cv=logo.get_n_splits(groups=y_train['group']))
+    rfe = RFECV(
+        estimator,
+        min_features_to_select=nr_features,
+        step=0.1,
+        n_jobs=-1,
+        verbose=10,
+        scoring="neg_mean_squared_error",
+        cv=logo.get_n_splits(groups=y_train["group"]),
+    )
 
-    rfe.fit(X_train, y_train['rpe'])
+    rfe.fit(X_train, y_train["rpe"])
 
     # Save RFECV results for later
     rfe_df = pd.DataFrame(rfe.ranking_, index=X_train.columns, columns=['Rank']).sort_values(by='Rank', ascending=True)
@@ -103,17 +106,11 @@ def eliminate_features_with_rfecv(
 def eliminate_features_with_rfe(
         X_train: pd.DataFrame,
         y_train: pd.DataFrame,
-        X_test: pd.DataFrame,
-        y_test: pd.DataFrame,
-        window_size: int,
         step: int = 10,
         nr_features: int = 100,
-        overlap: float = 0.5,
-        path: str = None,
-):
-    estimator = XGBRegressor()
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     selector = RFE(
-        estimator=estimator,
+        estimator=XGBRegressor(),
         n_features_to_select=nr_features,
         step=step,
         verbose=10,
@@ -124,9 +121,8 @@ def eliminate_features_with_rfe(
     rfe_df = pd.DataFrame(
         data=selector.ranking_,
         index=X_train.columns,
-        columns=['Rank']
-    ).sort_values(by='Rank', ascending=True)
-
+        columns=["Rank"],
+    ).sort_values(by="Rank", ascending=True)
     rfe_df.index.names = ["Feature"]
-    rfe_df.to_csv(join(path, f"rfe_fe_win_{window_size}_overlap_{overlap}.csv"), sep=';')
-    return X_train.loc[:, mask], X_test.loc[:, mask]
+
+    return X_train.loc[:, mask], rfe_df

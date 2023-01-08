@@ -23,13 +23,13 @@ joints_with_first_joint_as_origin = [("SPINE_CHEST", "NECK", "SPINE_NAVEL"),
 
 
 def calculate_1d_joint_velocities(df: pd.DataFrame) -> pd.DataFrame:
-    diff = df.diff(axis=0).dropna(axis='index')
+    diff = df.diff(axis=0).dropna(axis="index")
     diff = diff.add_suffix('_1D_VELOCITY')
     return diff
 
 
 def calculate_3d_joint_velocities(df: pd.DataFrame) -> pd.DataFrame:
-    diff = df.diff(axis=0).dropna(axis='index')
+    diff = df.diff(axis=0).dropna(axis="index")
     euclidean_distances = np.sqrt(np.sum((diff.to_numpy() ** 2).reshape(-1, 3), axis=1))
     gradients = euclidean_distances.reshape(diff.shape[0], diff.shape[1] // 3)
     return pd.DataFrame(
@@ -62,17 +62,14 @@ def calculate_joint_angles_with_reference_joint(
 
 
 def calculate_angles_between_3_joints(df: pd.DataFrame) -> pd.DataFrame:
-    result = []
-    columns = []
+    data = {}
     for j1, j2, j3 in joints_with_first_joint_as_origin:
         p1 = df[[c for c in df.columns if j1 in c]].to_numpy()
         p2 = df[[c for c in df.columns if j2 in c]].to_numpy()
         p3 = df[[c for c in df.columns if j3 in c]].to_numpy()
-        columns.append(f"{j1}->{j2}={j1}->{j3}")
-        angles = calculate_angle_in_radians_between_vectors(p2 - p1, p3 - p1)
-        result.append(angles)
+        data[f"{j1}->{j2}={j1}->{j3}"] = calculate_angle_in_radians_between_vectors(p2 - p1, p3 - p1)
 
-    return pd.DataFrame(data=np.stack(result, axis=-1), columns=columns, index=df.index)
+    return pd.DataFrame(data=data, index=df.index)
 
 
 def calculate_relative_coordinates_with_reference_joint(

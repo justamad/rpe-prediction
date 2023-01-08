@@ -11,32 +11,32 @@ import numpy as np
 Y_AXIS_LIM_EPSILON = 0.5
 
 
-def plot_ml_predictions_for_sets(df: pd.DataFrame, file_name: str = None):
-    data = df[['set', 'prediction']]
-    sets = data['set'].unique()
-    rpe = df[['rpe', 'set']].drop_duplicates()
-    ground_truth = df['rpe']
+def plot_prediction_results_for_sets(df: pd.DataFrame, file_name: str = None):
+    sets = []
+    rpe = []
+    mean_predictions = []
+    std_predictions = []
 
-    rpe = {cur_set: cur_rpe for cur_set, cur_rpe in zip(rpe['set'], rpe['rpe'])}
-    means = {}
-    stds = {}
+    for set in df["nr_set"].unique():
+        sub_df = df[df["nr_set"] == set]
+        prediction = sub_df["prediction"]
+        ground_truth = sub_df["rpe"]
+        sets.append(set)
+        rpe.append(ground_truth.mean())
+        mean_predictions.append(prediction.mean())
+        std_predictions.append(prediction.std())
 
-    for cur_set in sets:
-        mask = data['set'] == cur_set
-        cur_data = data.loc[mask]['prediction']
-        means[cur_set] = np.mean(cur_data)
-        stds[cur_set] = np.std(cur_data)
-
-    pear, p = pearsonr([means[i] for i in sets], [rpe[i] for i in sets])
+    pear, p = pearsonr(rpe, mean_predictions)
+    r2 = r2_score(rpe, mean_predictions)
 
     # Create stacked error bars:
-    plt.errorbar(means.keys(), means.values(), stds.values(), fmt='ok', lw=1, ecolor='green', mfc='green')
-    plt.scatter(rpe.keys(), rpe.values(), label="Ground Truth", c='red')
-    plt.xticks(list(rpe.keys()))
-    plt.ylim(ground_truth.min() - Y_AXIS_LIM_EPSILON, ground_truth.max() + Y_AXIS_LIM_EPSILON)
+    plt.errorbar(sets, mean_predictions, std_predictions, fmt='ok', lw=1, ecolor='green', mfc='green')
+    plt.scatter(sets, rpe, label="Ground Truth", c='red')
+    plt.xticks(sets)
+    plt.ylim(min(rpe) - Y_AXIS_LIM_EPSILON, max(rpe) + Y_AXIS_LIM_EPSILON)
     plt.xlabel("Set Nr")
     plt.ylabel("RPE value")
-    plt.title(f'Correlation Pearson: {pear:.2f}')
+    plt.title(f"Correlation Pearson: {pear:.2f}, R2: {r2:.2f}")
 
     if file_name is not None:
         plt.savefig(file_name)
