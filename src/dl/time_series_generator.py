@@ -33,7 +33,7 @@ class DataSetIterator(tf.keras.utils.Sequence):
         self.__indices = []
         self.on_epoch_end()
 
-    def __build_index(self):
+    def __build_index(self) -> List:
         indices = []
         for data_idx, data_entry in enumerate(self._X):
             n_windows = math.floor((len(data_entry) - self._win_size) / self._stride) + 1
@@ -41,7 +41,7 @@ class DataSetIterator(tf.keras.utils.Sequence):
 
         return indices
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         X, y = [], []
         for n_sample in range(index, index + self._batch_size):
             data_idx, win_idx = self.__indices[n_sample]
@@ -77,4 +77,3 @@ if __name__ == '__main__':
 
     for i in range(len(generator)):
         print(f"iteration: {i}", generator[i][0].shape, generator[i][1].shape)
-        # print(generator[i])

@@ -1,52 +1,54 @@
-import os.path
+from src.processing import segment_signal_peak_detection
+from src.dataset import SubjectDataIterator
 from argparse import ArgumentParser
 from os.path import join
-from src.dataset import SubjectDataIterator
+from PyMoCapViewer import MoCapViewer
 
 import numpy as np
+import os.path
 import pandas as pd
 import logging
 import matplotlib
 matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 
-parser = ArgumentParser()
-parser.add_argument("--src_path", type=str, dest="src_path", default="/media/ch/Data/RPE_Analysis")
-parser.add_argument("--log_path", type=str, dest="log_path", default="results")
-parser.add_argument("--dst_path", type=str, dest="dst_path", default="data/processed")
-parser.add_argument("--show", type=bool, dest="show", default=True)
-args = parser.parse_args()
-
-iterator = SubjectDataIterator(
-    base_path=args.src_path,
-    # log_path=args.log_path,
-    dst_path=args.dst_path,
-    data_loader=[
-        SubjectDataIterator.STEREO_AZURE,
-        SubjectDataIterator.RPE,
-    ]
-)
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s %(name)-8s %(levelname)-8s %(message)s",
-    datefmt="%m-%d %H:%M:%S",
-)
-
 
 def prepare_data_for_dl(dst_path: str):
-    total_df = pd.DataFrame()
+    iterator = SubjectDataIterator(
+        base_path=dst_path,
+        log_path=args.dst_path,
+        # dst_path=args.dst_path,
+        data_loader=[
+            SubjectDataIterator.STEREO_AZURE,
+            SubjectDataIterator.RPE,
+        ]
+    )
+
+    # total_df = pd.DataFrame()
 
     for set_id, trial in enumerate(iterator.iterate_over_all_subjects()):
         print("A new set")
-        cur_df = trial[SubjectDataIterator.STEREO_AZURE]
-        cur_df["rpe"] = trial[SubjectDataIterator.RPE]
-        cur_df["subject"] = trial["subject"]
-        cur_df["set_id"] = set_id
+        pos_df, rot_df = trial[SubjectDataIterator.STEREO_AZURE]
+        pos_df.to_csv(join(trial["log_path"], "pos.csv"))
+        rot_df.to_csv(join(trial["log_path"], "rot.csv"))
 
-        total_df = pd.concat([total_df, cur_df], ignore_index=True)
+        # segments = segment_signal_peak_detection(pos_df["PELVIS (y)"], std_dev_p=0.2, show=False, log_path=None)
+        # lengths = [s[1] - s[0] for s in segments]
+        # cur_df = pd.DataFrame(lengths, columns=["length"])
 
-    total_df.to_csv(join(dst_path, "train_dl_test.csv"))
+        # viewer = MoCapViewer(sphere_radius=0.015, grid_axis=None)
+        # viewer.add_skeleton(azure_df, skeleton_connection="azure")
+        # viewer.show_window()
+
+        # cur_df["rpe"] = trial[SubjectDataIterator.RPE]
+        # cur_df["subject"] = trial["subject"]
+        # cur_df["set_id"] = set_id
+        # cur_df["nr_set"] = trial["nr_set"]
+        # cur_df["group"] = trial["group"]
+
+        # total_df = pd.concat([total_df, cur_df], ignore_index=True)
+
+    # total_df.to_csv(join(dst_path, "durations.csv"))
 
 
 # for trial in iterator.iterate_over_all_subjects():
@@ -119,7 +121,21 @@ def prepare_data_for_dl(dst_path: str):
     # faros_imu.to_csv(join(subject_path, f"{trial['nr_set']:02d}_faros_imu.csv"), sep=";")
 
 
-if not os.path.exists(args.dst_path):
-    os.makedirs(args.dst_path)
+if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument("--src_path", type=str, dest="src_path", default="/media/ch/Data/RPE_Analysis")
+    parser.add_argument("--log_path", type=str, dest="log_path", default="results")
+    parser.add_argument("--dst_path", type=str, dest="dst_path", default="data/processed")
+    parser.add_argument("--show", type=bool, dest="show", default=True)
+    args = parser.parse_args()
 
-prepare_data_for_dl(args.dst_path)
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s %(name)-8s %(levelname)-8s %(message)s",
+        datefmt="%m-%d %H:%M:%S",
+    )
+
+    if not os.path.exists(args.dst_path):
+        os.makedirs(args.dst_path)
+
+    prepare_data_for_dl(args.src_path)

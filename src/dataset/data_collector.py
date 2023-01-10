@@ -12,21 +12,19 @@ class SubjectDataCollector(object):
             subject_root_path: str,
             data_loaders: dict,
             subject: str,
-            nr_sets: int = 12
+            nr_sets: int = 12,
+            log_path: str = None,
     ):
         self._nr_sets = nr_sets
         self._subject = subject
+        self._log_path = log_path
 
         self._file_loaders = {}
         for loader, loader_name in data_loaders.items():
             current_loader = loader(subject_root_path, subject)
             self._file_loaders[loader_name] = current_loader
 
-    def iterate_over_sets(
-            self,
-            group_id: int,
-            log_path: str = None,
-    ):
+    def iterate_over_sets(self, group_id: int):
         for current_set in range(self._nr_sets):
             try:
                 trial_dic = {k: v.get_trial_by_set_nr(current_set) for k, v in self._file_loaders.items()}
@@ -34,8 +32,8 @@ class SubjectDataCollector(object):
                 trial_dic["group"] = group_id
                 trial_dic["subject"] = self._subject
 
-                if log_path is not None:
-                    cur_log_path = join(log_path, self._subject, f"{current_set}_set")
+                if self._log_path is not None:
+                    cur_log_path = join(self._log_path, self._subject, f"{current_set}_set")
                     create_folder_if_not_already_exists(cur_log_path)
                     trial_dic["log_path"] = cur_log_path
 

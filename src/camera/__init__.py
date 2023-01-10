@@ -1,3 +1,1 @@
-from .azure import AzureKinect
-from .stereo_azure import StereoAzure
-from .skeleton_definition import SKELETON_DEFINITION
+from .skeleton_processing import fuse_cameras

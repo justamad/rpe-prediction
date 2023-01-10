@@ -1,7 +1,8 @@
 from .base_loader import BaseSubjectLoader, LoadingException
+from src.camera import fuse_cameras
 from os.path import join, exists, isdir
-from src.camera import StereoAzure
 
+import pandas as pd
 import os
 import pathlib
 
@@ -31,8 +32,10 @@ class StereoAzureSubjectLoader(BaseSubjectLoader):
         sub = join(self._sub_trials[trial_nr], "positions_3d.csv")
         master = join(self._master_trials[trial_nr], "positions_3d.csv")
 
-        azure = StereoAzure(master_path=master, sub_path=sub)
-        return azure._fused
+        master_df = pd.read_csv(master, index_col=0, sep=";")
+        sub_df = pd.read_csv(sub, index_col=0, sep=";")
+        fused_df = fuse_cameras(master_df, sub_df)
+        return fused_df
 
     def get_nr_of_sets(self):
         return min(len(self._sub_trials), len(self._master_trials))
