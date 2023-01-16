@@ -87,12 +87,11 @@ def normalize_rpe_values_min_max(
     return df
 
 
-def normalize_data_by_subject(df: pd.DataFrame) -> pd.DataFrame:
+def normalize_data_by_subject(df: pd.DataFrame, label_cols: int = 3) -> pd.DataFrame:
     total_df = pd.DataFrame()
     for name, group in df.groupby("subject"):
-        sub_df = group.iloc[:, :-2]
-        # group.iloc[:, :-4] = (sub_df - sub_df.min()) / (sub_df.max() - sub_df.min())
-        group.iloc[:, :-4] = (sub_df - sub_df.mean()) / (sub_df.std())
+        sub_df = group.iloc[:, :-label_cols].values
+        group.iloc[:, :-label_cols] = (sub_df - sub_df.mean()) / (sub_df.std())
         total_df = pd.concat([total_df, group], ignore_index=True)
 
     return total_df

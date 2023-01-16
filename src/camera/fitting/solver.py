@@ -1,4 +1,4 @@
-from .kinematic_model import build_skeleton, complete_angle_vector_with_zeros
+from .kinematic_model import build_skeleton
 from scipy.optimize import least_squares
 from typing import Dict, Tuple
 

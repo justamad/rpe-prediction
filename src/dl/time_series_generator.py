@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -41,7 +41,7 @@ class DataSetIterator(tf.keras.utils.Sequence):
 
         return indices
 
-    def __getitem__(self, index: int):
+    def __getitem__(self, index: int) -> Tuple[np.ndarray, np.ndarray]:
         X, y = [], []
         for n_sample in range(index, index + self._batch_size):
             data_idx, win_idx = self.__indices[n_sample]

@@ -5,6 +5,7 @@ from os.path import join
 from PyMoCapViewer import MoCapViewer
 
 import numpy as np
+import json
 import os.path
 import pandas as pd
 import logging
@@ -13,7 +14,7 @@ matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 
 
-def prepare_data_for_dl(dst_path: str):
+def process_all_raw_data(dst_path: str):
     iterator = SubjectDataIterator(
         base_path=dst_path,
         log_path=args.dst_path,
@@ -121,6 +122,37 @@ def prepare_data_for_dl(dst_path: str):
     # faros_imu.to_csv(join(subject_path, f"{trial['nr_set']:02d}_faros_imu.csv"), sep=";")
 
 
+def prepare_data_for_deep_learning(src_path: str, dst_path: str):
+    total_df = pd.DataFrame()
+    set_counter = 0
+
+    for subject in os.listdir(src_path):
+        subject_path = join(src_path, subject)
+
+        if os.path.isfile(subject_path):
+            continue
+
+        with open(join(subject_path, "rpe_ratings.json")) as f:
+            rpe_values = json.load(f)
+        rpe_values = {k: v for k, v in enumerate(rpe_values['rpe_ratings'])}
+
+        for set_id in os.listdir(subject_path):
+            if os.path.isfile(join(subject_path, set_id)):
+                continue
+
+            n_set = int(set_id.split("_")[0])
+            set_path = join(subject_path, set_id)
+            ori_df = pd.read_csv(join(set_path, "rot.csv"), sep=",", index_col=0)
+            ori_df["rpe"] = rpe_values[n_set]
+            ori_df["subject"] = subject
+            ori_df["set_id"] = set_counter
+
+            total_df = pd.concat([total_df, ori_df], axis=0)
+            set_counter += 1
+
+    total_df.to_csv(join(dst_path, "dl_ori.csv"))
+
+
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--src_path", type=str, dest="src_path", default="/media/ch/Data/RPE_Analysis")
@@ -138,4 +170,5 @@ if __name__ == "__main__":
     if not os.path.exists(args.dst_path):
         os.makedirs(args.dst_path)
 
-    prepare_data_for_dl(args.src_path)
+    # process_all_raw_data(args.src_path)
+    prepare_data_for_deep_learning(args.dst_path, args.dst_path)
