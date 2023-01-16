@@ -18,6 +18,7 @@ class DataSetIterator(tf.keras.utils.Sequence):
             overlap: float = 0.5,
             balance: bool = True,
             shuffle: bool = True,
+            random_state: int = 42,
     ):
         if len(X) != len(y):
             raise AttributeError(f"Input and label dimensions do not match: {len(X)} vs {len(y)}.")
@@ -30,6 +31,9 @@ class DataSetIterator(tf.keras.utils.Sequence):
         self._batch_size = batch_size
         self._balance = balance
         self._shuffle = shuffle
+        if self._shuffle:
+            np.random.seed(random_state)
+
         self.__indices = []
         self.on_epoch_end()
 
@@ -38,6 +42,9 @@ class DataSetIterator(tf.keras.utils.Sequence):
         for data_idx, data_entry in enumerate(self._X):
             n_windows = math.floor((len(data_entry) - self._win_size) / self._stride) + 1
             indices.extend([(data_idx, win_idx * self._stride) for win_idx in range(n_windows)])
+
+        if self._shuffle:
+            np.random.shuffle(indices)
 
         return indices
 
@@ -66,7 +73,7 @@ Number of batches: [{len(self)}]
 
 
 if __name__ == '__main__':
-    df = pd.read_csv("../../data/processed/train_dl_test.csv", index_col=0)
+    df = pd.read_csv("../../data/processed/dl_ori.csv", index_col=0)
     subsets = [df[df["set_id"] == i] for i in df["set_id"].unique()]
     subsets = [(df.iloc[:, :-3], df.iloc[:, -3:]) for df in subsets]
     X = list(map(lambda x: x[0].values, subsets))
@@ -76,4 +83,5 @@ if __name__ == '__main__':
     print(generator)
 
     for i in range(len(generator)):
-        print(f"iteration: {i}", generator[i][0].shape, generator[i][1].shape)
+        X, y = generator[i]
+        print(f"iteration: {i}", X.shape, y.shape)
