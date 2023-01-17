@@ -13,11 +13,11 @@ class SubjectDataCollector(object):
             data_loaders: dict,
             subject: str,
             nr_sets: int = 12,
-            log_path: str = None,
+            dst_path: str = None,
     ):
         self._nr_sets = nr_sets
         self._subject = subject
-        self._log_path = log_path
+        self._dst_path = dst_path
 
         self._file_loaders = {}
         for loader, loader_name in data_loaders.items():
@@ -32,11 +32,12 @@ class SubjectDataCollector(object):
                 trial_dic["group"] = group_id
                 trial_dic["subject"] = self._subject
 
-                if self._log_path is not None:
-                    cur_log_path = join(self._log_path, self._subject, f"{current_set}_set")
-                    create_folder_if_not_already_exists(cur_log_path)
-                    trial_dic["log_path"] = cur_log_path
+                if self._dst_path is not None:
+                    cur_dst_path = join(self._dst_path, self._subject, f"{current_set:02d}_set")
+                    create_folder_if_not_already_exists(cur_dst_path)
+                    trial_dic["dst_path"] = cur_dst_path
 
+                logging.info(f"Loaded set {current_set} for subject {self._subject}")
                 yield trial_dic
             except LoadingException as e:
                 logging.warning(e)

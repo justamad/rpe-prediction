@@ -73,7 +73,7 @@ Number of batches: [{len(self)}]
 
 
 if __name__ == '__main__':
-    df = pd.read_csv("../../data/processed/dl_ori.csv", index_col=0)
+    df = pd.read_csv("../../data/processed_fitted/dl_ori.csv", index_col=0)
     subsets = [df[df["set_id"] == i] for i in df["set_id"].unique()]
     subsets = [(df.iloc[:, :-3], df.iloc[:, -3:]) for df in subsets]
     X = list(map(lambda x: x[0].values, subsets))

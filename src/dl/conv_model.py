@@ -35,6 +35,32 @@ def build_fcn_regression_model(
     model.add(layers.Dense(1, activation=activation, kernel_regularizer=l2(l2_factor)))
     return model
 
+
+def build_conv_lstm_regression_model(
+        n_samples: int,
+        n_features: int,
+        nr_filter: int = 64,
+        kernel_size: int = 32,
+        # l2_factor: float = 0.03,
+        dropout: float = 0.5,
+):
+    model = tf.keras.Sequential()
+    model.add(layers.Input(shape=(n_samples, n_features)))
+
+    model.add(layers.Conv1D(filters=nr_filter, kernel_size=kernel_size, padding="same",))  # kernel_regularizer=l2(l2_factor)))
+    model.add(layers.BatchNormalization())
+    model.add(layers.Activation(activation="relu"))
+    model.add(layers.Dropout(dropout))
+
+    # model.add(layers.Conv1D(filters=nr_filter * 2, kernel_size=32, padding="same", kernel_regularizer=l2(l2_factor)))
+    # model.add(layers.BatchNormalization())
+    # model.add(layers.Activation(activation="relu"))
+    # model.add(layers.Dropout(dropout))
+
+    model.add(layers.LSTM(units=nr_filter, return_sequences=False))
+    model.add(layers.Dense(1))  # , kernel_regularizer=l2(l2_factor)))
+    return model
+
 # def build_fcn_classification_model(seq_len: int = 30, n_dim: int = 36, n_classes: int = 14):
 #     l2_factor = 0.05
 #     dropout_factor = 0.5

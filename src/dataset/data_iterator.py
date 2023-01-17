@@ -34,19 +34,17 @@ class SubjectDataIterator(object):
             base_path: str,
             data_loader: List[str],
             dst_path: str = None,
-            log_path: str = None,
     ):
         self._base_path = base_path
-        self._dst = dst_path
-        self._log_path = log_path
+        self._dst_path = dst_path
         self._data_loaders_dict = {self.loader_names[loader_name]: loader_name for loader_name in data_loader}
 
     def iterate_over_all_subjects(self):
         return self.iterate_over_specific_subjects()
 
     def iterate_over_specific_subjects(self, *subjects):
-        for subject_id, loader in enumerate(self._load_and_yield_subject_data_collectors(list(subjects))):
-            for trial in loader.iterate_over_sets(group_id=subject_id):
+        for subject_id, subject_loader in enumerate(self._load_and_yield_subject_data_collectors(list(subjects))):
+            for trial in subject_loader.iterate_over_sets(group_id=subject_id):
                 yield trial
 
     def _load_and_yield_subject_data_collectors(self, subject_list: List[str]):
@@ -62,7 +60,7 @@ class SubjectDataIterator(object):
                     data_loaders=self._data_loaders_dict,
                     subject=subject,
                     nr_sets=12,
-                    log_path=self._log_path,
+                    dst_path=self._dst_path,
                 )
                 # shutil.copy(
                 #     src=join(self._base_path, subject, "rpe_ratings.json"),

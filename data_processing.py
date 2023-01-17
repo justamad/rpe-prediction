@@ -1,8 +1,15 @@
-from src.processing import segment_signal_peak_detection
 from src.dataset import SubjectDataIterator
 from argparse import ArgumentParser
+from typing import List
 from os.path import join
 from PyMoCapViewer import MoCapViewer
+
+from src.processing import (
+    segment_signal_peak_detection,
+    apply_butterworth_filter,
+    calculate_acceleration,
+    calculate_cross_correlation_with_datetime,
+)
 
 import numpy as np
 import json
@@ -14,112 +21,63 @@ matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 
 
-def process_all_raw_data(dst_path: str):
+def truncate_data_frames(*data_frames) -> List[pd.DataFrame]:
+    start_time = max([df.index[0] for df in data_frames])
+    end_time = min([df.index[-1] for df in data_frames])
+
+    result = [df[(df.index >= start_time) & (df.index < end_time)] for df in data_frames]
+    # max_len = min([len(df) for df in result])
+    # result = [df.iloc[:max_len] for df in result]
+    return result
+
+
+def process_all_raw_data(src_path: str, dst_path: str, plot_path: str):
     iterator = SubjectDataIterator(
-        base_path=dst_path,
-        log_path=args.dst_path,
-        # dst_path=args.dst_path,
+        base_path=src_path,
+        dst_path=dst_path,
         data_loader=[
             SubjectDataIterator.STEREO_AZURE,
-            SubjectDataIterator.RPE,
+            # SubjectDataIterator.RPE,
+            SubjectDataIterator.IMU,
         ]
     )
 
-    # total_df = pd.DataFrame()
-
     for set_id, trial in enumerate(iterator.iterate_over_all_subjects()):
-        print("A new set")
-        pos_df, rot_df = trial[SubjectDataIterator.STEREO_AZURE]
-        pos_df.to_csv(join(trial["log_path"], "pos.csv"))
-        rot_df.to_csv(join(trial["log_path"], "rot.csv"))
+        pos_df = trial[SubjectDataIterator.STEREO_AZURE]
 
-        # segments = segment_signal_peak_detection(pos_df["PELVIS (y)"], std_dev_p=0.2, show=False, log_path=None)
-        # lengths = [s[1] - s[0] for s in segments]
-        # cur_df = pd.DataFrame(lengths, columns=["length"])
+        imu_df = trial[SubjectDataIterator.IMU]
+        imu_df = apply_butterworth_filter(df=imu_df, cutoff=20, order=4, sampling_rate=128)
 
-        # viewer = MoCapViewer(sphere_radius=0.015, grid_axis=None)
-        # viewer.add_skeleton(azure_df, skeleton_connection="azure")
-        # viewer.show_window()
+        azure_acc_df = calculate_acceleration(pos_df)
+        shift_dt = calculate_cross_correlation_with_datetime(
+            reference_df=imu_df,
+            ref_sync_axis="CHEST_ACCELERATION_Z",
+            target_df=azure_acc_df,
+            target_sync_axis="SPINE_CHEST (y)",
+            show=False,
+        )
+        azure_acc_df.index += shift_dt
+        pos_df.index += shift_dt
 
-        # cur_df["rpe"] = trial[SubjectDataIterator.RPE]
-        # cur_df["subject"] = trial["subject"]
-        # cur_df["set_id"] = set_id
-        # cur_df["nr_set"] = trial["nr_set"]
-        # cur_df["group"] = trial["group"]
+        imu_filter_df, azure_acc_df, pos_df = truncate_data_frames(imu_df, azure_acc_df, pos_df)
 
-        # total_df = pd.concat([total_df, cur_df], ignore_index=True)
+        fig, axs = plt.subplots(3, 1, sharex=True, figsize=(15, 12))
+        fig.suptitle(f"Subject: {trial['subject']}, Set: {trial['nr_set']}")
+        axs[0].plot(pos_df[['SPINE_CHEST (x)', 'SPINE_CHEST (y)', 'SPINE_CHEST (z)']])
+        axs[0].set_title("Kinect Position")
+        axs[1].plot(azure_acc_df[['SPINE_CHEST (x)', 'SPINE_CHEST (y)', 'SPINE_CHEST (z)']])
+        axs[1].set_title("Kinect Acceleration")
+        axs[2].plot(imu_filter_df[['CHEST_ACCELERATION_X', 'CHEST_ACCELERATION_Y', 'CHEST_ACCELERATION_Z']])
+        axs[2].set_title("Gaitup Acceleration")
+        plt.savefig(join(plot_path, f"{trial['subject']}_{trial['nr_set']}.png"))
+        # plt.show(block=True)
+        plt.close()
+        plt.cla()
+        plt.clf()
 
-    # total_df.to_csv(join(dst_path, "durations.csv"))
-
-
-# for trial in iterator.iterate_over_all_subjects():
-#     azure = trial["azure"]
-#     # azure.reduce_skeleton_joints()
-#     azure_df = azure._fused
-#
-#     # Synchronize Faros <-> Kinect
-#     physilog = trial["imu"]
-#     # faros_imu = trial["ecg"]["imu"]
-#     # hrv_df = trial["ecg"]["hrv"]
-#
-#     azure_acc_df = calculate_acceleration(azure_df)
-#     shift_dt = calculate_cross_correlation_with_datetime(
-#         reference_df=apply_butterworth_filter(physilog, cutoff=6, order=4, sampling_rate=128),
-#         ref_sync_axis="CHEST_ACCELERATION_Z",
-#         target_df=azure_acc_df,
-#         target_sync_axis="SPINE_CHEST (y)",
-#         show=args.show,
-#         # log_path=join(trial["log_path"], "cross_correlation.png"),
-#         log_path=join("plots/sync", f"{trial['subject_name']}_{trial['nr_set']}_cross_correlation.png"),
-#     )
-#     azure_acc_df.index += shift_dt
-#     azure_df.index += shift_dt
-#
-#     output_path = join(args.log_path, trial["subject_name"], "azure")
-#     create_folder_if_not_already_exists(output_path)
-#     azure_df.to_csv(join(output_path, f"azure_{trial['nr_set'] + 1}.csv"))
-
-    # repetitions = segment_1d_joint_on_example(
-    #     joint_data=azure_df["PELVIS (y)"],
-    #     exemplar=example,
-    #     std_dev_p=0.5,
-    #     show=False,
-    #     log_path=join(trial["log_path"], "segmentation.png"),
-    # )
-
-    # Truncate data
-    # cut_beginning = max(repetitions[0][0], physilog.index[0])
-    # cut_end = min(repetitions[-1][1], physilog.index[-1])
-    # azure_df = azure_df.loc[(azure_df.index > cut_beginning) & (azure_df.index < cut_end)]
-    # physilog = physilog.loc[(physilog.index > cut_beginning) & (physilog.index < cut_end)]
-    # ecg_df = ecg_df.loc[(ecg_df.index > cut_beginning) & (ecg_df.index < cut_end)]
-    # faros_imu = faros_imu.loc[(faros_imu.index > cut_beginning) & (faros_imu.index < cut_end)]
-
-    # fig, axs = plt.subplots(4, 1, sharex=True, figsize=(15, 12))
-    # fig.suptitle(f"Subject: {trial['subject_name']}, Set: {trial['nr_set']}")
-    # axs[0].plot(azure_df.filter(['SPINE_CHEST (x)', 'SPINE_CHEST (y)', 'SPINE_CHEST (z)'], axis=1))
-    # axs[0].set_title("Kinect Position")
-    # axs[1].plot(azure_acc_df.filter(['SPINE_CHEST (x)', 'SPINE_CHEST (y)', 'SPINE_CHEST (z)'], axis=1))
-    # axs[1].set_title("Kinect Acceleration")
-    # axs[2].plot(physilog.filter(['CHEST_ACCELERATION_X', 'CHEST_ACCELERATION_Y', 'CHEST_ACCELERATION_Z'], axis=1))
-    # axs[2].set_title("Gaitup Acceleration")
-    # # axs[2].plot(faros_imu, label=['X', 'Y', 'Z'])
-    # # axs[2].set_title("Faros Acceleration")
-    # # axs[3].plot(hrv_df)
-    # # axs[3].set_title("Faros ECG")
-    # # plt.savefig(join(trial['log_path'], "result.png"))
-    # plt.show(block=True)
-    # plt.close()
-    # plt.cla()
-    # plt.clf()
-
-    # subject_path = join(args.dst_path, trial["subject_name"])
-    # create_folder_if_not_already_exists(subject_path)
-    #
-    # azure_df.to_csv(join(subject_path, f"{trial['nr_set']:02d}_azure.csv"), sep=";")
-    # hrv_df.to_csv(join(subject_path, f"{trial['nr_set']:02d}_hrv.csv"), sep=";")
-    # physilog.to_csv(join(subject_path, f"{trial['nr_set']:02d}_imu.csv"), sep=";")
-    # faros_imu.to_csv(join(subject_path, f"{trial['nr_set']:02d}_faros_imu.csv"), sep=";")
+        pos_df.to_csv(join(trial["dst_path"], "pos.csv"))
+        imu_df.to_csv(join(trial["dst_path"], "imu.csv"))
+        # rot_df.to_csv(join(trial["log_path"], "rot.csv"))
 
 
 def prepare_data_for_deep_learning(src_path: str, dst_path: str):
@@ -140,23 +98,47 @@ def prepare_data_for_deep_learning(src_path: str, dst_path: str):
             if os.path.isfile(join(subject_path, set_id)):
                 continue
 
+            logging.info(f"Processing subject {subject}, set {set_id}")
             n_set = int(set_id.split("_")[0])
             set_path = join(subject_path, set_id)
-            ori_df = pd.read_csv(join(set_path, "rot.csv"), sep=",", index_col=0)
-            ori_df["rpe"] = rpe_values[n_set]
-            ori_df["subject"] = subject
-            ori_df["set_id"] = set_counter
+            imu_df = pd.read_csv(join(set_path, "imu.csv"), index_col=0)
+            # ori_df = pd.read_csv(join(set_path, "rot.csv"), sep=",", index_col=0)
+            # ori_df["rpe"] = rpe_values[n_set]
+            # ori_df["subject"] = subject
+            # ori_df["set_id"] = set_counter
+            imu_df["rpe"] = rpe_values[n_set]
+            imu_df["subject"] = subject
+            imu_df["set_id"] = set_counter
 
-            total_df = pd.concat([total_df, ori_df], axis=0)
+            total_df = pd.concat([total_df, imu_df], axis=0)
             set_counter += 1
 
-    total_df.to_csv(join(dst_path, "dl_ori.csv"))
+    total_df.to_csv(join(dst_path, "dl_imu.csv"))
+
+
+def prepare_conventional_machine_learning(src_path: str, dst_path: str):
+    total_df = pd.DataFrame()
+    set_counter = 0
+
+    for subject in os.listdir(src_path):
+        subject_path = join(src_path, subject)
+
+        if os.path.isfile(subject):
+            continue
+
+        # repetitions = segment_1d_joint_on_example(
+        #     joint_data=azure_df["PELVIS (y)"],
+        #     exemplar=example,
+        #     std_dev_p=0.5,
+        #     show=False,
+        #     log_path=join(trial["log_path"], "segmentation.png"),
+        # )
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--src_path", type=str, dest="src_path", default="/media/ch/Data/RPE_Analysis")
-    parser.add_argument("--log_path", type=str, dest="log_path", default="results")
+    parser.add_argument("--plot_path", type=str, dest="plot_path", default="plots")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="data/processed")
     parser.add_argument("--show", type=bool, dest="show", default=True)
     args = parser.parse_args()
@@ -170,5 +152,8 @@ if __name__ == "__main__":
     if not os.path.exists(args.dst_path):
         os.makedirs(args.dst_path)
 
-    # process_all_raw_data(args.src_path)
-    prepare_data_for_deep_learning(args.dst_path, args.dst_path)
+    if not os.path.exists(args.plot_path):
+        os.makedirs(args.plot_path)
+
+    process_all_raw_data(args.src_path, args.dst_path, args.plot_path)
+    # prepare_data_for_deep_learning(args.dst_path, args.dst_path)

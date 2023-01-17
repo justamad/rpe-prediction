@@ -20,7 +20,7 @@ def fuse_cameras(df1: pd.DataFrame, df2: pd.DataFrame):
     m_err_1, s_err_1 = calculate_error_between_both_cameras(df1, df2)
     df1, df2 = calculate_affine_transformation_based_on_data(df1, df2)
     m_err_2, s_err_2 = calculate_error_between_both_cameras(df1, df2)
-    logging.info(f"Joint errors: m={m_err_1:.2f}, s={s_err_2:.2f} mm, after: m={m_err_2:.2f}, s={s_err_2:.2f}")
+    # logging.info(f"Joint errors: m={m_err_1:.2f}, s={s_err_2:.2f} mm, after: m={m_err_2:.2f}, s={s_err_2:.2f}")
 
     averaged = fuse_skeleton_gradients(df1, df2, exp=1.8, initial_poses=5)
     average_filtered = apply_butterworth_filter(
@@ -32,6 +32,7 @@ def fuse_cameras(df1: pd.DataFrame, df2: pd.DataFrame):
 
     average_filtered = average_filtered.set_index(df1.index)
     average_filtered.index = pd.to_datetime(average_filtered.index, unit="s")
+    return average_filtered
 
     # viewer = MoCapViewer(sphere_radius=0.015, grid_axis=None)
     # viewer.add_skeleton(df1, skeleton_connection="azure") # , skeleton_orientations=fit_rot, orientation="euler")
@@ -39,12 +40,11 @@ def fuse_cameras(df1: pd.DataFrame, df2: pd.DataFrame):
     # viewer.add_skeleton(average_filtered, skeleton_connection="azure") # , skeleton_orientations=fit_rot, orientation="euler")
     # viewer.show_window()
 
-    fit_pos, fit_rot = calculate_skeleton_orientations(average_filtered)
-    return fit_pos, fit_rot
-    # return None, None
+    # fit_pos, fit_rot = calculate_skeleton_orientations(average_filtered)
+    # return fit_pos, fit_rot
 
 
-def process_data_frame_initially(df: pd.DataFrame):
+def process_data_frame_initially(df: pd.DataFrame) -> pd.DataFrame:
     df = select_main_person(df)
     df = df[[c for c in df.columns if "(c)" not in c]]
     df = remove_columns_from_dataframe(df)
