@@ -14,8 +14,7 @@ from .data_preparation import (
 
 from .data_loaders import (
     BaseSubjectLoader,
-    StereoAzureSubjectLoader,
+    AzureSubjectLoader,
     RPESubjectLoader,
-    ECGSubjectLoader,
     IMUSubjectLoader,
 )

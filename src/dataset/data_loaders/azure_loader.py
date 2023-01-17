@@ -7,7 +7,7 @@ import os
 import pathlib
 
 
-class StereoAzureSubjectLoader(BaseSubjectLoader):
+class AzureSubjectLoader(BaseSubjectLoader):
 
     def __init__(self, root_path: str, subject_name: str):
         super().__init__(subject_name)

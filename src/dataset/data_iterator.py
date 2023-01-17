@@ -4,10 +4,10 @@ from typing import List
 
 from src.dataset.data_loaders import (
     LoadingException,
-    StereoAzureSubjectLoader,
+    AzureSubjectLoader,
     RPESubjectLoader,
-    ECGSubjectLoader,
     IMUSubjectLoader,
+    HRVSubjectLoader,
 )
 
 import os
@@ -17,16 +17,16 @@ import shutil
 
 class SubjectDataIterator(object):
 
-    STEREO_AZURE = "azure"
+    AZURE = "azure"
     RPE = "rpe"
-    ECG = "ecg"
     IMU = "imu"
+    HRV = "hrv"
 
     loader_names = {
-        STEREO_AZURE: StereoAzureSubjectLoader,
+        AZURE: AzureSubjectLoader,
         RPE: RPESubjectLoader,
-        ECG: ECGSubjectLoader,
         IMU: IMUSubjectLoader,
+        HRV: HRVSubjectLoader,
     }
 
     def __init__(
@@ -48,7 +48,6 @@ class SubjectDataIterator(object):
                 yield trial
 
     def _load_and_yield_subject_data_collectors(self, subject_list: List[str]):
-        cur_dir = os.getcwd()
         subjects = os.listdir(self._base_path)
         if subject_list:
             subjects = list(filter(lambda s: s in subject_list, subjects))
@@ -62,10 +61,10 @@ class SubjectDataIterator(object):
                     nr_sets=12,
                     dst_path=self._dst_path,
                 )
-                # shutil.copy(
-                #     src=join(self._base_path, subject, "rpe_ratings.json"),
-                #     dst=join(self._dst, subject, "rpe_ratings.json"),
-                # )
+                shutil.copy(
+                    src=join(self._base_path, subject, "rpe_ratings.json"),
+                    dst=join(self._dst_path, subject, "rpe_ratings.json"),
+                )
 
             except LoadingException as e:
                 logging.warning(f"Data Loader failed for subject {subject}: {e}")

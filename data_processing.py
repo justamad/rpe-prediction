@@ -36,14 +36,14 @@ def process_all_raw_data(src_path: str, dst_path: str, plot_path: str):
         base_path=src_path,
         dst_path=dst_path,
         data_loader=[
-            SubjectDataIterator.STEREO_AZURE,
-            # SubjectDataIterator.RPE,
+            SubjectDataIterator.AZURE,
             SubjectDataIterator.IMU,
+            SubjectDataIterator.HRV,
         ]
     )
 
     for set_id, trial in enumerate(iterator.iterate_over_all_subjects()):
-        pos_df = trial[SubjectDataIterator.STEREO_AZURE]
+        pos_df = trial[SubjectDataIterator.AZURE]
 
         imu_df = trial[SubjectDataIterator.IMU]
         imu_df = apply_butterworth_filter(df=imu_df, cutoff=20, order=4, sampling_rate=128)
@@ -59,9 +59,10 @@ def process_all_raw_data(src_path: str, dst_path: str, plot_path: str):
         azure_acc_df.index += shift_dt
         pos_df.index += shift_dt
 
-        imu_filter_df, azure_acc_df, pos_df = truncate_data_frames(imu_df, azure_acc_df, pos_df)
+        hrv_df = trial[SubjectDataIterator.HRV]
+        imu_filter_df, azure_acc_df, pos_df, hrv_df = truncate_data_frames(imu_df, azure_acc_df, pos_df, hrv_df)
 
-        fig, axs = plt.subplots(3, 1, sharex=True, figsize=(15, 12))
+        fig, axs = plt.subplots(4, 1, sharex=True, figsize=(15, 12))
         fig.suptitle(f"Subject: {trial['subject']}, Set: {trial['nr_set']}")
         axs[0].plot(pos_df[['SPINE_CHEST (x)', 'SPINE_CHEST (y)', 'SPINE_CHEST (z)']])
         axs[0].set_title("Kinect Position")
@@ -69,6 +70,9 @@ def process_all_raw_data(src_path: str, dst_path: str, plot_path: str):
         axs[1].set_title("Kinect Acceleration")
         axs[2].plot(imu_filter_df[['CHEST_ACCELERATION_X', 'CHEST_ACCELERATION_Y', 'CHEST_ACCELERATION_Z']])
         axs[2].set_title("Gaitup Acceleration")
+        axs[3].plot(hrv_df[["Intensity (TRIMP/min)"]])
+        axs[3].set_title("HRV")
+
         plt.savefig(join(plot_path, f"{trial['subject']}_{trial['nr_set']}.png"))
         # plt.show(block=True)
         plt.close()
@@ -77,6 +81,7 @@ def process_all_raw_data(src_path: str, dst_path: str, plot_path: str):
 
         pos_df.to_csv(join(trial["dst_path"], "pos.csv"))
         imu_df.to_csv(join(trial["dst_path"], "imu.csv"))
+        hrv_df.to_csv(join(trial["dst_path"], "hrv.csv"))
         # rot_df.to_csv(join(trial["log_path"], "rot.csv"))
 
 
