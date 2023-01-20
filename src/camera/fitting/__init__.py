@@ -1,1 +1,1 @@
-from .calculate_fit import calculate_skeleton_orientations
+from .calculate_fit import fit_inverse_kinematic_parallel, fit_inverse_kinematic_sequential

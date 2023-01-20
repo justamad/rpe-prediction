@@ -8,6 +8,7 @@ from src.dataset.data_loaders import (
     RPESubjectLoader,
     IMUSubjectLoader,
     HRVSubjectLoader,
+    FlyWheelSubjectLoader,
 )
 
 import os
@@ -21,12 +22,14 @@ class SubjectDataIterator(object):
     RPE = "rpe"
     IMU = "imu"
     HRV = "hrv"
+    FLYWHEEL = "flywheel"
 
     loader_names = {
         AZURE: AzureSubjectLoader,
         RPE: RPESubjectLoader,
         IMU: IMUSubjectLoader,
         HRV: HRVSubjectLoader,
+        FLYWHEEL: FlyWheelSubjectLoader,
     }
 
     def __init__(

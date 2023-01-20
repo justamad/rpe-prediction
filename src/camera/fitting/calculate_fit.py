@@ -1,39 +1,32 @@
 from .solver import fit_individual_frame
-from .kinematic_model import skeleton_connection, complete_angle_vector_with_zeros
-from typing import Dict
+from typing import Dict, Tuple
+from functools import partial
 from tqdm import tqdm
 from PyMoCapViewer import MoCapViewer
 
+from .kinematic_model import (
+    KINEMATIC_CHAIN,
+    complete_restricted_angle_vector_with_zeros,
+    calculate_bone_segments,
+    restructure_data_frame,
+    N_ANGLES,
+)
+
 import pandas as pd
 import numpy as np
+import logging
+import multiprocessing as mp
 
 
-joint_connections = [
-    # Left side
-    ("FOOT_LEFT", "ANKLE_LEFT"),
-    ("ANKLE_LEFT", "KNEE_LEFT"),
-    ("KNEE_LEFT", "HIP_LEFT"),
-    ("HIP_LEFT", "PELVIS"),
-    # Right side
-    ("FOOT_RIGHT", "ANKLE_RIGHT"),
-    ("ANKLE_RIGHT", "KNEE_RIGHT"),
-    ("KNEE_RIGHT", "HIP_RIGHT"),
-    ("HIP_RIGHT", "PELVIS"),
-    # Upper Body -> Spine
-    ("PELVIS", "SPINE_NAVEL"),
-    ("SPINE_NAVEL", "SPINE_CHEST"),
-]
-
-
-def calculate_skeleton_orientations(df: pd.DataFrame):
+def fit_inverse_kinematic_sequential(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     bone_lengths = calculate_bone_segments(df)
     df = restructure_data_frame(df)
-    # start, end = 0, 200
-    # df = df.iloc[start:end, :]
 
     fitted_skeleton = []
     fitted_angles = []
-    opt_angles = np.zeros(21)
+    opt_angles = np.zeros(N_ANGLES)
+
+    logging.info(f"Fitting {df.shape[0]} frames using parallel mode.")
 
     for frame in tqdm(range(df.shape[0])):
         pos, opt_angles = fit_individual_frame(
@@ -42,42 +35,40 @@ def calculate_skeleton_orientations(df: pd.DataFrame):
             x0_angles=opt_angles,
         )
         fitted_skeleton.append(pos.reshape(-1))
-        fitted_angles.append(complete_angle_vector_with_zeros(opt_angles))
+        fitted_angles.append(complete_restricted_angle_vector_with_zeros(opt_angles))
 
     fitted_skeleton = pd.DataFrame(data=np.array(fitted_skeleton), columns=df.columns)
     fitted_angles = pd.DataFrame(data=np.array(fitted_angles), columns=df.columns)
     return fitted_skeleton, fitted_angles
 
 
-def calculate_bone_segments(df: pd.DataFrame) -> Dict:
-    bone_lengths = {}
+def fit_inverse_kinematic_parallel(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    bone_lengths = calculate_bone_segments(df)
+    df = restructure_data_frame(df)
 
-    for j1, j2 in joint_connections:
-        marker_1 = df[[f"{j1} ({c})" for c in ["x", "y", "z"]]].values
-        marker_2 = df[[f"{j2} ({c})" for c in ["x", "y", "z"]]].values
+    fitted_skeleton = []
+    fitted_angles = []
 
-        lengths = np.linalg.norm(marker_1 - marker_2, axis=1)
-        mean, std = lengths.mean(), lengths.std()
-        bone_lengths[f"{j1}-{j2}"] = mean
+    data = [df.iloc[frame].values.T.reshape(-1, 3) for frame in range(len(df))]
+    num_processes = mp.cpu_count()
+    pool = mp.Pool(processes=num_processes)
 
-    return bone_lengths
+    results = pool.imap(partial(fit_individual_frame, bone_lengths=bone_lengths), data)
+    for pos, opt_angles in tqdm(results):
+        fitted_skeleton.append(pos.reshape(-1))
+        fitted_angles.append(complete_restricted_angle_vector_with_zeros(opt_angles))
 
-
-def restructure_data_frame(df: pd.DataFrame) -> pd.DataFrame:
-    columns = ["PELVIS", "HIP_LEFT", "KNEE_LEFT", "ANKLE_LEFT", "FOOT_LEFT", "HIP_RIGHT", "KNEE_RIGHT", "ANKLE_RIGHT",
-               "FOOT_RIGHT", "SPINE_NAVEL", "SPINE_CHEST"]
-    columns = [f"{c} ({d})" for c in columns for d in ["x", "y", "z"]]
-
-    df_new = df[columns]
-    return df_new
+    fitted_skeleton = pd.DataFrame(data=np.array(fitted_skeleton), columns=df.columns)
+    fitted_angles = pd.DataFrame(data=np.array(fitted_angles), columns=df.columns)
+    return fitted_skeleton, fitted_angles
 
 
 if __name__ == '__main__':
     test_df = pd.read_csv("../../fused.csv", index_col=0)
-    new = True
+    new = False
 
     if new:
-        positions, orientations = calculate_skeleton_orientations(test_df)
+        positions, orientations = fit_inverse_kinematic_parallel(test_df)
         positions.to_csv("positions.csv", sep=";")
         orientations.to_csv("orientation.csv", sep=";")
     else:
@@ -91,7 +82,7 @@ if __name__ == '__main__':
         positions,
         skeleton_orientations=orientations,
         orientation="euler",
-        skeleton_connection=skeleton_connection,
+        skeleton_connection=KINEMATIC_CHAIN
     )
     # viewer.add_skeleton(test_df)
     viewer.show_window()

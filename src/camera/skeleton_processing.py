@@ -1,7 +1,7 @@
 from src.processing import apply_butterworth_filter, apply_affine_transformation
 from src.camera.kabsch import find_rigid_transformation_svd
 from typing import List
-from .fitting import calculate_skeleton_orientations
+from .fitting import fit_inverse_kinematic_parallel
 from PyMoCapViewer import MoCapViewer
 
 import numpy as np
@@ -40,7 +40,7 @@ def fuse_cameras(df1: pd.DataFrame, df2: pd.DataFrame):
     # viewer.add_skeleton(average_filtered, skeleton_connection="azure") # , skeleton_orientations=fit_rot, orientation="euler")
     # viewer.show_window()
 
-    # fit_pos, fit_rot = calculate_skeleton_orientations(average_filtered)
+    # fit_pos, fit_rot = fit_inverse_kinematic_parallel(average_filtered)
     # return fit_pos, fit_rot
 
 
