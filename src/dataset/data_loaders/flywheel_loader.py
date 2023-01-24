@@ -22,7 +22,7 @@ class FlyWheelSubjectLoader(BaseSubjectLoader):
         return len(self._content)
 
     def get_trial_by_set_nr(self, trial_nr: int):
-        if trial_nr > len(self._content):
+        if trial_nr >= len(self._content):
             raise LoadingException(f"{str(self)}: Could not load trial {trial_nr}")
 
         set_data = self._content[trial_nr]
@@ -34,4 +34,4 @@ class FlyWheelSubjectLoader(BaseSubjectLoader):
         return set_df
 
     def __repr__(self):
-        return f"RPELoader {self._subject_name}"
+        return f"FlyWheelLoader {self._subject_name}"

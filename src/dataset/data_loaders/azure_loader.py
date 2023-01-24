@@ -25,7 +25,7 @@ class AzureSubjectLoader(BaseSubjectLoader):
         self._sub_trials = {int(pathlib.PurePath(v).name.split("_")[0]) - 1: v for v in sub_trials}
         self._master_trials = {int(pathlib.PurePath(v).name.split("_")[0]) - 1: v for v in master_trials}
 
-    def get_trial_by_set_nr(self, trial_nr: int):
+    def get_trial_by_set_nr(self, trial_nr: int) -> pd.DataFrame:
         if trial_nr not in self._sub_trials or trial_nr not in self._master_trials:
             raise LoadingException(f"{str(self)}: Error when loading set: {trial_nr} for subject {self._azure_path}")
 

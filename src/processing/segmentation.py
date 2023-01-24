@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 from scipy import signal
 
 import matplotlib.pyplot as plt
@@ -8,13 +8,13 @@ import pandas as pd
 
 def segment_signal_peak_detection(
         joint_series: pd.Series,
-        std_dev_p: float,
+        prominence: float = 0.1,
+        std_dev_p: float = 0.5,
         show: bool = False,
         log_path: str = None,
-) -> List:
-    joint_signal = joint_series.to_numpy()
-    joint_signal = (joint_signal - np.mean(joint_signal)) / np.std(joint_signal)
-    peaks, _ = signal.find_peaks(joint_signal, height=0, prominence=0.5)
+) -> List[Tuple]:
+    joint_signal = (joint_series.to_numpy() - np.mean(joint_series)) / np.std(joint_series)
+    peaks, _ = signal.find_peaks(joint_signal, prominence=prominence)  # , height=0)
 
     valid_peaks = []
     for p1, p2 in zip(peaks, peaks[1:]):
@@ -27,17 +27,17 @@ def segment_signal_peak_detection(
         plt.cla()
         plt.clf()
 
-        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(20, 10))
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10))
+        ax1.set_title("Found peaks")
+        ax1.plot(joint_signal, label="Position data")
+        ax1.plot(joint_series.to_numpy(), label="Position data")
+        ax1.scatter(peaks, joint_signal[peaks])
 
-        ax1.plot(joint_signal)
-
-        ax2.plot(joint_signal, label="Position data")
-        ax2.scatter(peaks, joint_signal[peaks])
-
-        ax3.plot(joint_signal)
+        ax2.set_title("Valid peaks")
+        ax2.plot(joint_signal)
         plot_peaks = set([p[0] for p in valid_peaks] + [p[1] for p in valid_peaks])
         plot_peaks = sorted(list(plot_peaks))
-        ax3.scatter(plot_peaks, joint_signal[plot_peaks])
+        ax2.scatter(plot_peaks, joint_signal[plot_peaks])
 
         plt.tight_layout()
         if log_path is not None:
