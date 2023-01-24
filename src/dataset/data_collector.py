@@ -1,7 +1,8 @@
+from os.path import exists
 from .data_loaders import LoadingException
-from src.utils import create_folder_if_not_already_exists
 from os.path import join
 
+import os
 import logging
 
 
@@ -34,7 +35,8 @@ class SubjectDataCollector(object):
 
                 if self._dst_path is not None:
                     cur_dst_path = join(self._dst_path, self._subject, f"{current_set:02d}_set")
-                    create_folder_if_not_already_exists(cur_dst_path)
+                    if not exists(cur_dst_path):
+                        os.makedirs(cur_dst_path)
                     trial_dic["dst_path"] = cur_dst_path
 
                 logging.info(f"Loaded set {current_set} for subject {self._subject}")
