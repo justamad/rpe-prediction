@@ -39,7 +39,7 @@ def split_data_based_on_pseudonyms(
         random_seed: int = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     train_mask = get_subject_names_random_split(
-        y=y,
+        df=y,
         train_p=train_p,
         random_seed=random_seed,
     )
@@ -56,7 +56,7 @@ def get_subject_names_random_split(
         df: pd.DataFrame,
         train_p: float = 0.7,
         random_seed: int = None,
-):
+) -> pd.Series:
     subject_names = sorted(df["subject"].unique())
     nr_subjects = math.ceil(len(subject_names) * train_p)
 

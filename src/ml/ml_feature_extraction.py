@@ -107,11 +107,11 @@ def eliminate_features_with_rfe(
         X_train: pd.DataFrame,
         y_train: pd.DataFrame,
         step: int = 10,
-        nr_features: int = 100,
+        n_features: int = 100,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     selector = RFE(
         estimator=XGBRegressor(),
-        n_features_to_select=nr_features,
+        n_features_to_select=n_features,
         step=step,
         verbose=10,
     )
