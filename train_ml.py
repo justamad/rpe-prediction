@@ -129,7 +129,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_features", type=int, dest="n_features", default=50)
     args = parser.parse_args()
 
-    df = pd.read_csv(join(args.src_path, "segmented_features.csv"), index_col=0)
+    df = pd.read_csv(join(args.src_path, "seg_hrv.csv"), index_col=0)
     eval_path = args.eval_path
 
     if args.from_scratch:

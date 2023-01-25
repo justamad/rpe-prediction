@@ -30,7 +30,6 @@ del settings["sum_values"]  # Highly correlated with RMS and Mean
 del settings["mean"]  # Highly correlated with RMS and Sum
 
 
-
 def truncate_data_frames(*data_frames) -> List[pd.DataFrame]:
     start_time = max([df.index[0] for df in data_frames])
     end_time = min([df.index[-1] for df in data_frames])
@@ -113,7 +112,7 @@ def process_all_raw_data(src_path: str, dst_path: str, plot_path: str):
         flywheel_df.to_csv(join(trial["dst_path"], "flywheel.csv"))
 
 
-def prepare_data_for_deep_learning(src_path: str, dst_path: str, plot_path: str):
+def prepare_segmented_data(src_path: str, dst_path: str, plot_path: str):
     final_df = pd.DataFrame()
     for subject in os.listdir(src_path):
         rpe_file = join(src_path, subject, "rpe_ratings.json")
@@ -129,22 +128,19 @@ def prepare_data_for_deep_learning(src_path: str, dst_path: str, plot_path: str)
             os.makedirs(subject_plot_path)
 
         subject_path = join(src_path, subject)
-        for set_id in os.listdir(subject_path):
-            if os.path.isfile(join(subject_path, set_id)):
-                continue
-
+        set_folders = list(filter(lambda x: x != "rpe_ratings.json", os.listdir(subject_path)))
+        set_folders = sorted(map(lambda x: (int(x.split("_")[0]), join(subject_path, x)), set_folders))
+        for set_id, set_folder in set_folders:
             logging.info(f"Processing subject {subject}, set {set_id}")
-            n_set = int(set_id.split("_")[0])
-            set_path = join(subject_path, set_id)
 
             # Read Dataframes
-            imu_df = pd.read_csv(join(set_path, "imu.csv"), index_col=0)
+            imu_df = pd.read_csv(join(set_folder, "imu.csv"), index_col=0)
             imu_df.index = pd.to_datetime(imu_df.index)
-            pos_df = pd.read_csv(join(set_path, "pos.csv"), index_col=0)
+            pos_df = pd.read_csv(join(set_folder, "pos.csv"), index_col=0)
             pos_df.index = pd.to_datetime(pos_df.index)
-            hrv_df = pd.read_csv(join(set_path, "hrv.csv"), index_col=0)
+            hrv_df = pd.read_csv(join(set_folder, "hrv.csv"), index_col=0)
             hrv_df.index = pd.to_datetime(hrv_df.index)
-            flywheel_df = pd.read_csv(join(set_path, "flywheel.csv"), index_col=0)
+            flywheel_df = pd.read_csv(join(set_folder, "flywheel.csv"), index_col=0)
             flywheel_df = flywheel_df[flywheel_df["duration"] >= 1.5]
 
             # Segment signals
@@ -158,12 +154,13 @@ def prepare_data_for_deep_learning(src_path: str, dst_path: str, plot_path: str)
             )
             pos_df = mask_values_with_reps(pos_df, reps)
             imu_df = mask_values_with_reps(imu_df, reps)
+            hrv_df = mask_values_with_reps(hrv_df, reps)
 
             # viewer = MoCapViewer(sphere_radius=0.01)
             # viewer.add_skeleton(pos_df, skeleton_connection="azure")
             # viewer.show_window()
 
-            fig, axs = plt.subplots(2, 1, sharex=True, figsize=(15, 12))
+            fig, axs = plt.subplots(3, 1, sharex=True, figsize=(15, 12))
             axs[0].set_title(f"{len(flywheel_df)} vs. {len(reps)}")
             axs[0].plot(pos_df["PELVIS (y)"], color="gray")
             for p1, p2 in reps:
@@ -172,6 +169,11 @@ def prepare_data_for_deep_learning(src_path: str, dst_path: str, plot_path: str)
             axs[1].plot(imu_df["CHEST_ACCELERATION_Z"], color="gray")
             for p1, p2 in reps:
                 axs[1].plot(imu_df["CHEST_ACCELERATION_Z"][p1:p2])
+
+            axs[2].plot(hrv_df["Load (TRIMP)"], color="gray")
+            for p1, p2 in reps:
+                axs[2].plot(hrv_df["Load (TRIMP)"][p1:p2])
+
             # plt.show()
             plt.savefig(join(subject_plot_path, f"{subject}_{set_id}.png"))
             plt.clf()
@@ -180,6 +182,7 @@ def prepare_data_for_deep_learning(src_path: str, dst_path: str, plot_path: str)
 
             pos_df = pos_df[pos_df["reps"] != -1]
             imu_df = imu_df[imu_df["reps"] != -1]
+            hrv_df = hrv_df[hrv_df["reps"] != -1]
 
             try:
                 imu_features_df = extract_features(
@@ -196,47 +199,32 @@ def prepare_data_for_deep_learning(src_path: str, dst_path: str, plot_path: str)
                     default_fc_parameters=settings,
                 )
                 pos_features_df = impute(pos_features_df)  # Replace Nan and inf by with extreme values (min, max)
+                hrv_mean = hrv_df.groupby("reps").mean()
 
                 # Match with FlyWheel data
                 min_length = min(len(imu_features_df), len(pos_features_df), len(flywheel_df))
                 total_df = pd.concat(
                     [
-                        imu_features_df[:min_length].reset_index(drop=True),
-                        pos_features_df[:min_length].reset_index(drop=True),
-                        flywheel_df[:min_length].reset_index(drop=True),
+                        imu_features_df[:min_length].reset_index(drop=True).add_prefix("PHYSILOG_"),
+                        pos_features_df[:min_length].reset_index(drop=True).add_prefix("MOCAP_"),
+                        flywheel_df[:min_length].reset_index(drop=True).add_prefix("FLYWHEEL_"),
+                        hrv_mean[:min_length].reset_index(drop=True).add_prefix("HRV_"),
                     ],
                     axis=1,
                 )
 
-                total_df["rpe"] = rpe_values[n_set]
+                total_df["rpe"] = rpe_values[set_id]
                 total_df["subject"] = subject
-                final_df = pd.concat([total_df, final_df], axis=0)
+                total_df["set_id"] = set_id
+                total_df["rep_id"] = total_df.index
+                final_df = pd.concat([final_df, total_df], axis=0)
 
             except Exception as e:
                 logging.error(f"Error while processing {subject} {set_id}: {e}")
 
     if not os.path.exists(dst_path):
         os.makedirs(dst_path)
-    final_df.to_csv(join(dst_path, "segmented_features.csv"))
-
-
-def prepare_conventional_machine_learning(src_path: str, dst_path: str):
-    total_df = pd.DataFrame()
-    set_counter = 0
-
-    for subject in os.listdir(src_path):
-        subject_path = join(src_path, subject)
-
-        if os.path.isfile(subject):
-            continue
-
-        # repetitions = segment_1d_joint_on_example(
-        #     joint_data=azure_df["PELVIS (y)"],
-        #     exemplar=example,
-        #     std_dev_p=0.5,
-        #     show=False,
-        #     log_path=join(trial["log_path"], "segmentation.png"),
-        # )
+    final_df.to_csv(join(dst_path, "seg_hrv.csv"))
 
 
 if __name__ == "__main__":
@@ -260,4 +248,4 @@ if __name__ == "__main__":
         os.makedirs(args.plot_path)
 
     # process_all_raw_data(args.src_path, join(args.dst_path, "processed"), args.plot_path)
-    prepare_data_for_deep_learning(args.dst_path, join(args.dst_path, "training"), args.plot_path)
+    prepare_segmented_data(join(args.dst_path, "processed"), "data/training", args.plot_path)

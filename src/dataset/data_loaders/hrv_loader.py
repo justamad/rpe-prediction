@@ -26,15 +26,15 @@ class HRVSubjectLoader(BaseSubjectLoader):
 
         self._sets = {index: value for index, value in enumerate(data["non_truncated_selection"]["set_times"])}
         self._df = self.read_time_varying_results(hrv_file)
-        # df.index = pd.to_datetime(df.index)
+        self._df.drop(columns=["index", "Time (hh:mm:ss)", "Artifacts (%)"], inplace=True)
 
     def get_trial_by_set_nr(self, trial_nr: int) -> pd.DataFrame:
         if trial_nr >= len(self._sets):
             raise LoadingException(f"Couldn't load data for trial {trial_nr}.")
 
-        set_1 = self._sets[trial_nr]
-        start_dt = datetime.strptime(set_1["start"], '%H:%M:%S.%f') + relativedelta(years=+70)
-        end_dt = datetime.strptime(set_1["end"], '%H:%M:%S.%f') + relativedelta(years=+70)
+        set_times = self._sets[trial_nr]
+        start_dt = datetime.strptime(set_times["start"], '%H:%M:%S.%f') + relativedelta(years=+70, seconds=-3)
+        end_dt = datetime.strptime(set_times["end"], '%H:%M:%S.%f') + relativedelta(years=+70, seconds=3)
 
         sub_df = self._df.loc[(self._df.index > start_dt) & (self._df.index < end_dt)]
         return sub_df
