@@ -5,9 +5,11 @@ import numpy as np
 import pandas as pd
 import math
 
+META_DATA = ["subject", "nr_rep", "nr_set"]
 
-def extract_dataset_input_output(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    lst = ["subject", "rpe", "nr_rep", "nr_set"]
+
+def extract_dataset_input_output(df: pd.DataFrame, ground_truth: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    lst = META_DATA + [ground_truth]
     inputs = df.drop(lst, axis=1, inplace=False, errors="ignore")
     outputs = df[df.columns.intersection(lst)]
     return inputs, outputs
@@ -103,5 +105,3 @@ def filter_outliers_z_scores(df: pd.DataFrame):
     abs_z_scores = np.abs(z_scores)
     filtered_entries = (abs_z_scores < 3).all(axis=1)
     return filtered_entries
-    # new_df = df[filtered_entries]
-    # return new_df

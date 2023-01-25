@@ -3,7 +3,6 @@ pandas
 matplotlib
 scipy
 fastdtw
-pyEDFlib
 tensorflow==2.4.0
 scikit-learn
 sklearn
@@ -14,7 +13,4 @@ xgboost
 seaborn
 PyMoCapViewer
 python-dateutil
-neurokit2
-biosppy
-pyEDFlib
-pyhrv
+pyyaml

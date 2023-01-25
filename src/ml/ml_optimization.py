@@ -71,6 +71,7 @@ class MLOptimization(object):
             y: pd.DataFrame,
             task: str,
             mode: str,
+            ground_truth: str,
     ):
         if task not in ["regression", "classification"]:
             raise AttributeError(f"Unknown ML task given: {task}")
@@ -84,6 +85,7 @@ class MLOptimization(object):
         self._y = y
         self._task = task
         self._mode = mode
+        self._ground_truth = ground_truth
 
     def perform_grid_search_with_cv(self, log_path: str):
         for model_config in models[self._task]:
@@ -132,11 +134,11 @@ class MLOptimization(object):
                 logging.info(ml_search)
                 logging.info(f"Input shape: {X_train.shape}")
 
-                ml_search.fit(X_train, y_train["rpe"])
+                ml_search.fit(X_train, y_train[self._ground_truth])
 
                 # Evaluate the trained model
                 logging.info(f"Best CV score: {ml_search.best_score_:.5f}, achieved by {ml_search.best_params_}")
-                test_score = evaluation_metric[self._task](ml_search, X_test, y_test["rpe"])
+                test_score = evaluation_metric[self._task](ml_search, X_test, y_test[self._ground_truth])
                 logging.info(f"Test subject {subject}, accuracy: {test_score:.5f}")
 
                 r_df = pd.DataFrame(ml_search.cv_results_)
