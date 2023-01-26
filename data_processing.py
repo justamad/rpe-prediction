@@ -47,6 +47,12 @@ def mask_values_with_reps(df: pd.DataFrame, repetitions: List) -> pd.DataFrame:
     return df
 
 
+def impute_dataframe(df: pd.DataFrame):
+    df = df.interpolate(method="linear", limit_direction="forward", axis=0)
+    df = df.fillna(0)
+    return df
+
+
 def filter_outliers_z_scores(df: pd.DataFrame, axis: str, z_score: float = 0.3) -> pd.DataFrame:
     z_scores = stats.zscore(df[axis])
     z_scores = z_scores.dropna(axis=1, how="all")
@@ -224,6 +230,8 @@ def prepare_segmented_data(src_path: str, dst_path: str, plot_path: str):
 
     if not os.path.exists(dst_path):
         os.makedirs(dst_path)
+
+    final_df = impute_dataframe(final_df)
     final_df.to_csv(join(dst_path, "seg_hrv.csv"))
 
 
@@ -248,4 +256,4 @@ if __name__ == "__main__":
         os.makedirs(args.plot_path)
 
     # process_all_raw_data(args.src_path, join(args.dst_path, "processed"), args.plot_path)
-    prepare_segmented_data(join(args.dst_path, "processed"), "data/training", args.plot_path)
+    prepare_segmented_data(join(args.dst_path, "processed"), join(args.dst_path, "training"), args.plot_path)

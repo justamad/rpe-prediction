@@ -5,11 +5,11 @@ import numpy as np
 import pandas as pd
 import math
 
-META_DATA = ["subject", "nr_rep", "nr_set"]
+META_DATA = ["subject", "rep_id", "set_id"]
 
 
-def extract_dataset_input_output(df: pd.DataFrame, ground_truth: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    lst = META_DATA + [ground_truth]
+def extract_dataset_input_output(df: pd.DataFrame, ground_truth_column: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    lst = META_DATA + [ground_truth_column]
     inputs = df.drop(lst, axis=1, inplace=False, errors="ignore")
     outputs = df[df.columns.intersection(lst)]
     return inputs, outputs
@@ -89,14 +89,12 @@ def normalize_rpe_values_min_max(
     return df
 
 
-def normalize_data_by_subject(df: pd.DataFrame, label_cols: int = 3) -> pd.DataFrame:
-    total_df = pd.DataFrame()
-    for name, group in df.groupby("subject"):
-        sub_df = group.iloc[:, :-label_cols].values
-        group.iloc[:, :-label_cols] = (sub_df - sub_df.mean()) / (sub_df.std())
-        total_df = pd.concat([total_df, group], ignore_index=True)
+def normalize_data_by_subject(X: pd.DataFrame, y: pd.DataFrame) -> pd.DataFrame:
+    for name in y["subject"].unique():
+        mask = y["subject"] == name
+        X.loc[mask] = (X.loc[mask] - X.loc[mask].mean()) / X.loc[mask].std()
 
-    return total_df
+    return X
 
 
 def filter_outliers_z_scores(df: pd.DataFrame):
