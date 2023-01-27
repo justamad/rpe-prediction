@@ -55,6 +55,7 @@ def train_model(
         search: str,
         n_features: int,
         ground_truth: str,
+        temporal_features: bool = False,
         drop_columns=None,
         drop_prefixes=None,
 
@@ -78,6 +79,7 @@ def train_model(
                 "ground_truth": ground_truth,
                 "drop_prefixes": drop_prefixes,
                 "normalization": normalization,
+                "temporal_features": temporal_features,
             },
             f,
         )
@@ -89,12 +91,13 @@ def train_model(
 
     X.drop(columns=drop_columns, inplace=True, errors="ignore")
 
+    if temporal_features:
+        X = calculate_temporal_features(X, y, folds=3)
+
     if normalization == "subject":
         X = normalize_data_by_subject(X, y)
     elif normalization == "global":
         X = (X - X.mean()) / X.std()
-
-    # X = calculate_temporal_features(X, y, folds=3)
 
     X.fillna(0, inplace=True)
     X, _report_df = eliminate_features_with_rfe(

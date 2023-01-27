@@ -3,7 +3,8 @@ from argparse import ArgumentParser
 from typing import List
 from os.path import join
 from scipy import stats
-from tsfresh.feature_extraction import MinimalFCParameters, extract_features
+from tsfresh.feature_extraction import MinimalFCParameters, extract_features, EfficientFCParameters, ComprehensiveFCParameters
+from tsfresh.feature_extraction import ComprehensiveFCParameters, feature_calculators
 from tsfresh.utilities.dataframe_functions import impute
 from PyMoCapViewer import MoCapViewer
 
@@ -24,10 +25,31 @@ matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 
 
-settings = MinimalFCParameters()
+class CustomFeatures(ComprehensiveFCParameters):
+    def __init__(self):
+        ComprehensiveFCParameters.__init__(self)
+
+        for fname, f in feature_calculators.__dict__.items():
+
+            is_minimal = (hasattr(f, "minimal") and getattr(f, "minimal"))
+            is_curtosis_or_skew = fname == "kurtosis" or fname == "skewness"
+            if fname in self and not is_minimal and not is_curtosis_or_skew:
+                del self[fname]
+
+        del self["sum_values"]
+        del self["variance"]
+        del self["mean"]
+        # del self["length"]
+
+
+# settings = MinimalFCParameters()
+# settings = EfficientFCParameters()
+# settings = ComprehensiveFCParameters()
 # del settings["variance"]  # Variance and standard deviation are highly correlated but std integrates nr of samples
-del settings["sum_values"]  # Highly correlated with RMS and Mean
-del settings["mean"]  # Highly correlated with RMS and Sum
+# del settings["sum_values"]  # Highly correlated with RMS and Mean
+# del settings["mean"]  # Highly correlated with RMS and Sum
+settings = CustomFeatures()
+i = 12
 
 
 def truncate_data_frames(*data_frames) -> List[pd.DataFrame]:
@@ -194,14 +216,12 @@ def prepare_segmented_data(src_path: str, dst_path: str, plot_path: str):
                 imu_features_df = extract_features(
                     timeseries_container=imu_df,
                     column_id="reps",
-                    # column_sort="timestamp",
                     default_fc_parameters=settings,
                 )
                 imu_features_df = impute(imu_features_df)  # Replace Nan and inf by with extreme values (min, max)
                 pos_features_df = extract_features(
                     timeseries_container=pos_df,
                     column_id="reps",
-                    # column_sort="timestamp",
                     default_fc_parameters=settings,
                 )
                 pos_features_df = impute(pos_features_df)  # Replace Nan and inf by with extreme values (min, max)
@@ -232,6 +252,7 @@ def prepare_segmented_data(src_path: str, dst_path: str, plot_path: str):
         os.makedirs(dst_path)
 
     final_df = impute_dataframe(final_df)
+    final_df.reset_index(drop=True, inplace=True)
     final_df.to_csv(join(dst_path, "seg_hrv.csv"))
 
 
