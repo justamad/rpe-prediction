@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import math
 
-META_DATA = ["subject", "rep_id", "set_id"]
+META_DATA = ["subject", "rep_id", "set_id", "rpe"]
 
 
 def extract_dataset_input_output(df: pd.DataFrame, ground_truth_column: str) -> Tuple[pd.DataFrame, pd.DataFrame]:

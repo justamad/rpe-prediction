@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 from src.ml import MLOptimization, eliminate_features_with_rfe
 from datetime import datetime
 from sklearn.svm import SVR, SVC
@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 from imblearn.over_sampling import RandomOverSampler
 from imblearn.pipeline import Pipeline
 from os.path import join, exists
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, r2_score
 from src.dataset import (
     extract_dataset_input_output,
     normalize_subject_rpe,
@@ -24,11 +24,34 @@ matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 
 
+def parse_report_file_to_model_parameters(result_df: pd.DataFrame, metric: str, model: str) -> Dict:
+    best_combination = result_df.sort_values(by=metric, ascending=True).iloc[0]
+    best_combination = best_combination[best_combination.index.str.contains("param")]
+    param = {k.replace(f"param_{model}__", ""): v for k, v in best_combination.to_dict().items()}
+    return param
+
+
+def calculate_temporal_features(X: pd.DataFrame, y: pd.DataFrame, folds: int = 2) -> pd.DataFrame:
+    total_df = pd.DataFrame()
+    for subject in y["subject"].unique():
+        mask = y["subject"] == subject
+        sub_df = X.loc[mask]
+
+        data_frames = [sub_df.diff(periods=period).add_prefix(f"GRAD_{period:02d}") for period in range(1, folds + 1)]
+        temp_df = pd.concat([sub_df] + data_frames, axis=1)
+        temp_df.fillna(0, inplace=True)
+        total_df = pd.concat([total_df, temp_df])
+
+    total_df.reset_index(drop=True, inplace=True)
+    return total_df
+
+
 def train_model(
         df: pd.DataFrame,
         exp_name: str,
         log_path: str,
         task: str,
+        normalization: str,
         search: str,
         n_features: int,
         ground_truth: str,
@@ -54,6 +77,7 @@ def train_model(
                 "drop_columns": drop_columns,
                 "ground_truth": ground_truth,
                 "drop_prefixes": drop_prefixes,
+                "normalization": normalization,
             },
             f,
         )
@@ -65,12 +89,14 @@ def train_model(
 
     X.drop(columns=drop_columns, inplace=True, errors="ignore")
 
-    # TODO: Subject dependent normalization
-    # y = normalize_subject_rpe(y)
-    X = normalize_data_by_subject(X, y)
-    X.fillna(0, inplace=True)
-    # X = (X - X.mean()) / X.std()
+    if normalization == "subject":
+        X = normalize_data_by_subject(X, y)
+    elif normalization == "global":
+        X = (X - X.mean()) / X.std()
 
+    # X = calculate_temporal_features(X, y, folds=3)
+
+    X.fillna(0, inplace=True)
     X, _report_df = eliminate_features_with_rfe(
         X_train=X,
         y_train=y[ground_truth],
@@ -92,41 +118,42 @@ def train_model(
     return log_path
 
 
-def evaluate_for_specific_ml_model(result_path: str, model: str, score_metric: str = "mean_test_r2"):
+def evaluate_for_specific_ml_model(result_path: str, model_name: str, score_metric: str = "mean_test_r2"):
     config = yaml.load(open(join(result_path, "config.yml"), "r"), Loader=yaml.FullLoader)
     X = pd.read_csv(join(result_path, "X.csv"), index_col=0)
     y = pd.read_csv(join(result_path, "y.csv"), index_col=0)
+    result_df = pd.read_csv(join(result_path, f"{model_name}.csv"))
+    params = parse_report_file_to_model_parameters(result_df, score_metric, model_name)
 
-    result_df = pd.read_csv(join(result_path, f"{model}.csv"))
-    best_combination = result_df.sort_values(by=score_metric, ascending=True).iloc[0]
-    best_combination = best_combination[best_combination.index.str.contains("param")]
-    param = {k.replace(f"param_{model}__", ""): v for k, v in best_combination.to_dict().items()}
-    model = SVR(**param)
-
-    if config["task"] == "classification":
-        model = Pipeline(steps=[
-            ("balance_sampling", RandomOverSampler()),
-            ("svm", model),
-        ])
-
-    X_train, y_train, X_test, y_test = split_data_based_on_pseudonyms(X, y, train_p=0.6, random_seed=17)
     gt_column = config["ground_truth"]
-    model.fit(X_train, y_train[gt_column])
+    subjects = y["subject"].unique()
+    fig, axes = plt.subplots(len(subjects), sharey=True, figsize=(20, 40))
+    rmse_all = []
+    r2_all = []
 
-    y_test["pred"] = model.predict(X_test)
-    subjects = y_test["subject"].unique()
-    fig, axes = plt.subplots(len(subjects), 1, sharey=True, figsize=(10, 10))
-
-    rmse = mean_squared_error(y_test[gt_column], y_test["pred"], squared=False)
     for idx, cur_subject in enumerate(subjects):
-        ground_truth = y_test.loc[y_test["subject"] == cur_subject, gt_column].to_numpy()
-        predictions = y_test.loc[y_test["subject"] == cur_subject, "pred"].to_numpy()
+        model = SVR(**params)  # Instantiate a new model everytime with best parameters from grid search
+        if config["task"] == "classification":
+            model = Pipeline(steps=[
+                ("balance_sampling", RandomOverSampler()),
+                ("svm", model),
+            ])
 
-        axes[idx].plot(ground_truth, label="Ground Truth")
+        X_train = X.loc[y["subject"] != cur_subject]
+        y_train = y.loc[y["subject"] != cur_subject]
+        X_test = X.loc[y["subject"] == cur_subject]
+        y_test = y.loc[y["subject"] == cur_subject]
+        model.fit(X_train, y_train[gt_column])
+        predictions = model.predict(X_test)
+        rmse = mean_squared_error(y_test[gt_column], predictions, squared=False)
+        r2 = r2_score(y_test[gt_column], predictions)
+        rmse_all.append(rmse)
+        r2_all.append(r2)
+        axes[idx].plot(y_test[gt_column].to_numpy(), label="Ground Truth")
         axes[idx].plot(predictions, label="Prediction")
-        axes[idx].set_title(f"Subject: {cur_subject}")
+        axes[idx].set_title(f"Subject: {cur_subject}, RMSE: {rmse:.2f}, R2: {r2:.2f}")
 
-    fig.suptitle(f"RMSE: {rmse:.2f}", fontsize=30)
+    fig.suptitle(f"RMSE: {np.mean(rmse_all):.2f} +- {np.std(rmse_all):.2f}, R2: {np.mean(r2_all):.2f} +- {np.std(r2_all):.2f}")
     plt.legend()
     plt.savefig(join(result_path, "eval.png"))
     # plt.show()
@@ -148,7 +175,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
-    parser.add_argument("--eval_path", type=str, dest="eval_path", default="results/2023-01-26-11-02-24_no_hrv")
+    parser.add_argument("--eval_path", type=str, dest="eval_path", default="results/2023-01-27-11-11-32_mocap_rpe_20")
     parser.add_argument("--from_scratch", type=bool, dest="from_scratch", default=True)
     parser.add_argument("--task", type=str, dest="task", default="classification")
     parser.add_argument("--search", type=str, dest="search", default="grid")
@@ -158,25 +185,9 @@ if __name__ == "__main__":
     exp_path = "experiments"
     df = pd.read_csv(join(args.src_path, "seg_hrv.csv"), index_col=0)
 
-    # if args.from_scratch:
     for experiment in os.listdir(exp_path):
         exp_config = yaml.load(open(join(exp_path, experiment), "r"), Loader=yaml.FullLoader)
         eval_path = train_model(df, experiment.replace(".yaml", ""), args.result_path, **exp_config)
         evaluate_for_specific_ml_model(eval_path, "svm", "mean_test_f1_score")
-
-        # eval_path = train_model(
-        #     df=df,
-        #     task=args.task,
-        #     search=args.search,
-        #     n_features=args.n_features,
-        #     # drop_columns=["HRV_Load (TRIMP)", "powerEcc", "duration", "peakSpeed", "rep_force", "rep_range", "powerAvg"],
-        #     # drop_columns=["HRV_Load (TRIMP)", "powerEcc", "duration", "peakSpeed", "rep_force", "rep_range", "powerAvg"],
-        #     # drop_columns=["HRV_"],
-        #     ground_truth="rpe",
-        #     # drop_prefixes=["MOCAP", "HRV"],
-        #     log_path=args.result_path,
-        # )
-    #     pass
-    # else:
-    #     eval_path = args.eval_path
-
+    # evaluate_for_specific_ml_model(args.eval_path, "svm", "mean_test_r2")
+    # evaluate_for_specific_ml_model(args.eval_path, "svm", "mean_test_f1_score")

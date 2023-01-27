@@ -131,3 +131,6 @@ plots/
 *.avi
 .idea
 **.mp4
+results/
+logs/
+models/
