@@ -9,6 +9,9 @@ META_DATA = ["subject", "rep_id", "set_id", "rpe"]
 
 
 def extract_dataset_input_output(df: pd.DataFrame, ground_truth_column: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    if ground_truth_column not in df.columns:
+        raise ValueError(f"Ground truth column '{ground_truth_column}' not found in dataframe")
+
     lst = META_DATA + [ground_truth_column]
     inputs = df.drop(lst, axis=1, inplace=False, errors="ignore")
     outputs = df[df.columns.intersection(lst)]

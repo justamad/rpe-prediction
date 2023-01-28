@@ -7,6 +7,7 @@ from imblearn.over_sampling import RandomOverSampler
 from imblearn.pipeline import Pipeline
 from os.path import join, exists
 from sklearn.metrics import mean_squared_error, r2_score
+from scipy.stats import pearsonr
 from src.dataset import (
     extract_dataset_input_output,
     normalize_subject_rpe,
@@ -20,6 +21,7 @@ import logging
 import os
 import yaml
 import matplotlib
+
 matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 
@@ -121,44 +123,109 @@ def train_model(
     return log_path
 
 
-def evaluate_for_specific_ml_model(result_path: str, model_name: str, score_metric: str = "mean_test_r2"):
+def evaluate_for_specific_ml_model(result_path: str, ):
     config = yaml.load(open(join(result_path, "config.yml"), "r"), Loader=yaml.FullLoader)
     X = pd.read_csv(join(result_path, "X.csv"), index_col=0)
     y = pd.read_csv(join(result_path, "y.csv"), index_col=0)
-    result_df = pd.read_csv(join(result_path, f"{model_name}.csv"))
-    params = parse_report_file_to_model_parameters(result_df, score_metric, model_name)
 
-    gt_column = config["ground_truth"]
-    subjects = y["subject"].unique()
-    fig, axes = plt.subplots(len(subjects), sharey=True, figsize=(20, 40))
+    if config["task"] == "classification":
+        score_metric = "mean_test_f1_score"
+    else:
+        score_metric = "mean_test_r2"
+
+    for model_file in list(filter(lambda x: x.startswith("model__"), os.listdir(result_path))):
+        model_name = model_file.replace("model__", "").replace(".csv", "")
+        logging.info(f"Evaluating model: {model_name}")
+        result_df = pd.read_csv(join(result_path, model_file))
+        params = parse_report_file_to_model_parameters(result_df, score_metric, model_name)
+
+        gt_column = config["ground_truth"]
+        subjects = y["subject"].unique()
+        result_dict = {}
+        for idx, cur_subject in enumerate(subjects):
+            model = SVR(**params)  # Instantiate a new model everytime with best parameters from grid search
+            if config["task"] == "classification":
+                model = Pipeline(steps=[
+                    ("balance_sampling", RandomOverSampler()),
+                    ("svm", model),
+                ])
+
+            X_train = X.loc[y["subject"] != cur_subject]
+            y_train = y.loc[y["subject"] != cur_subject]
+            X_test = X.loc[y["subject"] == cur_subject]
+            y_test = y.loc[y["subject"] == cur_subject]
+            model.fit(X_train, y_train[gt_column])
+            predictions = model.predict(X_test)
+            y_test["predictions"] = predictions
+            result_dict[cur_subject] = y_test
+
+        evaluate_sample_prediction(
+            result_dict,
+            gt_column=gt_column,
+            file_name=join(result_path, f"{model_name}_sample_prediction.png"),
+        )
+
+        evaluate_aggregated_predictions(
+            result_dict,
+            gt_column=gt_column,
+            file_name=join(result_path, f"{model_name}_aggregated_prediction.png"),
+        )
+
+
+def evaluate_sample_prediction(result_dic: Dict, gt_column: str, file_name: str):
+    fig, axes = plt.subplots(len(result_dic), sharey=True, figsize=(20, 40))
+
     rmse_all = []
     r2_all = []
-
-    for idx, cur_subject in enumerate(subjects):
-        model = SVR(**params)  # Instantiate a new model everytime with best parameters from grid search
-        if config["task"] == "classification":
-            model = Pipeline(steps=[
-                ("balance_sampling", RandomOverSampler()),
-                ("svm", model),
-            ])
-
-        X_train = X.loc[y["subject"] != cur_subject]
-        y_train = y.loc[y["subject"] != cur_subject]
-        X_test = X.loc[y["subject"] == cur_subject]
-        y_test = y.loc[y["subject"] == cur_subject]
-        model.fit(X_train, y_train[gt_column])
-        predictions = model.predict(X_test)
-        rmse = mean_squared_error(y_test[gt_column], predictions, squared=False)
-        r2 = r2_score(y_test[gt_column], predictions)
+    for idx, (subject_name, df) in enumerate(result_dic.items()):
+        ground_truth = df[gt_column].to_numpy()
+        predictions = df["predictions"].to_numpy()
+        rmse = mean_squared_error(predictions, ground_truth, squared=False)
+        r2 = r2_score(ground_truth, predictions)
         rmse_all.append(rmse)
         r2_all.append(r2)
-        axes[idx].plot(y_test[gt_column].to_numpy(), label="Ground Truth")
-        axes[idx].plot(predictions, label="Prediction")
-        axes[idx].set_title(f"Subject: {cur_subject}, RMSE: {rmse:.2f}, R2: {r2:.2f}")
 
-    fig.suptitle(f"RMSE: {np.mean(rmse_all):.2f} +- {np.std(rmse_all):.2f}, R2: {np.mean(r2_all):.2f} +- {np.std(r2_all):.2f}")
+        axes[idx].plot(ground_truth, label="Ground Truth")
+        axes[idx].plot(predictions, label="Prediction")
+        axes[idx].set_title(f"Subject: {subject_name}, RMSE: {rmse:.2f}, R2: {r2:.2f}")
+
+    fig.suptitle(
+        f"RMSE: {np.mean(rmse_all):.2f} +- {np.std(rmse_all):.2f}, R2: {np.mean(r2_all):.2f} +- {np.std(r2_all):.2f}")
     plt.legend()
-    plt.savefig(join(result_path, "eval.png"))
+    plt.savefig(file_name)
+    # plt.show()
+    plt.clf()
+    plt.close()
+
+
+def evaluate_aggregated_predictions(result_dic: Dict, gt_column: str, file_name: str):
+    fig, axes = plt.subplots(len(result_dic), sharey=True, figsize=(20, 40))
+
+    rmse_all = []
+    r2_all = []
+    pcc_all = []
+    for idx, (subject_name, df) in enumerate(result_dic.items()):
+        mean_df = df.groupby("set_id").mean()
+        std_df = df.groupby("set_id").std()
+
+        ground_truth = mean_df[gt_column].to_numpy()
+        predictions = mean_df["predictions"].to_numpy()
+        errors = std_df["predictions"].to_numpy()
+        rmse = mean_squared_error(predictions, ground_truth, squared=False)
+        r2 = r2_score(ground_truth, predictions)
+        pcc = pearsonr(ground_truth, predictions)[0]
+        rmse_all.append(rmse)
+        r2_all.append(r2)
+        pcc_all.append(pcc)
+
+        axes[idx].plot(ground_truth, label="Ground Truth")
+        axes[idx].errorbar(np.arange(len(predictions)), predictions, yerr=errors, fmt="o", label="Prediction")
+        axes[idx].set_title(f"Subject: {subject_name}, RMSE: {rmse:.2f}, R2: {r2:.2f}, PCC: {pcc:.2f}")
+
+    fig.suptitle(
+        f"RMSE: {np.mean(rmse_all):.2f} +- {np.std(rmse_all):.2f}, R2: {np.mean(r2_all):.2f} +- {np.std(r2_all):.2f}, pcc: {np.mean(pcc_all):.2f} +- {np.std(pcc_all):.2f}")
+    plt.legend()
+    plt.savefig(file_name)
     # plt.show()
     plt.clf()
     plt.close()
@@ -178,7 +245,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
-    parser.add_argument("--eval_path", type=str, dest="eval_path", default="results/2023-01-27-11-11-32_mocap_rpe_20")
+    parser.add_argument("--eval_path", type=str, dest="eval_path", default="results/2023-01-28-13-34-50_imu_rpe_50")
     parser.add_argument("--from_scratch", type=bool, dest="from_scratch", default=True)
     parser.add_argument("--task", type=str, dest="task", default="classification")
     parser.add_argument("--search", type=str, dest="search", default="grid")
@@ -191,6 +258,5 @@ if __name__ == "__main__":
     for experiment in os.listdir(exp_path):
         exp_config = yaml.load(open(join(exp_path, experiment), "r"), Loader=yaml.FullLoader)
         eval_path = train_model(df, experiment.replace(".yaml", ""), args.result_path, **exp_config)
-        evaluate_for_specific_ml_model(eval_path, "svm", "mean_test_f1_score")
-    # evaluate_for_specific_ml_model(args.eval_path, "svm", "mean_test_r2")
-    # evaluate_for_specific_ml_model(args.eval_path, "svm", "mean_test_f1_score")
+        evaluate_for_specific_ml_model(eval_path)
+    # evaluate_for_specific_ml_model(args.eval_path)

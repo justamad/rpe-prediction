@@ -55,6 +55,7 @@ models = {
     "regression":
         [
             SVRModelConfig(),
+            GBRModelConfig(),
         ],
     "classification":
         [
@@ -147,4 +148,4 @@ class MLOptimization(object):
                 r_df["test_score"] = test_score
                 result_df = pd.concat([result_df, r_df], axis=0, ignore_index=True)
 
-            result_df.to_csv(join(log_path, str(model_config) + ".csv"), index=False)
+            result_df.to_csv(join(log_path, f"model__{str(model_config)}.csv"), index=False)
