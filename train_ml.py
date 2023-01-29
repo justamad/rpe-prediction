@@ -8,6 +8,9 @@ from imblearn.pipeline import Pipeline
 from os.path import join, exists
 from sklearn.metrics import mean_squared_error, r2_score
 from scipy.stats import pearsonr
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.neural_network import MLPRegressor
+from sklearn.svm import SVR, SVC
 from src.dataset import (
     extract_dataset_input_output,
     normalize_subject_rpe,
@@ -26,11 +29,24 @@ matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 
 
-def parse_report_file_to_model_parameters(result_df: pd.DataFrame, metric: str, model: str) -> Dict:
+def parse_report_file_to_model_parameters(result_df: pd.DataFrame, metric: str, model_name: str) -> Dict[str, float]:
     best_combination = result_df.sort_values(by=metric, ascending=True).iloc[0]
     best_combination = best_combination[best_combination.index.str.contains("param")]
-    param = {k.replace(f"param_{model}__", ""): v for k, v in best_combination.to_dict().items()}
+    param = {k.replace(f"param_{model_name}__", ""): parse_types(v) for k, v in best_combination.to_dict().items()}
     return param
+
+
+def parse_types(value):
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return value
+
+
+models = {
+    "gbr": GradientBoostingRegressor,
+    "svr": SVR,
+    "svm": SVR,
+}
 
 
 def calculate_temporal_features(X: pd.DataFrame, y: pd.DataFrame, folds: int = 2) -> pd.DataFrame:
@@ -123,7 +139,7 @@ def train_model(
     return log_path
 
 
-def evaluate_for_specific_ml_model(result_path: str, ):
+def evaluate_for_specific_ml_model(result_path: str):
     config = yaml.load(open(join(result_path, "config.yml"), "r"), Loader=yaml.FullLoader)
     X = pd.read_csv(join(result_path, "X.csv"), index_col=0)
     y = pd.read_csv(join(result_path, "y.csv"), index_col=0)
@@ -137,17 +153,17 @@ def evaluate_for_specific_ml_model(result_path: str, ):
         model_name = model_file.replace("model__", "").replace(".csv", "")
         logging.info(f"Evaluating model: {model_name}")
         result_df = pd.read_csv(join(result_path, model_file))
-        params = parse_report_file_to_model_parameters(result_df, score_metric, model_name)
+        model_params = parse_report_file_to_model_parameters(result_df, score_metric, model_name)
 
         gt_column = config["ground_truth"]
         subjects = y["subject"].unique()
         result_dict = {}
         for idx, cur_subject in enumerate(subjects):
-            model = SVR(**params)  # Instantiate a new model everytime with best parameters from grid search
+            model = models[model_name](**model_params)  # Instantiate a new model best parameters from grid search
             if config["task"] == "classification":
                 model = Pipeline(steps=[
                     ("balance_sampling", RandomOverSampler()),
-                    ("svm", model),
+                    ("learner", model),
                 ])
 
             X_train = X.loc[y["subject"] != cur_subject]
@@ -245,7 +261,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
-    parser.add_argument("--eval_path", type=str, dest="eval_path", default="results/2023-01-28-13-34-50_imu_rpe_50")
+    parser.add_argument("--eval_path", type=str, dest="eval_path", default="results/2023-01-28-13-51-30_imu_rpe_50")
     parser.add_argument("--from_scratch", type=bool, dest="from_scratch", default=True)
     parser.add_argument("--task", type=str, dest="task", default="classification")
     parser.add_argument("--search", type=str, dest="search", default="grid")
@@ -255,8 +271,8 @@ if __name__ == "__main__":
     exp_path = "experiments"
     df = pd.read_csv(join(args.src_path, "seg_hrv.csv"), index_col=0)
 
-    for experiment in os.listdir(exp_path):
-        exp_config = yaml.load(open(join(exp_path, experiment), "r"), Loader=yaml.FullLoader)
-        eval_path = train_model(df, experiment.replace(".yaml", ""), args.result_path, **exp_config)
-        evaluate_for_specific_ml_model(eval_path)
-    # evaluate_for_specific_ml_model(args.eval_path)
+    # for experiment in os.listdir(exp_path):
+    #     exp_config = yaml.load(open(join(exp_path, experiment), "r"), Loader=yaml.FullLoader)
+    #     eval_path = train_model(df, experiment.replace(".yaml", ""), args.result_path, **exp_config)
+    #     evaluate_for_specific_ml_model(eval_path)
+    evaluate_for_specific_ml_model(args.eval_path)
