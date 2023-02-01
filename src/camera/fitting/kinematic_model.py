@@ -1,14 +1,50 @@
-from .matrices import create_euler_rotation_matrix
 from scipy.spatial.transform import Rotation as R
 from typing import Dict
 from enum import Enum
-from PyMoCapViewer import MoCapViewer
 
 import pandas as pd
 import numpy as np
 import math
 
-N_ANGLES = 36
+
+boundaries = np.array([
+    (-90, 90),  # 00, PELVIS (x)
+    (-90, 90),  # 01, PELVIS (y)
+    (-90, 90),  # 02, PELVIS (z)
+    (-90, 90),  # 03, HIP_LEFT (x)
+    (-90, 90),  # 04, HIP_LEFT (y)
+    (-90, 90),  # 05, HIP_LEFT (z)
+    (-120, 120),  # 06, KNEE_LEFT (x)
+    (-90, 90),  # 07, ANKLE_LEFT (x)
+    (-10, 10),  # 08, ANKLE_LEFT (y)
+    (-90, 90),  # 09, HIP_RIGHT (x)
+    (-90, 90),  # 10, HIP_RIGHT (y)
+    (-90, 90),  # 11, HIP_RIGHT (z)
+    (-120, 120),  # 12, KNEE_RIGHT (x)
+    (-90, 90),  # 13, ANKLE_RIGHT (x)
+    (-10, 10),  # 14, ANKLE_RIGHT (y)
+    (-45, 45),  # 15, SPINE_NAVEL (x)
+    (-45, 45),  # 16, SPINE_NAVEL (y)
+    (-45, 45),  # 17, SPINE_NAVEL (z)
+    (-45, 45),  # 18, SPINE_CHEST (x)
+    (-45, 45),  # 19, SPINE_CHEST (y)
+    (-45, 45),  # 20, SPINE_CHEST (z)
+    (-45, 45),  # 21, NECK (x)
+    (-45, 45),  # 22, NECK (y)
+    (-45, 45),  # 23, NECK (z)
+    (-90, 90),  # 24, SHOULDER_LEFT (y)
+    (-90, 90),  # 25, SHOULDER_LEFT (z)
+    (-90, 90),  # 26, ELBOW_LEFT (x)
+    (-5, 5),  # 27, ELBOW_LEFT (y)
+    (-5, 5),  # 28, ELBOW_LEFT (z)
+    (-90, 90),  # 29, WRIST_LEFT (z)
+    (-90, 90),  # 30, SHOULDER_RIGHT (y)
+    (-90, 90),  # 31, SHOULDER_RIGHT (z)
+    (-90, 90),  # 32, ELBOW_RIGHT (x)
+    (-5, 5),  # 33, ELBOW_RIGHT (y)
+    (-5, 5),  # 34, ELBOW_RIGHT (z)
+    (-90, 90),  # 35, WRIST_RIGHT (z)
+])
 
 
 class Skeleton(Enum):
@@ -53,7 +89,7 @@ KINEMATIC_CHAIN = [
 ]
 
 
-def build_skeleton(angles: np.array, bone_lengths: Dict) -> np.array:
+def calculate_forwards_kinematics(angles: np.array, bone_lengths: Dict) -> np.array:
     skeleton = np.zeros((len(Skeleton), 3))
     skeleton[0, :] = np.zeros(3)
 
@@ -158,6 +194,28 @@ def complete_restricted_angle_vector_with_zeros(angles: np.ndarray) -> np.ndarra
     return np.array(angles)
 
 
+def create_euler_rotation_matrix(x: float, y: float, z: float):
+    x_rot = np.matrix([
+        [1, 0, 0],
+        [0, math.cos(x), -math.sin(x)],
+        [0, math.sin(x), math.cos(x)]
+    ], np.float)
+
+    y_rot = np.matrix([
+        [math.cos(y), 0, math.sin(y)],
+        [0, 1, 0],
+        [-math.sin(y), 0, math.cos(y)]
+    ], np.float)
+
+    z_rot = np.matrix([
+        [math.cos(z), -math.sin(z), 0],
+        [math.sin(z), math.cos(z), 0],
+        [0, 0, 1]
+    ], np.float)
+
+    return z_rot * y_rot * x_rot
+
+
 def multiply_kinematic_chain_entire_trial(trial: pd.DataFrame) -> pd.DataFrame:
     df = pd.DataFrame(
         data=[create_euler_kinematic_chain(trial.iloc[i, :]) for i in range(trial.shape[0])],
@@ -199,39 +257,3 @@ def restructure_data_frame(df: pd.DataFrame) -> pd.DataFrame:
     columns = [f"{c.name} ({d})" for c in list(Skeleton) for d in ["x", "y", "z"]]
     df_new = df[columns]
     return df_new
-
-
-if __name__ == '__main__':
-    bl_dict = {
-        'PELVIS-HIP_LEFT': 94.80655752074794,
-        'HIP_LEFT-KNEE_LEFT': 443.6657884150811,
-        'KNEE_LEFT-ANKLE_LEFT': 423.7730122384777,
-        'ANKLE_LEFT-FOOT_LEFT': 196.91133697341223,
-        'PELVIS-HIP_RIGHT': 91.38113431517756,
-        'HIP_RIGHT-KNEE_RIGHT': 439.346484684807,
-        'KNEE_RIGHT-ANKLE_RIGHT': 432.01966494381554,
-        'ANKLE_RIGHT-FOOT_RIGHT': 192.66467389260814,
-        'PELVIS-SPINE_NAVEL': 197.69134403822062,
-        'SPINE_NAVEL-SPINE_CHEST': 157.91486111968538,
-        'SPINE_CHEST-NECK': 233.00635835230088,
-        'NECK-HEAD': 91.65697318469313,
-        'NECK-SHOULDER_LEFT': 203.34765353354615,
-        'SHOULDER_LEFT-ELBOW_LEFT': 301.0030735575683,
-        'ELBOW_LEFT-WRIST_LEFT': 257.4350951427908,
-        'NECK-SHOULDER_RIGHT': 190.84578553435128,
-        'SHOULDER_RIGHT-ELBOW_RIGHT': 307.01922070345967,
-        'ELBOW_RIGHT-WRIST_RIGHT': 254.69620498871203
-    }
-
-    zeros = np.zeros(N_ANGLES)
-    normal_pose = build_skeleton(zeros, bl_dict)
-    ori = complete_restricted_angle_vector_with_zeros(zeros)
-
-    viewer = MoCapViewer(sphere_radius=0.03, sampling_frequency=30, grid_axis=None)
-    viewer.add_skeleton(
-        normal_pose.reshape(1, -1),
-        skeleton_connection=KINEMATIC_CHAIN,
-        skeleton_orientations=ori.reshape(1, -1),
-        orientation="euler",
-    )
-    viewer.show_window()

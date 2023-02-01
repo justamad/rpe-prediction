@@ -6,7 +6,7 @@ from scipy import stats
 from tsfresh.feature_extraction import MinimalFCParameters, extract_features, EfficientFCParameters, ComprehensiveFCParameters
 from tsfresh.feature_extraction import ComprehensiveFCParameters, feature_calculators
 from tsfresh.utilities.dataframe_functions import impute
-from PyMoCapViewer import MoCapViewer
+# from PyMoCapViewer import MoCapViewer
 
 from src.processing import (
     segment_signal_peak_detection,
@@ -29,12 +29,11 @@ class CustomFeatures(ComprehensiveFCParameters):
     def __init__(self):
         ComprehensiveFCParameters.__init__(self)
 
-        for fname, f in feature_calculators.__dict__.items():
-
+        for f_name, f in feature_calculators.__dict__.items():
             is_minimal = (hasattr(f, "minimal") and getattr(f, "minimal"))
-            is_curtosis_or_skew = fname == "kurtosis" or fname == "skewness"
-            if fname in self and not is_minimal and not is_curtosis_or_skew:
-                del self[fname]
+            is_curtosis_or_skew = f_name == "kurtosis" or f_name == "skewness"
+            if f_name in self and not is_minimal and not is_curtosis_or_skew:
+                del self[f_name]
 
         del self["sum_values"]
         del self["variance"]
@@ -49,7 +48,6 @@ class CustomFeatures(ComprehensiveFCParameters):
 # del settings["sum_values"]  # Highly correlated with RMS and Mean
 # del settings["mean"]  # Highly correlated with RMS and Sum
 settings = CustomFeatures()
-i = 12
 
 
 def truncate_data_frames(*data_frames) -> List[pd.DataFrame]:
@@ -96,12 +94,12 @@ def process_all_raw_data(src_path: str, dst_path: str, plot_path: str):
     )
 
     for set_id, trial in enumerate(iterator.iterate_over_all_subjects()):
+        pos_df, ori_df = trial[SubjectDataIterator.AZURE]
         flywheel_df = trial[SubjectDataIterator.FLYWHEEL]
-        pos_df = trial[SubjectDataIterator.AZURE]
-
+        hrv_df = trial[SubjectDataIterator.HRV]
         imu_df = trial[SubjectDataIterator.IMU]
-        imu_df = apply_butterworth_filter(df=imu_df, cutoff=20, order=4, sampling_rate=128)
 
+        imu_df = apply_butterworth_filter(df=imu_df, cutoff=20, order=4, sampling_rate=128)
         azure_acc_df = calculate_acceleration(pos_df)
         shift_dt = calculate_cross_correlation_with_datetime(
             reference_df=imu_df,
@@ -112,8 +110,8 @@ def process_all_raw_data(src_path: str, dst_path: str, plot_path: str):
         )
         azure_acc_df.index += shift_dt
         pos_df.index += shift_dt
+        ori_df.index += shift_dt
 
-        hrv_df = trial[SubjectDataIterator.HRV]
         # imu_df, azure_acc_df, pos_df, hrv_df = truncate_data_frames(imu_df, azure_acc_df, pos_df, hrv_df)
 
         fig, axs = plt.subplots(4, 1, sharex=True, figsize=(15, 12))
@@ -134,7 +132,7 @@ def process_all_raw_data(src_path: str, dst_path: str, plot_path: str):
         plt.clf()
 
         pos_df.to_csv(join(trial["dst_path"], "pos.csv"))
-        # rot_df.to_csv(join(trial["log_path"], "rot.csv"))
+        ori_df.to_csv(join(trial["dst_path"], "ori.csv"))
         imu_df.to_csv(join(trial["dst_path"], "imu.csv"))
         hrv_df.to_csv(join(trial["dst_path"], "hrv.csv"))
         flywheel_df.to_csv(join(trial["dst_path"], "flywheel.csv"))
@@ -166,6 +164,8 @@ def prepare_segmented_data(src_path: str, dst_path: str, plot_path: str):
             imu_df.index = pd.to_datetime(imu_df.index)
             pos_df = pd.read_csv(join(set_folder, "pos.csv"), index_col=0)
             pos_df.index = pd.to_datetime(pos_df.index)
+            ori_df = pd.read_csv(join(set_folder, "ori.csv"), index_col=0)
+            ori_df.index = pd.to_datetime(ori_df.index)
             hrv_df = pd.read_csv(join(set_folder, "hrv.csv"), index_col=0)
             hrv_df.index = pd.to_datetime(hrv_df.index)
             flywheel_df = pd.read_csv(join(set_folder, "flywheel.csv"), index_col=0)
@@ -181,6 +181,7 @@ def prepare_segmented_data(src_path: str, dst_path: str, plot_path: str):
                 show=False,
             )
             pos_df = mask_values_with_reps(pos_df, reps)
+            ori_df = mask_values_with_reps(ori_df, reps)
             imu_df = mask_values_with_reps(imu_df, reps)
             hrv_df = mask_values_with_reps(hrv_df, reps)
 
@@ -193,6 +194,7 @@ def prepare_segmented_data(src_path: str, dst_path: str, plot_path: str):
             axs[0].plot(pos_df["PELVIS (y)"], color="gray")
             for p1, p2 in reps:
                 axs[0].plot(pos_df["PELVIS (y)"][p1:p2])
+                axs[0].plot(ori_df["KNEE_LEFT (x)"])
 
             axs[1].plot(imu_df["CHEST_ACCELERATION_Z"], color="gray")
             for p1, p2 in reps:
@@ -209,6 +211,7 @@ def prepare_segmented_data(src_path: str, dst_path: str, plot_path: str):
             plt.close()
 
             pos_df = pos_df[pos_df["reps"] != -1]
+            ori_df = ori_df[ori_df["reps"] != -1]
             imu_df = imu_df[imu_df["reps"] != -1]
             hrv_df = hrv_df[hrv_df["reps"] != -1]
 
@@ -225,6 +228,12 @@ def prepare_segmented_data(src_path: str, dst_path: str, plot_path: str):
                     default_fc_parameters=settings,
                 )
                 pos_features_df = impute(pos_features_df)  # Replace Nan and inf by with extreme values (min, max)
+                ori_features_df = extract_features(
+                    timeseries_container=ori_df,
+                    column_id="reps",
+                    default_fc_parameters=settings,
+                )
+                ori_features_df = impute(ori_features_df)  # Replace Nan and inf by with extreme values (min, max)
                 hrv_mean = hrv_df.groupby("reps").mean()
 
                 # Match with FlyWheel data
@@ -232,7 +241,8 @@ def prepare_segmented_data(src_path: str, dst_path: str, plot_path: str):
                 total_df = pd.concat(
                     [
                         imu_features_df[:min_length].reset_index(drop=True).add_prefix("PHYSILOG_"),
-                        pos_features_df[:min_length].reset_index(drop=True).add_prefix("MOCAP_"),
+                        pos_features_df[:min_length].reset_index(drop=True).add_prefix("KINECTPOS_"),
+                        ori_features_df[:min_length].reset_index(drop=True).add_prefix("KINECTORI_"),
                         flywheel_df[:min_length].reset_index(drop=True).add_prefix("FLYWHEEL_"),
                         hrv_mean[:min_length].reset_index(drop=True).add_prefix("HRV_"),
                     ],

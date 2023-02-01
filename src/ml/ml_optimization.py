@@ -19,7 +19,9 @@ from sklearn.metrics import (
 from .ml_model_config import (
     SVRModelConfig,
     GBRModelConfig,
-    SVMModelConfig,
+    RFModelConfig,
+    MLPModelConfig,
+    XGBoostConfig,
 )
 
 import pandas as pd
@@ -55,11 +57,14 @@ models = {
     "regression":
         [
             SVRModelConfig(),
+            RFModelConfig(),
             GBRModelConfig(),
+            MLPModelConfig(),
+            XGBoostConfig(),
         ],
     "classification":
         [
-            SVMModelConfig(),
+            SVRModelConfig(),
         ]
 }
 
@@ -70,6 +75,7 @@ class MLOptimization(object):
             self,
             X: pd.DataFrame,
             y: pd.DataFrame,
+            balance: bool,
             task: str,
             mode: str,
             ground_truth: str,
@@ -86,6 +92,7 @@ class MLOptimization(object):
         self._y = y
         self._task = task
         self._mode = mode
+        self._balance = balance
         self._ground_truth = ground_truth
 
     def perform_grid_search_with_cv(self, log_path: str):
@@ -102,7 +109,7 @@ class MLOptimization(object):
                     (str(model_config), model_config.model),
                 ]
 
-                if self._task == "classification":
+                if self._balance:
                     steps.insert(0, ("balance_sampling", RandomOverSampler()))
 
                 pipe = Pipeline(steps=steps)

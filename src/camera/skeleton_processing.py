@@ -2,11 +2,9 @@ from src.processing import apply_butterworth_filter, apply_affine_transformation
 from src.camera.kabsch import find_rigid_transformation_svd
 from typing import List
 from .fitting import fit_inverse_kinematic_parallel
-from PyMoCapViewer import MoCapViewer
 
 import numpy as np
 import pandas as pd
-import logging
 
 
 excluded_joints = ["EYE", "EAR", "NOSE", "HANDTIP", "THUMB", "CLAVICLE", "HAND"]
@@ -16,11 +14,7 @@ def fuse_cameras(df1: pd.DataFrame, df2: pd.DataFrame):
     df1 = process_data_frame_initially(df1)
     df2 = process_data_frame_initially(df2)
     df1, df2 = synchronize_skeleton_on_timestamp(df1, df2)
-
-    m_err_1, s_err_1 = calculate_error_between_both_cameras(df1, df2)
     df1, df2 = calculate_affine_transformation_based_on_data(df1, df2)
-    m_err_2, s_err_2 = calculate_error_between_both_cameras(df1, df2)
-    # logging.info(f"Joint errors: m={m_err_1:.2f}, s={s_err_2:.2f} mm, after: m={m_err_2:.2f}, s={s_err_2:.2f}")
 
     averaged = fuse_skeleton_gradients(df1, df2, exp=1.8, initial_poses=5)
     average_filtered = apply_butterworth_filter(
@@ -31,17 +25,10 @@ def fuse_cameras(df1: pd.DataFrame, df2: pd.DataFrame):
     )
 
     average_filtered = average_filtered.set_index(df1.index)
-    average_filtered.index = pd.to_datetime(average_filtered.index, unit="s")
-    return average_filtered
-
-    # viewer = MoCapViewer(sphere_radius=0.015, grid_axis=None)
-    # viewer.add_skeleton(df1, skeleton_connection="azure") # , skeleton_orientations=fit_rot, orientation="euler")
-    # viewer.add_skeleton(df2, skeleton_connection="azure") # , skeleton_orientations=fit_rot, orientation="euler")
-    # viewer.add_skeleton(average_filtered, skeleton_connection="azure") # , skeleton_orientations=fit_rot, orientation="euler")
-    # viewer.show_window()
-
-    # fit_pos, fit_rot = fit_inverse_kinematic_parallel(average_filtered)
-    # return fit_pos, fit_rot
+    fit_pos, fit_ori = fit_inverse_kinematic_parallel(average_filtered)
+    fit_pos.index = pd.to_datetime(average_filtered.index, unit="s")
+    fit_ori.index = pd.to_datetime(average_filtered.index, unit="s")
+    return fit_pos, fit_ori
 
 
 def process_data_frame_initially(df: pd.DataFrame) -> pd.DataFrame:

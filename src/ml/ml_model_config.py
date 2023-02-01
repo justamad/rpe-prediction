@@ -25,9 +25,9 @@ class SVMModelConfig(LearningModelBase):
 
     def __init__(self):
         tuned_parameters = {
-            f"{str(self)}__kernel": ("linear", "rbf"),
-            f"{str(self)}__gamma": [1e-3, 1e-4],
-            f"{str(self)}__C": [1e0, 1e1, 1e2, 1e3],
+            f"{str(self)}__kernel": ["rbf"],  # "linear"),
+            f"{str(self)}__gamma": [1e-3],  # , 1e-4],
+            f"{str(self)}__C": [1e0],  # , 1e1, 1e2, 1e3],
         }
 
         super().__init__(model=SVC(), grid_search_params=tuned_parameters)
@@ -40,7 +40,7 @@ class SVRModelConfig(LearningModelBase):
 
     def __init__(self):
         tuned_parameters = {
-            f"{str(self)}__kernel": ("linear", "rbf"),
+            f"{str(self)}__kernel": ["rbf", "linear"],
             f"{str(self)}__gamma": [1e-3, 1e-4],
             f"{str(self)}__C": [1e0, 1e1, 1e2, 1e3],
         }
@@ -88,7 +88,7 @@ class GBRModelConfig(LearningModelBase):
         tuned_parameters = {
             f'{str(self)}__n_estimators': [15, 50, 150, 500],
             f'{str(self)}__learning_rate': [0.05, 0.1, 0.2],
-            f'{str(self)}__loss': ["ls", "huber", "lad"],
+            f'{str(self)}__loss': ["squared_error", "absolute_error", "huber"],
             f'{str(self)}__n_iter_no_change': [None, 5, 50, 100]
         }
 

@@ -73,10 +73,10 @@ def train_model(
         search: str,
         n_features: int,
         ground_truth: str,
+        balancing: bool = False,
         temporal_features: bool = False,
-        drop_columns=None,
-        drop_prefixes=None,
-
+        drop_columns: List = None,
+        drop_prefixes: List = None,
 ):
     if drop_prefixes is None:
         drop_prefixes = []
@@ -98,6 +98,7 @@ def train_model(
                 "drop_prefixes": drop_prefixes,
                 "normalization": normalization,
                 "temporal_features": temporal_features,
+                "balancing": balancing,
             },
             f,
         )
@@ -133,6 +134,7 @@ def train_model(
         y=y,
         task=task,
         mode=search,
+        balance=balancing,
         ground_truth=ground_truth,
     )
     ml_optimization.perform_grid_search_with_cv(log_path=log_path)
@@ -144,10 +146,11 @@ def evaluate_for_specific_ml_model(result_path: str):
     X = pd.read_csv(join(result_path, "X.csv"), index_col=0)
     y = pd.read_csv(join(result_path, "y.csv"), index_col=0)
 
-    if config["task"] == "classification":
-        score_metric = "mean_test_f1_score"
-    else:
-        score_metric = "mean_test_r2"
+    # if config["task"] == "classification":
+    # score_metric = "mean_test_f1_score"
+    score_metric = "mean_test_r2"
+    # else:
+    # score_metric = "mean_test_r2"
 
     for model_file in list(filter(lambda x: x.startswith("model__"), os.listdir(result_path))):
         model_name = model_file.replace("model__", "").replace(".csv", "")
@@ -261,7 +264,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
-    parser.add_argument("--eval_path", type=str, dest="eval_path", default="results/2023-01-28-13-51-30_imu_rpe_50")
+    parser.add_argument("--eval_path", type=str, dest="eval_path", default="results/2023-02-01-14-38-42_imu_rpe_50")
     parser.add_argument("--from_scratch", type=bool, dest="from_scratch", default=True)
     parser.add_argument("--task", type=str, dest="task", default="classification")
     parser.add_argument("--search", type=str, dest="search", default="grid")
@@ -271,8 +274,8 @@ if __name__ == "__main__":
     exp_path = "experiments"
     df = pd.read_csv(join(args.src_path, "seg_hrv.csv"), index_col=0)
 
-    # for experiment in os.listdir(exp_path):
-    #     exp_config = yaml.load(open(join(exp_path, experiment), "r"), Loader=yaml.FullLoader)
-    #     eval_path = train_model(df, experiment.replace(".yaml", ""), args.result_path, **exp_config)
-    #     evaluate_for_specific_ml_model(eval_path)
-    evaluate_for_specific_ml_model(args.eval_path)
+    # evaluate_for_specific_ml_model(args.eval_path)
+    for experiment in os.listdir(exp_path):
+        exp_config = yaml.load(open(join(exp_path, experiment), "r"), Loader=yaml.FullLoader)
+        eval_path = train_model(df, experiment.replace(".yaml", ""), args.result_path, **exp_config)
+        evaluate_for_specific_ml_model(eval_path)
