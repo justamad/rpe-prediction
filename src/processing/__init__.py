@@ -1,4 +1,4 @@
-from .segmentation import segment_signal_peak_detection
+from .segmentation import segment_imu_signal, segment_kinect_signal
 from .synchronization import calculate_cross_correlation, calculate_cross_correlation_with_datetime
 
 from .utils import (
@@ -20,6 +20,7 @@ from .signal_processing import (
     butterworth_filter_1d,
     calculate_magnitude,
     calculate_acceleration,
+    apply_butterworth_1d_signal,
 )
 
 from .geometry import (

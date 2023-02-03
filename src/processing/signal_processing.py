@@ -37,9 +37,9 @@ def resample_data(
     return pd.DataFrame(np.array(result_columns).T, columns=df.columns)
 
 
-def butter_bandpass(fc: int, fs: int, order=5):
+def butter_bandpass(fc: int, fs: int, order: int):
     w = fc / fs / 2
-    sos = butter(order, w, btype='lowpass', analog=False, output='sos')
+    sos = butter(order, w, btype="lowpass", analog=False, output="sos")
     return sos
 
 
@@ -71,6 +71,16 @@ def apply_butterworth_filter(
         result.append(sosfiltfilt(sos, df[column]))
 
     return pd.DataFrame(data=np.array(result).T, columns=df.columns, index=df.index)
+
+
+def apply_butterworth_1d_signal(
+        data: np.ndarray,
+        cutoff: int,
+        sampling_rate: int,
+        order: int = 4,
+) -> np.ndarray:
+    sos = butter_bandpass(cutoff, sampling_rate, order)
+    return sosfiltfilt(sos, data)
 
 
 def identify_and_fill_gaps_in_data(

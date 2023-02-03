@@ -18,12 +18,16 @@ def extract_dataset_input_output(df: pd.DataFrame, ground_truth_column: str) -> 
     return inputs, outputs
 
 
-def normalize_subject_rpe(df: pd.DataFrame) -> pd.DataFrame:
+def normalize_gt_per_subject_mean(df: pd.DataFrame, column: str, normalization: str) -> pd.DataFrame:
     for subject in df["subject"].unique():
         mask = df["subject"] == subject
-        rpe_values = df.loc[mask, "rpe"].to_numpy()
-        rpe_norm = (rpe_values - rpe_values.min()) / (rpe_values.max() - rpe_values.min())
-        df.loc[mask, "rpe"] = rpe_norm
+        gt_values = df.loc[mask, column].to_numpy()
+        if normalization == "mean":
+            df.loc[mask, column] = (gt_values - gt_values.mean()) / gt_values.std()
+        elif normalization == "min_max":
+            df.loc[mask, column] = (gt_values - gt_values.min()) / (gt_values.max() - gt_values.min())
+        else:
+            raise ValueError(f"Unknown normalization: {normalization}")
 
     return df
 
@@ -60,7 +64,7 @@ def split_data_based_on_pseudonyms(
 def get_subject_names_random_split(
         df: pd.DataFrame,
         train_p: float = 0.7,
-        random_seed: int = None,
+        random_seed: int = 17,
 ) -> pd.Series:
     subject_names = sorted(df["subject"].unique())
     nr_subjects = math.ceil(len(subject_names) * train_p)

@@ -1,20 +1,18 @@
-from typing import List, Dict
 from src.ml import MLOptimization, eliminate_features_with_rfe
+from typing import List, Dict
 from datetime import datetime
-from sklearn.svm import SVR, SVC
 from argparse import ArgumentParser
 from imblearn.over_sampling import RandomOverSampler
 from imblearn.pipeline import Pipeline
 from os.path import join, exists
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error
 from scipy.stats import pearsonr
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.svm import SVR, SVC
 from src.dataset import (
+    normalize_gt_per_subject_mean,
     extract_dataset_input_output,
-    normalize_subject_rpe,
-    split_data_based_on_pseudonyms,
     normalize_data_by_subject,
 )
 
@@ -24,7 +22,6 @@ import logging
 import os
 import yaml
 import matplotlib
-
 matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 
@@ -46,6 +43,7 @@ models = {
     "gbr": GradientBoostingRegressor,
     "svr": SVR,
     "svm": SVR,
+    "rf": RandomForestRegressor,
 }
 
 
@@ -70,6 +68,7 @@ def train_model(
         log_path: str,
         task: str,
         normalization: str,
+        normalization_ground_truth: str,
         search: str,
         n_features: int,
         ground_truth: str,
@@ -77,7 +76,7 @@ def train_model(
         temporal_features: bool = False,
         drop_columns: List = None,
         drop_prefixes: List = None,
-):
+) -> str:
     if drop_prefixes is None:
         drop_prefixes = []
     if drop_columns is None:
@@ -99,6 +98,7 @@ def train_model(
                 "normalization": normalization,
                 "temporal_features": temporal_features,
                 "balancing": balancing,
+                "normalization_ground_truth": normalization_ground_truth,
             },
             f,
         )
@@ -117,6 +117,12 @@ def train_model(
         X = normalize_data_by_subject(X, y)
     elif normalization == "global":
         X = (X - X.mean()) / X.std()
+
+    if normalization_ground_truth == "subject":
+        y = normalize_gt_per_subject_mean(y, ground_truth, "mean")
+    elif normalization_ground_truth == "global":
+        values = y.loc[:, ground_truth].values
+        y.loc[:, ground_truth] = (values - values.mean()) / values.std()
 
     X.fillna(0, inplace=True)
     X, _report_df = eliminate_features_with_rfe(
@@ -146,11 +152,10 @@ def evaluate_for_specific_ml_model(result_path: str):
     X = pd.read_csv(join(result_path, "X.csv"), index_col=0)
     y = pd.read_csv(join(result_path, "y.csv"), index_col=0)
 
-    # if config["task"] == "classification":
-    # score_metric = "mean_test_f1_score"
-    score_metric = "mean_test_r2"
-    # else:
-    # score_metric = "mean_test_r2"
+    if config["task"] == "classification":
+        score_metric = "mean_test_f1_score"
+    else:
+        score_metric = "mean_test_r2"
 
     for model_file in list(filter(lambda x: x.startswith("model__"), os.listdir(result_path))):
         model_name = model_file.replace("model__", "").replace(".csv", "")
@@ -178,7 +183,7 @@ def evaluate_for_specific_ml_model(result_path: str):
             y_test["predictions"] = predictions
             result_dict[cur_subject] = y_test
 
-        evaluate_sample_prediction(
+        evaluate_sample_predictions(
             result_dict,
             gt_column=gt_column,
             file_name=join(result_path, f"{model_name}_sample_prediction.png"),
@@ -191,11 +196,12 @@ def evaluate_for_specific_ml_model(result_path: str):
         )
 
 
-def evaluate_sample_prediction(result_dic: Dict, gt_column: str, file_name: str):
+def evaluate_sample_predictions(result_dic: Dict, gt_column: str, file_name: str):
     fig, axes = plt.subplots(len(result_dic), sharey=True, figsize=(20, 40))
 
     rmse_all = []
     r2_all = []
+    mape_all = []
     for idx, (subject_name, df) in enumerate(result_dic.items()):
         ground_truth = df[gt_column].to_numpy()
         predictions = df["predictions"].to_numpy()
@@ -203,13 +209,15 @@ def evaluate_sample_prediction(result_dic: Dict, gt_column: str, file_name: str)
         r2 = r2_score(ground_truth, predictions)
         rmse_all.append(rmse)
         r2_all.append(r2)
+        mape = mean_absolute_percentage_error(predictions, ground_truth)
+        mape_all.append(mape)
 
         axes[idx].plot(ground_truth, label="Ground Truth")
         axes[idx].plot(predictions, label="Prediction")
-        axes[idx].set_title(f"Subject: {subject_name}, RMSE: {rmse:.2f}, R2: {r2:.2f}")
+        axes[idx].set_title(f"Subject: {subject_name}, RMSE: {rmse:.2f}, R2: {r2:.2f}, MAPE: {mape:.2f}")
 
     fig.suptitle(
-        f"RMSE: {np.mean(rmse_all):.2f} +- {np.std(rmse_all):.2f}, R2: {np.mean(r2_all):.2f} +- {np.std(r2_all):.2f}")
+        f"RMSE: {np.mean(rmse_all):.2f} +- {np.std(rmse_all):.2f}, R2: {np.mean(r2_all):.2f} +- {np.std(r2_all):.2f}, MAPE: {np.mean(mape_all):.2f} +- {np.std(mape_all):.2f}")
     plt.legend()
     plt.savefig(file_name)
     # plt.show()
@@ -264,7 +272,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
-    parser.add_argument("--eval_path", type=str, dest="eval_path", default="results/2023-02-01-14-38-42_imu_rpe_50")
+    parser.add_argument("--eval_path", type=str, dest="eval_path", default="results/2023-02-03-15-08-34_kinect_ori_rpe_30")
     parser.add_argument("--from_scratch", type=bool, dest="from_scratch", default=True)
     parser.add_argument("--task", type=str, dest="task", default="classification")
     parser.add_argument("--search", type=str, dest="search", default="grid")

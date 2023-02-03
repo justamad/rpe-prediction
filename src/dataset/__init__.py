@@ -1,8 +1,7 @@
 from .data_iterator import SubjectDataIterator
-from .processed_data_generator import ProcessedDataGenerator
 
 from .data_preparation import (
-    normalize_subject_rpe,
+    normalize_gt_per_subject_mean,
     discretize_subject_rpe,
     extract_dataset_input_output,
     normalize_data_by_subject,

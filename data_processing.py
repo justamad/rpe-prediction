@@ -1,15 +1,12 @@
 from src.dataset import SubjectDataIterator
 from argparse import ArgumentParser
-from typing import List
-from os.path import join
-from scipy import stats
-from tsfresh.feature_extraction import MinimalFCParameters, extract_features, EfficientFCParameters, ComprehensiveFCParameters
-from tsfresh.feature_extraction import ComprehensiveFCParameters, feature_calculators
+from typing import List, Tuple
+from os.path import join, exists, isfile
+from tsfresh.feature_extraction import extract_features, ComprehensiveFCParameters, feature_calculators
 from tsfresh.utilities.dataframe_functions import impute
-# from PyMoCapViewer import MoCapViewer
 
 from src.processing import (
-    segment_signal_peak_detection,
+    segment_kinect_signal,
     apply_butterworth_filter,
     calculate_acceleration,
     calculate_cross_correlation_with_datetime,
@@ -17,15 +14,20 @@ from src.processing import (
 
 import numpy as np
 import json
-import os.path
+import os
 import pandas as pd
 import logging
 import matplotlib
 matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 
+from cycler import cycler
+default_cycler = (cycler(color=['r', 'g', 'b']) + cycler(linestyle=['-', '-', '-']))
+plt.rc('axes', prop_cycle=default_cycler)
+
 
 class CustomFeatures(ComprehensiveFCParameters):
+
     def __init__(self):
         ComprehensiveFCParameters.__init__(self)
 
@@ -38,26 +40,48 @@ class CustomFeatures(ComprehensiveFCParameters):
         del self["sum_values"]
         del self["variance"]
         del self["mean"]
-        # del self["length"]
-
-
-# settings = MinimalFCParameters()
-# settings = EfficientFCParameters()
-# settings = ComprehensiveFCParameters()
-# del settings["variance"]  # Variance and standard deviation are highly correlated but std integrates nr of samples
-# del settings["sum_values"]  # Highly correlated with RMS and Mean
-# del settings["mean"]  # Highly correlated with RMS and Sum
-settings = CustomFeatures()
 
 
 def truncate_data_frames(*data_frames) -> List[pd.DataFrame]:
     start_time = max([df.index[0] for df in data_frames])
     end_time = min([df.index[-1] for df in data_frames])
-
     result = [df[(df.index >= start_time) & (df.index < end_time)] for df in data_frames]
-    # max_len = min([len(df) for df in result])
-    # result = [df.iloc[:max_len] for df in result]
     return result
+
+
+def match_flywheel_data(flywheel_df: pd.DataFrame, pos_df: pd.DataFrame) -> Tuple[List[bool], List[bool]]:
+    if len(flywheel_df) == len(pos_df):
+        return [True for _ in range(len(flywheel_df))], [True for _ in range(len(pos_df))]
+
+    flywheel_duration = flywheel_df["duration"]
+    pos_duration = pos_df["PELVIS (x)__length"] / 30
+
+    flywheel_mean = flywheel_duration / flywheel_duration.max()
+    pos_mean = pos_duration / pos_duration.max()
+
+    max_length = min(len(flywheel_mean), len(pos_mean))
+    if len(flywheel_mean) > len(pos_mean):
+        shift = calculate_cross_correlation_arrays(flywheel_mean.to_numpy(), pos_mean.to_numpy())
+        flywheel_mask = [False for _ in range(len(flywheel_mean))]
+        flywheel_mask[shift:shift + max_length] = [True for _ in range(max_length)]
+        return flywheel_mask, [True for _ in range(len(pos_mean))]
+    else:
+        shift = calculate_cross_correlation_arrays(pos_mean.to_numpy(), flywheel_mean.to_numpy())
+        pos_mask = [False for _ in range(len(pos_mean))]
+        pos_mask[shift:shift + max_length] = [True for _ in range(max_length)]
+        return [True for _ in range(len(flywheel_mean))], pos_mask
+
+
+def calculate_cross_correlation_arrays(reference: np.ndarray, target: np.ndarray) -> int:
+    reference = (reference - np.mean(reference)) / np.std(reference)
+    target = (target - np.mean(target)) / np.std(target)
+
+    diffs = []
+    for shift in range(0, len(reference) - len(target) + 1):
+        diffs.append(np.sum(np.abs(reference[shift:shift + len(target)] - target)))
+
+    shift = np.argmin(diffs)
+    return shift
 
 
 def mask_values_with_reps(df: pd.DataFrame, repetitions: List) -> pd.DataFrame:
@@ -71,14 +95,6 @@ def impute_dataframe(df: pd.DataFrame):
     df = df.interpolate(method="linear", limit_direction="forward", axis=0)
     df = df.fillna(0)
     return df
-
-
-def filter_outliers_z_scores(df: pd.DataFrame, axis: str, z_score: float = 0.3) -> pd.DataFrame:
-    z_scores = stats.zscore(df[axis])
-    z_scores = z_scores.dropna(axis=1, how="all")
-    abs_z_scores = np.abs(z_scores)
-    filtered_entries = (abs_z_scores < z_score).all(axis=1)
-    return filtered_entries
 
 
 def process_all_raw_data(src_path: str, dst_path: str, plot_path: str):
@@ -112,8 +128,6 @@ def process_all_raw_data(src_path: str, dst_path: str, plot_path: str):
         pos_df.index += shift_dt
         ori_df.index += shift_dt
 
-        # imu_df, azure_acc_df, pos_df, hrv_df = truncate_data_frames(imu_df, azure_acc_df, pos_df, hrv_df)
-
         fig, axs = plt.subplots(4, 1, sharex=True, figsize=(15, 12))
         fig.suptitle(f"Subject: {trial['subject']}, Set: {trial['nr_set']}")
         axs[0].plot(pos_df[['SPINE_CHEST (x)', 'SPINE_CHEST (y)', 'SPINE_CHEST (z)']])
@@ -131,26 +145,25 @@ def process_all_raw_data(src_path: str, dst_path: str, plot_path: str):
         plt.cla()
         plt.clf()
 
-        pos_df.to_csv(join(trial["dst_path"], "pos.csv"))
-        ori_df.to_csv(join(trial["dst_path"], "ori.csv"))
-        imu_df.to_csv(join(trial["dst_path"], "imu.csv"))
-        hrv_df.to_csv(join(trial["dst_path"], "hrv.csv"))
-        flywheel_df.to_csv(join(trial["dst_path"], "flywheel.csv"))
+        for df, name in zip([pos_df, ori_df, imu_df, hrv_df, flywheel_df], ["pos", "ori", "imu", "hrv", "flywheel"]):
+            df.to_csv(join(trial["dst_path"], f"{name}.csv"))
 
 
 def prepare_segmented_data(src_path: str, dst_path: str, plot_path: str):
     final_df = pd.DataFrame()
+    settings = CustomFeatures()
+
     for subject in os.listdir(src_path):
         rpe_file = join(src_path, subject, "rpe_ratings.json")
-        if not os.path.isfile(rpe_file):
+        if not isfile(rpe_file):
             raise FileNotFoundError(f"Could not find RPE file for subject {subject}")
 
         with open(rpe_file) as f:
             rpe_values = json.load(f)
-        rpe_values = {k: v for k, v in enumerate(rpe_values['rpe_ratings'])}
+        rpe_values = {k: v for k, v in enumerate(rpe_values["rpe_ratings"])}
 
         subject_plot_path = join(plot_path, "segmented", subject)
-        if not os.path.exists(subject_plot_path):
+        if not exists(subject_plot_path):
             os.makedirs(subject_plot_path)
 
         subject_path = join(src_path, subject)
@@ -169,25 +182,22 @@ def prepare_segmented_data(src_path: str, dst_path: str, plot_path: str):
             hrv_df = pd.read_csv(join(set_folder, "hrv.csv"), index_col=0)
             hrv_df.index = pd.to_datetime(hrv_df.index)
             flywheel_df = pd.read_csv(join(set_folder, "flywheel.csv"), index_col=0)
-            flywheel_df = flywheel_df[flywheel_df["duration"] >= 1.5]
 
-            # Segment signals
-            # reps = segment_signal_peak_detection(pos_df["PELVIS (y)"], prominence=0.01, std_dev_p=0.2, show=False)
-            imu_df_filter = apply_butterworth_filter(df=imu_df, cutoff=4, order=4, sampling_rate=128)
-            reps = segment_signal_peak_detection(
-                -imu_df_filter["CHEST_ACCELERATION_Z"],
-                prominence=0.2,
-                std_dev_p=0.7,
+            # Segment signals based on Kinect
+            # imu_df = apply_butterworth_filter(df=imu_df, cutoff=10, order=4, sampling_rate=128)
+            reps = segment_kinect_signal(
+                # -imu_df["CHEST_ACCELERATION_Z"],
+                pos_df["PELVIS (y)"],
+                prominence=0.01,
+                std_dev_p=0.4,
+                min_dist_p=0.5,
+                min_time=30,
                 show=False,
             )
             pos_df = mask_values_with_reps(pos_df, reps)
             ori_df = mask_values_with_reps(ori_df, reps)
             imu_df = mask_values_with_reps(imu_df, reps)
             hrv_df = mask_values_with_reps(hrv_df, reps)
-
-            # viewer = MoCapViewer(sphere_radius=0.01)
-            # viewer.add_skeleton(pos_df, skeleton_connection="azure")
-            # viewer.show_window()
 
             fig, axs = plt.subplots(3, 1, sharex=True, figsize=(15, 12))
             axs[0].set_title(f"{len(flywheel_df)} vs. {len(reps)}")
@@ -215,6 +225,12 @@ def prepare_segmented_data(src_path: str, dst_path: str, plot_path: str):
             imu_df = imu_df[imu_df["reps"] != -1]
             hrv_df = hrv_df[hrv_df["reps"] != -1]
 
+            pos_reps = pos_df["reps"].unique()
+            imu_reps = imu_df["reps"].unique()
+            if len(pos_reps) != len(imu_reps):
+                logging.warning(f"Different number of reps: {subject}, set {set_id}: {len(pos_reps)} vs. {len(imu_reps)}")
+                # TODO: Remove uneven reps
+
             try:
                 imu_features_df = extract_features(
                     timeseries_container=imu_df,
@@ -236,15 +252,24 @@ def prepare_segmented_data(src_path: str, dst_path: str, plot_path: str):
                 ori_features_df = impute(ori_features_df)  # Replace Nan and inf by with extreme values (min, max)
                 hrv_mean = hrv_df.groupby("reps").mean()
 
-                # Match with FlyWheel data
-                min_length = min(len(imu_features_df), len(pos_features_df), len(flywheel_df))
+                # Match Feature reps with Flywheel data
+                flywheel_mask, pos_mask = match_flywheel_data(flywheel_df, pos_features_df)
+                flywheel_df = flywheel_df[flywheel_mask]
+                pos_features_df = pos_features_df[pos_mask]
+                ori_features_df = ori_features_df[pos_mask]
+
+                # TODO: Danger here...
+                # min_length = min(len(imu_features_df), len(pos_features_df), len(flywheel_df))
                 total_df = pd.concat(
                     [
-                        imu_features_df[:min_length].reset_index(drop=True).add_prefix("PHYSILOG_"),
-                        pos_features_df[:min_length].reset_index(drop=True).add_prefix("KINECTPOS_"),
-                        ori_features_df[:min_length].reset_index(drop=True).add_prefix("KINECTORI_"),
-                        flywheel_df[:min_length].reset_index(drop=True).add_prefix("FLYWHEEL_"),
-                        hrv_mean[:min_length].reset_index(drop=True).add_prefix("HRV_"),
+                        pos_features_df.reset_index(drop=True).add_prefix("KINECTPOS_"),
+                        ori_features_df.reset_index(drop=True).add_prefix("KINECTORI_"),
+                        flywheel_df.reset_index(drop=True).add_prefix("FLYWHEEL_"),
+                        # imu_features_df[:min_length].reset_index(drop=True).add_prefix("PHYSILOG_"),
+                        # pos_features_df[:min_length].reset_index(drop=True).add_prefix("KINECTPOS_"),
+                        # ori_features_df[:min_length].reset_index(drop=True).add_prefix("KINECTORI_"),
+                        # flywheel_df[:min_length].reset_index(drop=True).add_prefix("FLYWHEEL_"),
+                        # hrv_mean[:min_length].reset_index(drop=True).add_prefix("HRV_"),
                     ],
                     axis=1,
                 )
@@ -258,7 +283,7 @@ def prepare_segmented_data(src_path: str, dst_path: str, plot_path: str):
             except Exception as e:
                 logging.error(f"Error while processing {subject} {set_id}: {e}")
 
-    if not os.path.exists(dst_path):
+    if not exists(dst_path):
         os.makedirs(dst_path)
 
     final_df = impute_dataframe(final_df)
@@ -280,10 +305,10 @@ if __name__ == "__main__":
         datefmt="%m-%d %H:%M:%S",
     )
 
-    if not os.path.exists(args.dst_path):
+    if not exists(args.dst_path):
         os.makedirs(args.dst_path)
 
-    if not os.path.exists(args.plot_path):
+    if not exists(args.plot_path):
         os.makedirs(args.plot_path)
 
     # process_all_raw_data(args.src_path, join(args.dst_path, "processed"), args.plot_path)
