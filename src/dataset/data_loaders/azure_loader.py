@@ -1,5 +1,5 @@
 from .base_loader import BaseSubjectLoader, LoadingException
-from src.camera import fuse_cameras
+from PySkeletonFitter import fuse_multiple_skeletons, fit_inverse_kinematic_parallel
 from os.path import join, exists, isdir
 
 import pandas as pd
@@ -25,7 +25,7 @@ class AzureSubjectLoader(BaseSubjectLoader):
         self._sub_trials = {int(pathlib.PurePath(v).name.split("_")[0]) - 1: v for v in sub_trials}
         self._master_trials = {int(pathlib.PurePath(v).name.split("_")[0]) - 1: v for v in master_trials}
 
-    def get_trial_by_set_nr(self, trial_nr: int) -> pd.DataFrame:
+    def get_trial_by_set_nr(self, trial_nr: int):
         if trial_nr not in self._sub_trials or trial_nr not in self._master_trials:
             raise LoadingException(f"{str(self)}: Error when loading set: {trial_nr} for subject {self._azure_path}")
 
@@ -34,8 +34,13 @@ class AzureSubjectLoader(BaseSubjectLoader):
 
         master_df = pd.read_csv(master, index_col=0, sep=";")
         sub_df = pd.read_csv(sub, index_col=0, sep=";")
-        fused_df = fuse_cameras(master_df, sub_df)
-        return fused_df
+        master_df, sub_df, average = fuse_multiple_skeletons(master_df, sub_df)
+
+        average.set_index(master_df.index, inplace=True)
+        pos, ori = fit_inverse_kinematic_parallel(average, max_iterations=300, n_processes=11)
+        pos.index = pd.to_datetime(average.index, unit="s")
+        ori.index = pd.to_datetime(average.index, unit="s")
+        return pos, ori
 
     def get_nr_of_sets(self):
         return min(len(self._sub_trials), len(self._master_trials))
