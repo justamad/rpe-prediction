@@ -14,7 +14,7 @@ def extract_dataset_input_output(df: pd.DataFrame, ground_truth_column: str) -> 
 
     lst = META_DATA + [ground_truth_column]
     inputs = df.drop(lst, axis=1, inplace=False, errors="ignore")
-    outputs = df[df.columns.intersection(lst)]
+    outputs = df.loc[:, df.columns.intersection(lst)]
     return inputs, outputs
 
 

@@ -1,5 +1,5 @@
 from src.ml import MLOptimization, eliminate_features_with_rfe
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from datetime import datetime
 from argparse import ArgumentParser
 from imblearn.over_sampling import RandomOverSampler
@@ -67,8 +67,8 @@ def train_model(
         exp_name: str,
         log_path: str,
         task: str,
-        normalization: str,
-        normalization_ground_truth: str,
+        normalization_input: str,
+        normalization_labels: Tuple[str, bool],
         search: str,
         n_features: int,
         ground_truth: str,
@@ -86,23 +86,6 @@ def train_model(
     if not exists(log_path):
         os.makedirs(log_path)
 
-    with open(join(log_path, "config.yml"), "w") as f:
-        yaml.dump(
-            {
-                "task": task,
-                "search": search,
-                "n_features": n_features,
-                "drop_columns": drop_columns,
-                "ground_truth": ground_truth,
-                "drop_prefixes": drop_prefixes,
-                "normalization": normalization,
-                "temporal_features": temporal_features,
-                "balancing": balancing,
-                "normalization_ground_truth": normalization_ground_truth,
-            },
-            f,
-        )
-
     X, y = extract_dataset_input_output(df=df, ground_truth_column=ground_truth)
 
     for prefix in drop_prefixes:
@@ -110,19 +93,31 @@ def train_model(
 
     X.drop(columns=drop_columns, inplace=True, errors="ignore")
 
-    if temporal_features:
-        X = calculate_temporal_features(X, y, folds=3)
+    # if temporal_features:
+    #     X = calculate_temporal_features(X, y, folds=3)
 
-    if normalization == "subject":
-        X = normalize_data_by_subject(X, y)
-    elif normalization == "global":
-        X = (X - X.mean()) / X.std()
+    # Normalization
+    input_mean, input_std = float('inf'), float('inf')
+    label_mean, label_std = None, None
 
-    if normalization_ground_truth == "subject":
-        y = normalize_gt_per_subject_mean(y, ground_truth, "mean")
-    elif normalization_ground_truth == "global":
-        values = y.loc[:, ground_truth].values
-        y.loc[:, ground_truth] = (values - values.mean()) / values.std()
+    if normalization_input:
+        if normalization_input == "subject":
+            X = normalize_data_by_subject(X, y)
+        elif normalization_input == "global":
+            input_mean, input_std = X.mean(), X.std()
+            X = (X - input_mean) / input_std
+        else:
+            raise ValueError(f"Unknown normalization_input: {normalization_input}")
+
+    if normalization_labels:
+        if normalization_labels == "subject":
+            y = normalize_gt_per_subject_mean(y, ground_truth, "mean")
+        elif normalization_labels == "global":
+            values = y.loc[:, ground_truth].values
+            label_mean, label_std = values.mean(), values.std()
+            y.loc[:, ground_truth] = (values - label_mean) / label_std
+        else:
+            raise ValueError(f"Unknown normalization_ground_truth: {normalization_labels}")
 
     X.fillna(0, inplace=True)
     X, _report_df = eliminate_features_with_rfe(
@@ -134,6 +129,27 @@ def train_model(
     _report_df.to_csv(join(log_path, "rfe_report.csv"))
     X.to_csv(join(log_path, "X.csv"))
     y.to_csv(join(log_path, "y.csv"))
+
+    with open(join(log_path, "config.yml"), "w") as f:
+        yaml.dump(
+            {
+                "task": task,
+                "search": search,
+                "n_features": n_features,
+                "drop_columns": drop_columns,
+                "ground_truth": ground_truth,
+                "drop_prefixes": drop_prefixes,
+                "normalization_input": normalization_input,
+                "temporal_features": temporal_features,
+                "balancing": balancing,
+                "normalization_labels": normalization_labels,
+                # "input_mean": float(input_mean),
+                # "input_std": float(input_std),
+                "label_mean": float(label_mean),
+                "label_std": float(label_std),
+            },
+            f,
+        )
 
     ml_optimization = MLOptimization(
         X=X,
@@ -174,35 +190,36 @@ def evaluate_for_specific_ml_model(result_path: str):
                     ("learner", model),
                 ])
 
-            X_train = X.loc[y["subject"] != cur_subject]
-            y_train = y.loc[y["subject"] != cur_subject]
-            X_test = X.loc[y["subject"] == cur_subject]
-            y_test = y.loc[y["subject"] == cur_subject]
-            model.fit(X_train, y_train[gt_column])
-            predictions = model.predict(X_test)
-            y_test["predictions"] = predictions
+            X_train = X.loc[y["subject"] != cur_subject, :]
+            y_train = y.loc[y["subject"] != cur_subject, :]
+            X_test = X.loc[y["subject"] == cur_subject, :]
+            y_test = y.loc[y["subject"] == cur_subject, :].copy()
+
+            y_test.loc[:, "predictions"] = model.fit(X_train, y_train[gt_column]).predict(X_test)
+            y_test.loc[:, config["ground_truth"]] = y_test.loc[:, config["ground_truth"]] * config["label_std"] + config["label_mean"]
+            y_test.loc[:, "predictions"] = y_test.loc[:, "predictions"] * config["label_std"] + config["label_mean"]
             result_dict[cur_subject] = y_test
 
         evaluate_sample_predictions(
-            result_dict,
+            result_dict=result_dict,
             gt_column=gt_column,
             file_name=join(result_path, f"{model_name}_sample_prediction.png"),
         )
 
         evaluate_aggregated_predictions(
-            result_dict,
+            result_dict=result_dict,
             gt_column=gt_column,
             file_name=join(result_path, f"{model_name}_aggregated_prediction.png"),
         )
 
 
-def evaluate_sample_predictions(result_dic: Dict, gt_column: str, file_name: str):
-    fig, axes = plt.subplots(len(result_dic), sharey=True, figsize=(20, 40))
+def evaluate_sample_predictions(result_dict: Dict, gt_column: str, file_name: str):
+    fig, axes = plt.subplots(len(result_dict), sharey=True, figsize=(20, 40))
 
     rmse_all = []
     r2_all = []
     mape_all = []
-    for idx, (subject_name, df) in enumerate(result_dic.items()):
+    for idx, (subject_name, df) in enumerate(result_dict.items()):
         ground_truth = df[gt_column].to_numpy()
         predictions = df["predictions"].to_numpy()
         rmse = mean_squared_error(predictions, ground_truth, squared=False)
@@ -225,15 +242,15 @@ def evaluate_sample_predictions(result_dic: Dict, gt_column: str, file_name: str
     plt.close()
 
 
-def evaluate_aggregated_predictions(result_dic: Dict, gt_column: str, file_name: str):
-    fig, axes = plt.subplots(len(result_dic), sharey=True, figsize=(20, 40))
+def evaluate_aggregated_predictions(result_dict: Dict, gt_column: str, file_name: str):
+    fig, axes = plt.subplots(len(result_dict), sharey=True, figsize=(20, 40))
 
     rmse_all = []
     r2_all = []
     pcc_all = []
-    for idx, (subject_name, df) in enumerate(result_dic.items()):
-        mean_df = df.groupby("set_id").mean()
-        std_df = df.groupby("set_id").std()
+    for idx, (subject_name, df) in enumerate(result_dict.items()):
+        mean_df = df.groupby("set_id").mean(numeric_only=True)
+        std_df = df.groupby("set_id").std(numeric_only=True)
 
         ground_truth = mean_df[gt_column].to_numpy()
         predictions = mean_df["predictions"].to_numpy()
@@ -272,18 +289,17 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
-    parser.add_argument("--eval_path", type=str, dest="eval_path", default="results/2023-02-03-15-08-34_kinect_ori_rpe_30")
-    parser.add_argument("--from_scratch", type=bool, dest="from_scratch", default=True)
-    parser.add_argument("--task", type=str, dest="task", default="classification")
-    parser.add_argument("--search", type=str, dest="search", default="grid")
-    parser.add_argument("--n_features", type=int, dest="n_features", default=100)
+    parser.add_argument("--eval_exp", type=str, dest="eval_exp", default="results/2023-02-17-15-08-39_kinect_power_subject_norm")
+    parser.add_argument("--run_experiments", type=str, dest="run_experiments", default="experiments")
     args = parser.parse_args()
 
-    exp_path = "experiments"
     df = pd.read_csv(join(args.src_path, "seg_hrv.csv"), index_col=0)
 
-    # evaluate_for_specific_ml_model(args.eval_path)
-    for experiment in os.listdir(exp_path):
-        exp_config = yaml.load(open(join(exp_path, experiment), "r"), Loader=yaml.FullLoader)
-        eval_path = train_model(df, experiment.replace(".yaml", ""), args.result_path, **exp_config)
-        evaluate_for_specific_ml_model(eval_path)
+    if args.eval_exp:
+        evaluate_for_specific_ml_model(args.eval_exp)
+
+    # if args.run_experiments:
+    #     for experiment in filter(lambda f: not f.startswith("_"), os.listdir(args.run_experiments)):
+    #         exp_config = yaml.load(open(join(args.run_experiments, experiment), "r"), Loader=yaml.FullLoader)
+    #         eval_path = train_model(df, experiment.replace(".yaml", ""), args.result_path, **exp_config)
+    #         evaluate_for_specific_ml_model(eval_path)
