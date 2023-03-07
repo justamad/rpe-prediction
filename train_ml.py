@@ -290,7 +290,7 @@ if __name__ == "__main__":
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
     parser.add_argument("--eval_exp", type=str, dest="eval_exp", default="results/2023-02-17-15-08-39_kinect_power_subject_norm")
-    parser.add_argument("--run_experiments", type=str, dest="run_experiments", default="experiments")
+    parser.add_argument("--run_experiments", type=str, dest="run_experiments", default="experiments_ml")
     args = parser.parse_args()
 
     df = pd.read_csv(join(args.src_path, "seg_hrv.csv"), index_col=0)
@@ -298,8 +298,8 @@ if __name__ == "__main__":
     if args.eval_exp:
         evaluate_for_specific_ml_model(args.eval_exp)
 
-    # if args.run_experiments:
-    #     for experiment in filter(lambda f: not f.startswith("_"), os.listdir(args.run_experiments)):
-    #         exp_config = yaml.load(open(join(args.run_experiments, experiment), "r"), Loader=yaml.FullLoader)
-    #         eval_path = train_model(df, experiment.replace(".yaml", ""), args.result_path, **exp_config)
-    #         evaluate_for_specific_ml_model(eval_path)
+    if args.run_experiments:
+        for experiment in filter(lambda f: not f.startswith("_"), os.listdir(args.run_experiments)):
+            exp_config = yaml.load(open(join(args.run_experiments, experiment), "r"), Loader=yaml.FullLoader)
+            eval_path = train_model(df, experiment.replace(".yaml", ""), args.result_path, **exp_config)
+            evaluate_for_specific_ml_model(eval_path)

@@ -14,3 +14,7 @@ from .ml_model_config import (
     MLPModelConfig,
     XGBoostConfig,
 )
+
+from .dl_model_config import (
+    ConvLSTMModelConfig,
+)

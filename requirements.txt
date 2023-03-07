@@ -3,8 +3,10 @@ pandas
 matplotlib
 scipy
 fastdtw
-tensorflow==2.4.0
+tensorflow
+keras
 scikit-learn
+scikeras
 sklearn
 tsfresh
 imblearn

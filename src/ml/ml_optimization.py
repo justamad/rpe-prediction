@@ -1,7 +1,10 @@
+import numpy as np
 from imblearn.pipeline import Pipeline
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, LeaveOneGroupOut
 from os.path import join
+from typing import List, Union
+from .ml_model_config import LearningModelBase
 
 from sklearn.metrics import (
     make_scorer,
@@ -22,6 +25,7 @@ from .ml_model_config import (
     RFModelConfig,
     MLPModelConfig,
     XGBoostConfig,
+    SVMModelConfig,
 )
 
 import pandas as pd
@@ -57,14 +61,14 @@ models = {
     "regression":
         [
             SVRModelConfig(),
-            RFModelConfig(),
-            GBRModelConfig(),
-            MLPModelConfig(),
-            XGBoostConfig(),
+            # RFModelConfig(),
+            # GBRModelConfig(),
+            # MLPModelConfig(),
+            # XGBoostConfig(),
         ],
     "classification":
         [
-            SVRModelConfig(),
+            SVMModelConfig(),
         ]
 }
 
@@ -73,7 +77,7 @@ class MLOptimization(object):
 
     def __init__(
             self,
-            X: pd.DataFrame,
+            X: Union[pd.DataFrame, np.ndarray],
             y: pd.DataFrame,
             balance: bool,
             task: str,
@@ -95,8 +99,8 @@ class MLOptimization(object):
         self._balance = balance
         self._ground_truth = ground_truth
 
-    def perform_grid_search_with_cv(self, log_path: str):
-        for model_config in models[self._task]:
+    def perform_grid_search_with_cv(self, models: List[LearningModelBase], log_path: str, n_jobs: int = -1):
+        for model_config in models:
             result_df = pd.DataFrame()
 
             for subject in self._y["subject"].unique():
@@ -120,7 +124,7 @@ class MLOptimization(object):
                         estimator=pipe,
                         param_grid=model_config.parameters,
                         cv=logo.get_n_splits(groups=y_train["group"]),
-                        n_jobs=-1,
+                        n_jobs=n_jobs,
                         verbose=10,
                         scoring=metrics[self._task],
                         error_score="raise",
@@ -132,7 +136,7 @@ class MLOptimization(object):
                         param_distributions=model_config.parameters,
                         n_iter=12,
                         cv=logo.get_n_splits(groups=y_train["group"]),
-                        n_jobs=-1,
+                        n_jobs=n_jobs,
                         verbose=10,
                         scoring=metrics[self._task],
                         error_score="raise",

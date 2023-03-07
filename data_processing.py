@@ -4,6 +4,7 @@ from typing import List, Tuple
 from os.path import join, exists, isfile
 from tsfresh.feature_extraction import extract_features, ComprehensiveFCParameters, feature_calculators
 from tsfresh.utilities.dataframe_functions import impute
+from tqdm import tqdm
 
 from src.processing import (
     segment_kinect_signal,
@@ -47,6 +48,15 @@ def truncate_data_frames(*data_frames) -> List[pd.DataFrame]:
     end_time = min([df.index[-1] for df in data_frames])
     result = [df[(df.index >= start_time) & (df.index < end_time)] for df in data_frames]
     return result
+
+
+def zero_pad_data_frames(df: pd.DataFrame, max_length: int) -> pd.DataFrame:
+    if len(df) == max_length:
+        return df
+
+    rows_to_pad = max_length - len(df)
+    resample = np.pad(df, pad_width=((0, rows_to_pad), (0, 0)), mode="constant", constant_values=0)
+    return pd.DataFrame(resample, columns=df.columns)
 
 
 def match_flywheel_data(flywheel_df: pd.DataFrame, pos_df: pd.DataFrame) -> Tuple[List[bool], List[bool]]:
@@ -149,7 +159,7 @@ def process_all_raw_data(src_path: str, dst_path: str, plot_path: str):
             df.to_csv(join(trial["dst_path"], f"{name}.csv"))
 
 
-def prepare_segmented_data(src_path: str, dst_path: str, plot_path: str):
+def prepare_segmented_data_for_ml(src_path: str, dst_path: str, plot_path: str):
     final_df = pd.DataFrame()
     settings = CustomFeatures()
 
@@ -291,6 +301,133 @@ def prepare_segmented_data(src_path: str, dst_path: str, plot_path: str):
     final_df.to_csv(join(dst_path, "seg_hrv.csv"))
 
 
+def prepare_segmented_data_for_dl(src_path: str, mode: str, dst_path: str, plot_path: str):
+    repetition_data = []
+
+    for subject in os.listdir(src_path):
+        rpe_file = join(src_path, subject, "rpe_ratings.json")
+        if not isfile(rpe_file):
+            raise FileNotFoundError(f"Could not find RPE file for subject {subject}")
+
+        with open(rpe_file) as f:
+            rpe_values = json.load(f)
+        rpe_values = {k: v for k, v in enumerate(rpe_values["rpe_ratings"])}
+
+        subject_plot_path = join(plot_path, "segmented", subject)
+        if not exists(subject_plot_path):
+            os.makedirs(subject_plot_path)
+
+        subject_path = join(src_path, subject)
+        set_folders = list(filter(lambda x: x != "rpe_ratings.json", os.listdir(subject_path)))
+        set_folders = sorted(map(lambda x: (int(x.split("_")[0]), join(subject_path, x)), set_folders))
+
+        for set_id, set_folder in set_folders:
+            logging.info(f"Processing subject {subject}, set {set_id}")
+
+            # Read Dataframes
+            # imu_df = pd.read_csv(join(set_folder, "imu.csv"), index_col=0)
+            # imu_df.index = pd.to_datetime(imu_df.index)
+            pos_df = pd.read_csv(join(set_folder, "pos.csv"), index_col=0)
+            pos_df.index = pd.to_datetime(pos_df.index)
+            ori_df = pd.read_csv(join(set_folder, "ori.csv"), index_col=0)
+            ori_df.index = pd.to_datetime(ori_df.index)
+            hrv_df = pd.read_csv(join(set_folder, "hrv.csv"), index_col=0)
+            hrv_df.index = pd.to_datetime(hrv_df.index)
+            flywheel_df = pd.read_csv(join(set_folder, "flywheel.csv"), index_col=0)
+
+            # Segment signals based on Kinect
+            # imu_df = apply_butterworth_filter(df=imu_df, cutoff=10, order=4, sampling_rate=128)
+            reps = segment_kinect_signal(
+                # -imu_df["CHEST_ACCELERATION_Z"],
+                pos_df["PELVIS (y)"],
+                prominence=0.01,
+                std_dev_p=0.4,
+                min_dist_p=0.5,
+                min_time=30,
+                show=False,
+            )
+            pos_df = mask_values_with_reps(pos_df, reps)
+            ori_df = mask_values_with_reps(ori_df, reps)
+            # imu_df = mask_values_with_reps(imu_df, reps)
+            hrv_df = mask_values_with_reps(hrv_df, reps)
+
+            # fig, axs = plt.subplots(3, 1, sharex=True, figsize=(15, 12))
+            # axs[0].set_title(f"{len(flywheel_df)} vs. {len(reps)}")
+            # axs[0].plot(pos_df["PELVIS (y)"], color="gray")
+            # for p1, p2 in reps:
+            #     axs[0].plot(pos_df["PELVIS (y)"][p1:p2])
+            #     axs[0].plot(ori_df["KNEE_LEFT (x)"])
+            #
+            # # axs[1].plot(imu_df["CHEST_ACCELERATION_Z"], color="gray")
+            # # for p1, p2 in reps:
+            # #     axs[1].plot(imu_df["CHEST_ACCELERATION_Z"][p1:p2])
+            #
+            # axs[2].plot(hrv_df["Load (TRIMP)"], color="gray")
+            # for p1, p2 in reps:
+            #     axs[2].plot(hrv_df["Load (TRIMP)"][p1:p2])
+            #
+            # # plt.show()
+            # plt.savefig(join(subject_plot_path, f"{subject}_{set_id}.png"))
+            # plt.clf()
+            # plt.cla()
+            # plt.close()
+
+            pos_df = pos_df[pos_df["reps"] != -1]
+            # ori_df = ori_df[ori_df["reps"] != -1]
+
+            l_df = [group for _, group in pos_df.groupby("reps")]
+            # r_df = [group for _, group in ori_df.groupby("reps")]
+
+            for a in l_df:
+                repetition_data.append({
+                    "subject": subject,
+                    "set_id": set_id,
+                    "rpe": rpe_values[set_id],
+                    "pos_dfs": a,
+                    # "ori_dfs": r_df,
+                })
+
+            # imu_df = imu_df[imu_df["reps"] != -1]
+            # hrv_df = hrv_df[hrv_df["reps"] != -1]
+
+            # pos_reps = pos_df["reps"].unique()
+            # imu_reps = imu_df["reps"].unique()
+            # if len(pos_reps) != len(imu_reps):
+            #     logging.warning(f"Different number of reps: {subject}, set {set_id}: {len(pos_reps)} vs. {len(imu_reps)}")
+            #     # TODO: Remove uneven reps
+
+
+
+            # total_df["rpe"] = rpe_values[set_id]
+            # total_df["subject"] = subject
+            # total_df["set_id"] = set_id
+            # total_df["rep_id"] = total_df.index
+            # final_df = pd.concat([final_df, total_df], axis=0)
+
+    lengths = [len(df["pos_dfs"]) for df in repetition_data]
+    arg_max = np.argmax(lengths)
+    max_length = max(lengths)
+    logging.info(
+        f"Max Length of repetitions: {max_length} by subject {repetition_data[arg_max]['subject']}, set {repetition_data[arg_max]['set_id']}")
+
+    final_df = pd.DataFrame()
+    if mode == "padding":
+        logging.info("Prepare files using Zero Padding")
+
+        for data_obj in tqdm(repetition_data):
+            df_temp = zero_pad_data_frames(data_obj["pos_dfs"], max_length)
+            df_temp["rpe"] = data_obj["rpe"]
+            df_temp["subject"] = data_obj["subject"]
+            df_temp["set_id"] = data_obj["set_id"]
+
+            final_df = pd.concat([final_df, df_temp], axis=0)
+
+    if not exists(dst_path):
+        os.makedirs(dst_path)
+
+    final_df.to_csv(join(dst_path, f"{mode}.csv"))
+
+
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--src_path", type=str, dest="src_path", default="/media/ch/Data/RPE_Analysis")
@@ -312,4 +449,5 @@ if __name__ == "__main__":
         os.makedirs(args.plot_path)
 
     # process_all_raw_data(args.src_path, join(args.dst_path, "processed"), args.plot_path)
-    prepare_segmented_data(join(args.dst_path, "processed"), join(args.dst_path, "training"), args.plot_path)
+    # prepare_segmented_data_for_ml(join(args.dst_path, "processed"), join(args.dst_path, "training"), args.plot_path)
+    prepare_segmented_data_for_dl(join(args.dst_path, "processed"), "padding", join(args.dst_path, "training"), args.plot_path)
