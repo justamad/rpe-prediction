@@ -8,11 +8,12 @@ from .ml_feature_extraction import (
 
 from .ml_model_config import (
     SVRModelConfig,
-    KNNModelConfig,
     RFModelConfig,
     GBRModelConfig,
     MLPModelConfig,
     XGBoostConfig,
+    regression_models,
+    instantiate_best_model,
 )
 
 from .dl_model_config import (

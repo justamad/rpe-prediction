@@ -1,4 +1,4 @@
-from src.ml import MLOptimization, eliminate_features_with_rfe
+from src.ml import MLOptimization, eliminate_features_with_rfe, regression_models, instantiate_best_model
 from typing import List, Dict, Tuple
 from datetime import datetime
 from argparse import ArgumentParser
@@ -7,9 +7,6 @@ from imblearn.pipeline import Pipeline
 from os.path import join, exists
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error
 from scipy.stats import pearsonr
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.neural_network import MLPRegressor
-from sklearn.svm import SVR, SVC
 from src.dataset import (
     normalize_gt_per_subject_mean,
     extract_dataset_input_output,
@@ -18,33 +15,13 @@ from src.dataset import (
 
 import pandas as pd
 import numpy as np
+import itertools
 import logging
 import os
 import yaml
 import matplotlib
 matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
-
-
-def parse_report_file_to_model_parameters(result_df: pd.DataFrame, metric: str, model_name: str) -> Dict[str, float]:
-    best_combination = result_df.sort_values(by=metric, ascending=True).iloc[0]
-    best_combination = best_combination[best_combination.index.str.contains("param")]
-    param = {k.replace(f"param_{model_name}__", ""): parse_types(v) for k, v in best_combination.to_dict().items()}
-    return param
-
-
-def parse_types(value):
-    if isinstance(value, float) and value.is_integer():
-        return int(value)
-    return value
-
-
-models = {
-    "gbr": GradientBoostingRegressor,
-    "svr": SVR,
-    "svm": SVR,
-    "rf": RandomForestRegressor,
-}
 
 
 def calculate_temporal_features(X: pd.DataFrame, y: pd.DataFrame, folds: int = 2) -> pd.DataFrame:
@@ -64,7 +41,6 @@ def calculate_temporal_features(X: pd.DataFrame, y: pd.DataFrame, folds: int = 2
 
 def train_model(
         df: pd.DataFrame,
-        exp_name: str,
         log_path: str,
         task: str,
         normalization_input: str,
@@ -82,23 +58,18 @@ def train_model(
     if drop_columns is None:
         drop_columns = []
 
-    log_path = join(log_path, f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_{exp_name}")
-    if not exists(log_path):
-        os.makedirs(log_path)
-
     X, y = extract_dataset_input_output(df=df, ground_truth_column=ground_truth)
-
     for prefix in drop_prefixes:
         drop_columns += [col for col in df.columns if col.startswith(prefix)]
 
     X.drop(columns=drop_columns, inplace=True, errors="ignore")
 
-    # if temporal_features:
-    #     X = calculate_temporal_features(X, y, folds=3)
+    if temporal_features:
+        X = calculate_temporal_features(X, y, folds=2)
 
     # Normalization
     input_mean, input_std = float('inf'), float('inf')
-    label_mean, label_std = None, None
+    label_mean, label_std = float('inf'), float('inf')
 
     if normalization_input:
         if normalization_input == "subject":
@@ -117,7 +88,7 @@ def train_model(
             label_mean, label_std = values.mean(), values.std()
             y.loc[:, ground_truth] = (values - label_mean) / label_std
         else:
-            raise ValueError(f"Unknown normalization_ground_truth: {normalization_labels}")
+            raise ValueError(f"Unknown normalization_labels: {normalization_labels}")
 
     X.fillna(0, inplace=True)
     X, _report_df = eliminate_features_with_rfe(
@@ -143,8 +114,8 @@ def train_model(
                 "temporal_features": temporal_features,
                 "balancing": balancing,
                 "normalization_labels": normalization_labels,
-                # "input_mean": float(input_mean),
-                # "input_std": float(input_std),
+                "input_mean": float(input_mean),
+                "input_std": float(input_std),
                 "label_mean": float(label_mean),
                 "label_std": float(label_std),
             },
@@ -159,7 +130,8 @@ def train_model(
         balance=balancing,
         ground_truth=ground_truth,
     )
-    ml_optimization.perform_grid_search_with_cv(log_path=log_path)
+
+    ml_optimization.perform_grid_search_with_cv(models=regression_models, log_path=log_path)
     return log_path
 
 
@@ -177,14 +149,14 @@ def evaluate_for_specific_ml_model(result_path: str):
         model_name = model_file.replace("model__", "").replace(".csv", "")
         logging.info(f"Evaluating model: {model_name}")
         result_df = pd.read_csv(join(result_path, model_file))
-        model_params = parse_report_file_to_model_parameters(result_df, score_metric, model_name)
 
         gt_column = config["ground_truth"]
         subjects = y["subject"].unique()
         result_dict = {}
         for idx, cur_subject in enumerate(subjects):
-            model = models[model_name](**model_params)  # Instantiate a new model best parameters from grid search
-            if config["task"] == "classification":
+            model = instantiate_best_model(result_df, model_name, score_metric)
+
+            if config["balancing"]:
                 model = Pipeline(steps=[
                     ("balance_sampling", RandomOverSampler()),
                     ("learner", model),
@@ -196,8 +168,12 @@ def evaluate_for_specific_ml_model(result_path: str):
             y_test = y.loc[y["subject"] == cur_subject, :].copy()
 
             y_test.loc[:, "predictions"] = model.fit(X_train, y_train[gt_column]).predict(X_test)
-            y_test.loc[:, config["ground_truth"]] = y_test.loc[:, config["ground_truth"]] * config["label_std"] + config["label_mean"]
-            y_test.loc[:, "predictions"] = y_test.loc[:, "predictions"] * config["label_std"] + config["label_mean"]
+
+            if config["normalization_labels"]:
+                # raise NotImplementedError("Label normalization not implemented yet...")
+                y_test.loc[:, config["ground_truth"]] = y_test.loc[:, config["ground_truth"]] * config["label_std"] + config["label_mean"]
+                y_test.loc[:, "predictions"] = y_test.loc[:, "predictions"] * config["label_std"] + config["label_mean"]
+
             result_dict[cur_subject] = y_test
 
         evaluate_sample_predictions(
@@ -289,17 +265,39 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
-    parser.add_argument("--eval_exp", type=str, dest="eval_exp", default="results/2023-02-17-15-08-39_kinect_power_subject_norm")
+    parser.add_argument("--eval_exp", type=str, dest="eval_exp", default="results/rpe/2023-03-23-16-28-27")
     parser.add_argument("--run_experiments", type=str, dest="run_experiments", default="experiments_ml")
     args = parser.parse_args()
 
     df = pd.read_csv(join(args.src_path, "seg_hrv.csv"), index_col=0)
 
-    if args.eval_exp:
-        evaluate_for_specific_ml_model(args.eval_exp)
+    # if args.eval_exp:
+        # evaluate_for_specific_ml_model(args.eval_exp)
 
     if args.run_experiments:
-        for experiment in filter(lambda f: not f.startswith("_"), os.listdir(args.run_experiments)):
-            exp_config = yaml.load(open(join(args.run_experiments, experiment), "r"), Loader=yaml.FullLoader)
-            eval_path = train_model(df, experiment.replace(".yaml", ""), args.result_path, **exp_config)
-            evaluate_for_specific_ml_model(eval_path)
+        experiments = os.listdir(args.run_experiments)
+        experiments = list(filter(lambda x: os.path.isdir(join(args.run_experiments, x)), experiments))
+        for experiment_folder in experiments:
+            exp_files = filter(lambda f: not f.startswith("_"), os.listdir(join(args.run_experiments, experiment_folder)))
+
+            for exp_name in exp_files:
+                exp_config = yaml.load(open(join(args.run_experiments, experiment_folder, exp_name), "r"), Loader=yaml.FullLoader)
+
+                # Construct Search space with defined experiments
+                elements = {key.replace("opt_", ""): value for key, value in exp_config.items() if key.startswith("opt_")}
+                for name in elements.keys():
+                    del exp_config[f"opt_{name}"]
+
+                for combination in itertools.product(*elements.values()):
+                    combination = dict(zip(elements.keys(), combination))
+                    exp_config.update(combination)
+                    cur_name = exp_name.replace(".yaml", "_") + "_".join([f"{key}_{value}" for key, value in combination.items()])
+
+                    logging.info(f"Start to process experiment: {cur_name}")
+                    log_path = f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_{cur_name}"
+                    log_path = join(args.result_path, experiment_folder, log_path)
+                    if not exists(log_path):
+                        os.makedirs(log_path)
+
+                    eval_path = train_model(df, log_path, **exp_config)
+                    evaluate_for_specific_ml_model(eval_path)

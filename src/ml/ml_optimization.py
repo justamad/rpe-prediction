@@ -1,10 +1,9 @@
-import numpy as np
+from .ml_model_config import LearningModelBase
 from imblearn.pipeline import Pipeline
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, LeaveOneGroupOut
 from os.path import join
 from typing import List, Union
-from .ml_model_config import LearningModelBase
 
 from sklearn.metrics import (
     make_scorer,
@@ -19,17 +18,10 @@ from sklearn.metrics import (
     mean_absolute_percentage_error,
 )
 
-from .ml_model_config import (
-    SVRModelConfig,
-    GBRModelConfig,
-    RFModelConfig,
-    MLPModelConfig,
-    XGBoostConfig,
-    SVMModelConfig,
-)
-
 import pandas as pd
+import numpy as np
 import logging
+
 
 metrics = {
     "regression": {
@@ -55,21 +47,6 @@ refit_metrics = {
 evaluation_metric = {
     "regression": make_scorer(r2_score),
     "classification": make_scorer(f1_score, average="micro"),
-}
-
-models = {
-    "regression":
-        [
-            SVRModelConfig(),
-            # RFModelConfig(),
-            # GBRModelConfig(),
-            # MLPModelConfig(),
-            # XGBoostConfig(),
-        ],
-    "classification":
-        [
-            SVMModelConfig(),
-        ]
 }
 
 

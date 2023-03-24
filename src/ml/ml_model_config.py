@@ -5,6 +5,8 @@ from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.svm import SVR, SVC
 
+import pandas as pd
+
 
 class LearningModelBase(object):
 
@@ -21,28 +23,28 @@ class LearningModelBase(object):
         return self.__grid_search_params
 
 
-class SVMModelConfig(LearningModelBase):
-
-    def __init__(self):
-        tuned_parameters = {
-            f"{str(self)}__kernel": ["rbf"],  # "linear"),
-            f"{str(self)}__gamma": [1e-3],  # , 1e-4],
-            f"{str(self)}__C": [1e0],  # , 1e1, 1e2, 1e3],
-        }
-
-        super().__init__(model=SVC(), grid_search_params=tuned_parameters)
-
-    def __repr__(self):
-        return "svm"
+# class SVMModelConfig(LearningModelBase):
+#
+#     def __init__(self):
+#         tuned_parameters = {
+#             f"{str(self)}__kernel": ["rbf"],  # "linear"),
+#             f"{str(self)}__gamma": [1e-3],  # , 1e-4],
+#             f"{str(self)}__C": [1e0],  # , 1e1, 1e2, 1e3],
+#         }
+#
+#         super().__init__(model=SVC(), grid_search_params=tuned_parameters)
+#
+#     def __repr__(self):
+#         return "svm"
 
 
 class SVRModelConfig(LearningModelBase):
 
     def __init__(self):
         tuned_parameters = {
-            f"{str(self)}__kernel": ["rbf", "linear"],
-            f"{str(self)}__gamma": [1e-3, 1e-4],
-            f"{str(self)}__C": [1e0, 1e1, 1e2, 1e3],
+            f"{str(self)}__kernel": ["rbf"],  # , "linear"],
+            f"{str(self)}__gamma": [1e-3], #  1e-4],
+            f"{str(self)}__C": [1e0]  #, 1e1, 1e2, 1e3],
         }
 
         super().__init__(model=SVR(), grid_search_params=tuned_parameters)
@@ -51,20 +53,20 @@ class SVRModelConfig(LearningModelBase):
         return "svr"
 
 
-class KNNModelConfig(LearningModelBase):
-
-    def __init__(self):
-        tuned_parameters = {
-            f'{str(self)}__n_neighbors': [5, 10, 15],
-            f'{str(self)}__weights': ['uniform', 'distance'],
-            f'{str(self)}__leaf_size': [10, 30, 60, 120]
-        }
-
-        model = KNeighborsRegressor()
-        super().__init__(model=model, grid_search_params=tuned_parameters)
-
-    def __repr__(self):
-        return "knn"
+# class KNNModelConfig(LearningModelBase):
+#
+#     def __init__(self):
+#         tuned_parameters = {
+#             f'{str(self)}__n_neighbors': [5, 10, 15],
+#             f'{str(self)}__weights': ['uniform', 'distance'],
+#             f'{str(self)}__leaf_size': [10, 30, 60, 120]
+#         }
+#
+#         model = KNeighborsRegressor()
+#         super().__init__(model=model, grid_search_params=tuned_parameters)
+#
+#     def __repr__(self):
+#         return "knn"
 
 
 class RFModelConfig(LearningModelBase):
@@ -72,7 +74,7 @@ class RFModelConfig(LearningModelBase):
     def __init__(self):
         tuned_parameters = {
             f'{str(self)}__n_estimators': [50, 100, 150, 200],
-            f'{str(self)}__criterion': ['mse', 'mae']
+            f'{str(self)}__criterion': ['absolute_error', 'squared_error']
         }
 
         model = RandomForestRegressor()
@@ -133,3 +135,28 @@ class XGBoostConfig(LearningModelBase):
 
     def __repr__(self):
         return "XGBoost"
+
+
+regression_models = [SVRModelConfig()]  # , RFModelConfig(), GBRModelConfig(), MLPModelConfig(), XGBoostConfig()]
+models = {str(model): model for model in regression_models}
+
+
+def instantiate_best_model(result_df: pd.DataFrame, model_name: str, metric: str):
+    if model_name not in models:
+        raise ValueError(f"Model {model_name} not found.")
+
+    best_parameters = parse_report_file_to_model_parameters(result_df, metric, model_name)
+    return models[model_name].model.set_params(**best_parameters)
+
+
+def parse_report_file_to_model_parameters(result_df: pd.DataFrame, metric: str, model_name: str) -> Dict[str, float]:
+    best_combination = result_df.sort_values(by=metric, ascending=True).iloc[0]
+    best_combination = best_combination[best_combination.index.str.contains("param")]
+    param = {k.replace(f"param_{model_name}__", ""): parse_types(v) for k, v in best_combination.to_dict().items()}
+    return param
+
+
+def parse_types(value):
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return value
