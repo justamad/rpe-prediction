@@ -1,4 +1,4 @@
-from .ml_model_config import LearningModelBase
+from src.ml.ml_model_config import LearningModelBase
 from src.dl import build_conv_lstm_regression_model
 from keras import optimizers
 from scikeras.wrappers import KerasRegressor
@@ -35,3 +35,6 @@ class ConvLSTMModelConfig(LearningModelBase):
 
     def __repr__(self):
         return "convlstm"
+
+
+regression_models = [ConvLSTMModelConfig()]

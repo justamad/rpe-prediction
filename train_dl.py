@@ -1,12 +1,11 @@
-from src.dl import build_fcn_regression_model, FixedLengthIterator, build_conv_lstm_regression_model
+from src.dl import regression_models
+from src.ml import MLOptimization
 from src.dataset import get_subject_names_random_split, normalize_data_by_subject
 from src.dataset import extract_dataset_input_output
-from src.ml import MLOptimization, ConvLSTMModelConfig
 from sklearn.model_selection import GridSearchCV
 from scikeras.wrappers import KerasRegressor
 from argparse import ArgumentParser
 from os.path import join
-
 
 import pandas as pd
 import tensorflow as tf
@@ -26,7 +25,7 @@ def train_model(
         normalization: str,
         search: str,
         balancing: bool,
-        normalization_ground_truth: str,
+        normalization_labels: str,
         task: str,
 ):
     X, y = extract_dataset_input_output(df=df, ground_truth_column=ground_truth)
@@ -34,27 +33,8 @@ def train_model(
     # y = y.loc[:, ground_truth].values.flatten()[::seq_length]
     y = y.iloc[::seq_length, :]
 
-    # subjects = y["subject"].unique()
-    # y["group"] = y["subject"].replace(dict(zip(subjects, range(len(subjects)))))
-
-    opti = MLOptimization(X=X, y=y, balance=False, task=task, mode=search, ground_truth=ground_truth)
-    models = [ConvLSTMModelConfig()]
-    opti.perform_grid_search_with_cv(models, log_path=log_path, n_jobs=1)
-
-    # train_gen = FixedLengthIterator(X, y, ground_truth=ground_truth, fixed_length=seq_length, batch_size=batch_size)
-    # print(train_gen)
-
-    # grid = GridSearchCV(estimator=model, param_grid=param_grid, verbose=10)
-    # grid_result = grid.fit(X, y)
-    # grid_result = grid.fit(train_gen)
-    # print(grid_result)
-
-    # X_train, y_train = prepare_dataset(train_df)
-    # X_test, y_test = prepare_dataset(test_df)
-
-    # test_gen = FixedLengthIterator(X_test, y_test, batch_size=1)
-
-    # print(train_gen, test_gen)
+    ml_optimization = MLOptimization(X=X, y=y, balance=False, task=task, mode=search, ground_truth=ground_truth)
+    ml_optimization.perform_grid_search_with_cv(regression_models, log_path=log_path, n_jobs=1)
 
     # log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
@@ -66,19 +46,7 @@ def train_model(
     #     callbacks=[tensorboard_callback],
     # )
     # model.save(model_name)
-    return model
 
-
-# def evaluate_model(model, test_df: pd.DataFrame, win_size: int, overlap: float):
-#     X_test, y_test = prepare_dataset(test_df)
-#     test_gen = DataSetIterator(X_test, y_test, win_size=win_size, overlap=overlap, batch_size=1, shuffle=False)
-#     print(test_gen)
-#     # model.evaluate(test_gen)
-#
-#     values = model.predict(test_gen)
-#     plt.plot(values.reshape(-1))
-#     plt.plot([test_gen[i][1].reshape(-1) for i in range(len(test_gen))])
-#     plt.show()
 
 
 if __name__ == "__main__":
@@ -99,25 +67,3 @@ if __name__ == "__main__":
                 del exp_config["training_file"]
                 train_model(df, args.log_path, **exp_config)
                 # evaluate_for_specific_ml_model(eval_path)
-
-    # # df = normalize_data_by_subject(df)
-    # # df = normalize_subject_rpe(df)
-    # train_mask = get_subject_names_random_split(df, train_p=0.7, random_seed=42)
-    # train_df = df.loc[train_mask].copy()
-    # test_df = df.loc[~train_mask].copy()
-    #
-    # print("Train Subjects:", train_df["subject"].unique())
-    # print("Test Subjects:", test_df["subject"].unique())
-
-    # if args.train:
-    #     model = train_model(
-    #         train_df=train_df,
-    #         test_df=test_df,
-    #         epochs=args.epochs,
-    #         batch_size=args.batch_size,
-    #         model_name=model_name,
-    #     )
-    # else:
-    #     model = tf.keras.models.load_model(model_name)
-    #
-    # evaluate_model(model, test_df, win_size=args.win_size, overlap=args.overlap)
