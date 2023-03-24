@@ -42,9 +42,9 @@ class SVRModelConfig(LearningModelBase):
 
     def __init__(self):
         tuned_parameters = {
-            f"{str(self)}__kernel": ["rbf"],  # , "linear"],
-            f"{str(self)}__gamma": [1e-3], #  1e-4],
-            f"{str(self)}__C": [1e0]  #, 1e1, 1e2, 1e3],
+            f"{str(self)}__kernel": ["rbf", "linear"],
+            f"{str(self)}__gamma": [1e-3, 1e-4],
+            f"{str(self)}__C": [1e0, 1e1, 1e2, 1e3],
         }
 
         super().__init__(model=SVR(), grid_search_params=tuned_parameters)
@@ -137,7 +137,7 @@ class XGBoostConfig(LearningModelBase):
         return "XGBoost"
 
 
-regression_models = [SVRModelConfig()]  # , RFModelConfig(), GBRModelConfig(), MLPModelConfig(), XGBoostConfig()]
+regression_models = [SVRModelConfig(), RFModelConfig(), GBRModelConfig(), MLPModelConfig(), XGBoostConfig()]
 models = {str(model): model for model in regression_models}
 
 

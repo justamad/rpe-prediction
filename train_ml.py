@@ -94,7 +94,7 @@ def train_model(
     X, _report_df = eliminate_features_with_rfe(
         X_train=X,
         y_train=y[ground_truth],
-        step=25,
+        step=100,
         n_features=n_features,
     )
     _report_df.to_csv(join(log_path, "rfe_report.csv"))
@@ -122,15 +122,7 @@ def train_model(
             f,
         )
 
-    ml_optimization = MLOptimization(
-        X=X,
-        y=y,
-        task=task,
-        mode=search,
-        balance=balancing,
-        ground_truth=ground_truth,
-    )
-
+    ml_optimization = MLOptimization(X=X, y=y, task=task, mode=search, balance=balancing, ground_truth=ground_truth)
     ml_optimization.perform_grid_search_with_cv(models=regression_models, log_path=log_path)
     return log_path
 
