@@ -47,15 +47,16 @@ def build_conv_lstm_regression_model(
     model = tf.keras.Sequential()
     model.add(layers.Input(shape=(n_samples, n_features)))
 
-    model.add(layers.Conv1D(filters=n_filters, kernel_size=kernel_size, padding="same", ))  # kernel_regularizer=l2(l2_factor)))
+    model.add(layers.Conv1D(filters=n_filters, kernel_size=kernel_size,
+                            padding="same", ))  # kernel_regularizer=l2(l2_factor)))
     model.add(layers.BatchNormalization())
     model.add(layers.Activation(activation="relu"))
     model.add(layers.Dropout(dropout))
 
-    model.add(layers.Conv1D(filters=n_filters * 2, kernel_size=kernel_size // 2, padding="same", ))  # kernel_regularizer=l2(l2_factor)))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Activation(activation="relu"))
-    model.add(layers.Dropout(dropout))
+    # model.add(layers.Conv1D(filters=n_filters * 2, kernel_size=kernel_size // 2, padding="same", ))  # kernel_regularizer=l2(l2_factor)))
+    # model.add(layers.BatchNormalization())
+    # model.add(layers.Activation(activation="relu"))
+    # model.add(layers.Dropout(dropout))
 
     model.add(layers.GRU(units=n_filters, return_sequences=False))
     model.add(layers.Dense(1))  # , kernel_regularizer=l2(l2_factor)))

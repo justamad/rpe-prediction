@@ -1,0 +1,15 @@
+training_file: padding.csv
+drop_columns: [ ]
+drop_prefixes:
+  - HRV
+  - PHYSILOG
+  - FLYWHEEL
+ground_truth: rpe
+seq_length: 161
+normalization_input: subject
+# opt_n_features: [25, 50, 100]
+# opt_temporal_features: [True, False]
+search: grid
+task: regression
+balancing: True
+normalization_labels: False

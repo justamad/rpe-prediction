@@ -1,4 +1,4 @@
-from src.dataset import SubjectDataIterator, zero_pad_data_frames, impute_dataframe, mask_repetitions
+from src.dataset import SubjectDataIterator, zero_pad_data_frame, impute_dataframe, mask_repetitions
 from argparse import ArgumentParser
 from typing import List, Tuple
 from os.path import join, exists, isfile
@@ -205,8 +205,7 @@ def iterate_segmented_data(src_path: str, plot: bool = False, plot_path: str = N
             imu_reps = imu_df["Repetition"].unique()
             # assert len(pos_reps) == len(imu_reps), f"Different number of reps: {subject}, set {set_id}: {len(pos_reps)} vs. {len(imu_reps)}"
             if len(pos_reps) != len(imu_reps):
-                logging.warning(
-                    f"Different number of reps: {subject}, set {set_id}: {len(pos_reps)} vs. {len(imu_reps)}")
+                logging.warning(f"Different nr of reps: {subject}, set {set_id}: {len(pos_reps)} vs. {len(imu_reps)}")
                 continue
 
             pos_df = pos_df[pos_df["Repetition"] != -1]
@@ -277,52 +276,50 @@ def prepare_segmented_data_for_ml(src_path: str, dst_path: str, plot: bool = Fal
     final_df.to_csv(join(dst_path, "feat.csv"))
 
 
-def prepare_segmented_data_for_dl(src_path: str, normalization: str, mode: str, dst_path: str, plot_path: str):
-    if normalization not in ["subject", "global"]:
-        raise ValueError(f"Normalization {normalization} not supported.")
-
+def prepare_segmented_data_for_dl(src_path: str, mode: str, dst_path: str, plot_path: str):
     if mode not in ["padding", "dtw"]:
         raise ValueError(f"Mode {mode} not supported.")
 
     repetition_data = []
-    for trial in iterate_segmented_data(src_path, plot=False):
+    for trial in iterate_segmented_data(src_path, plot=False, plot_path=plot_path):
         rpe, subject, set_id, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
 
-        l_df = [group for _, group in pos_df.groupby("reps")]
-        # r_df = [group for _, group in ori_df.groupby("reps")]
+        for repetition_id in pos_df["Repetition"].unique():
+            s = "Repetition"
 
-        for a in l_df:
+            rep_df = pd.concat(
+                [
+                    pos_df[pos_df[s] == repetition_id].drop(columns=[s]).reset_index(drop=True).add_prefix(
+                        "KINECTPOS_"),
+                    ori_df[ori_df[s] == repetition_id].drop(columns=[s]).reset_index(drop=True).add_prefix(
+                        "KINECTORI_"),
+                ],
+                axis=1,
+            )
             repetition_data.append({
+                "df": rep_df,
+                "rpe": rpe,
                 "subject": subject,
                 "set_id": set_id,
-                "rpe": rpe,
-                "pos_dfs": a,
-                # "ori_dfs": r_df,
             })
 
-        # total_df["rpe"] = rpe_values[set_id]
-        # total_df["subject"] = subject
-        # total_df["set_id"] = set_id
-        # total_df["rep_id"] = total_df.index
-        # final_df = pd.concat([final_df, total_df], axis=0)
-
-    lengths = [len(df["pos_dfs"]) for df in repetition_data]
-    arg_max = np.argmax(lengths)
+    lengths = [len(data_dict["df"]) for data_dict in repetition_data]
     max_length = max(lengths)
-    logging.info(
-        f"Max Length of repetitions: {max_length} by subject {repetition_data[arg_max]['subject']}, set {repetition_data[arg_max]['set_id']}")
+    max_subject = repetition_data[np.argmax(lengths)]
+    logging.info(f"Max Rep Length: {max_length} by subject {max_subject['subject']}, set {max_subject['set_id']}")
 
     final_df = pd.DataFrame()
     if mode == "padding":
-        logging.info("Prepare files using Zero Padding")
-
-        for data_obj in tqdm(repetition_data):
-            df_temp = zero_pad_data_frames(data_obj["pos_dfs"], max_length)
-            df_temp["rpe"] = data_obj["rpe"]
-            df_temp["subject"] = data_obj["subject"]
-            df_temp["set_id"] = data_obj["set_id"]
-
-            final_df = pd.concat([final_df, df_temp], axis=0)
+        for data_dict in tqdm(repetition_data):
+            padded_df = zero_pad_data_frame(data_dict["df"], max_length)
+            padded_df["rpe"] = data_dict["rpe"]
+            padded_df["subject"] = data_dict["subject"]
+            padded_df["set_id"] = data_dict["set_id"]
+            final_df = pd.concat([final_df, padded_df], axis=0)
+    elif mode == "dtw":
+        raise NotImplementedError("DTW not implemented yet.")
+    else:
+        raise ValueError(f"Mode {mode} not supported.")
 
     if not exists(dst_path):
         os.makedirs(dst_path)
@@ -351,5 +348,10 @@ if __name__ == "__main__":
         os.makedirs(args.plot_path)
 
     # process_all_raw_data(args.src_path, join(args.dst_path, "processed"), args.plot_path)
-    prepare_segmented_data_for_ml(join(args.dst_path, "processed"), join(args.dst_path, "training"), True, args.plot_path)
-    # prepare_segmented_data_for_dl(join(args.dst_path, "processed"), "padding", join(args.dst_path, "training"), args.plot_path)
+    # prepare_segmented_data_for_ml(join(args.dst_path, "processed"), join(args.dst_path, "training"), True, args.plot_path)
+    prepare_segmented_data_for_dl(
+        src_path=join(args.dst_path, "processed"),
+        mode="padding",
+        dst_path=join(args.dst_path, "training"),
+        plot_path=args.plot_path,
+    )

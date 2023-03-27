@@ -2,8 +2,8 @@ from .ml_model_config import LearningModelBase
 from imblearn.pipeline import Pipeline
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, LeaveOneGroupOut
-from os.path import join
 from typing import List, Union
+from os.path import join
 
 from sklearn.metrics import (
     make_scorer,
@@ -80,60 +80,66 @@ class MLOptimization(object):
         for model_config in models:
             result_df = pd.DataFrame()
 
-            for subject in self._y["subject"].unique():
-                logging.info(f"Leave out subject: {subject}")
-                mask = self._y["subject"] == subject
-                X_train, y_train = self._X[~mask], self._y[~mask]
-                X_test, y_test = self._X[mask], self._y[mask]
+            # for subject in self._y["subject"].unique():
+            #     print(f"Leave out subject: {subject}")
+            #     logging.info(f"Leave out subject: {subject}")
+            #     mask = self._y["subject"] == subject
+            #     X_train, y_train = self._X[~mask], self._y[~mask]
+            #     X_test, y_test = self._X[mask], self._y[mask]
 
-                steps = [
-                    (str(model_config), model_config.model),
-                ]
+            steps = [
+                (str(model_config), model_config.model),
+            ]
 
-                if self._balance:
-                    steps.insert(0, ("balance_sampling", RandomOverSampler()))
+            if self._balance:
+                steps.insert(0, ("balance_sampling", RandomOverSampler()))
 
-                pipe = Pipeline(steps=steps)
-                logo = LeaveOneGroupOut()
+            pipe = Pipeline(steps=steps)
+            logo = LeaveOneGroupOut()
 
-                if self._mode == "grid":
-                    ml_search = GridSearchCV(
-                        estimator=pipe,
-                        param_grid=model_config.parameters,
-                        cv=logo.get_n_splits(groups=y_train["group"]),
-                        n_jobs=n_jobs,
-                        verbose=10,
-                        scoring=metrics[self._task],
-                        error_score="raise",
-                        refit=refit_metrics[self._task],
-                    )
-                else:
-                    ml_search = RandomizedSearchCV(
-                        estimator=pipe,
-                        param_distributions=model_config.parameters,
-                        n_iter=12,
-                        cv=logo.get_n_splits(groups=y_train["group"]),
-                        n_jobs=n_jobs,
-                        verbose=10,
-                        scoring=metrics[self._task],
-                        error_score="raise",
-                        refit=refit_metrics[self._task],
-                    )
+            X = self._X
+            y = self._y
 
-                logging.info(ml_search)
-                logging.info(f"Input shape: {X_train.shape}")
+            if self._mode == "grid":
+                ml_search = GridSearchCV(
+                    estimator=pipe,
+                    param_grid=model_config.parameters,
+                    cv=logo.get_n_splits(groups=y["group"]),
+                    n_jobs=n_jobs,
+                    verbose=10,
+                    scoring=metrics[self._task],
+                    error_score="raise",
+                    refit=refit_metrics[self._task],
+                )
+            else:
+                ml_search = RandomizedSearchCV(
+                    estimator=pipe,
+                    param_distributions=model_config.parameters,
+                    n_iter=12,
+                    cv=logo.get_n_splits(groups=y["group"]),
+                    n_jobs=n_jobs,
+                    verbose=10,
+                    scoring=metrics[self._task],
+                    error_score="raise",
+                    refit=refit_metrics[self._task],
+                )
 
-                ml_search.fit(X_train, y_train[self._ground_truth])
+            logging.info(ml_search)
+            logging.info(f"Input shape: {self._X.shape}")
 
-                # Evaluate the trained model
-                logging.info(f"Best CV score: {ml_search.best_score_:.5f}, achieved by {ml_search.best_params_}")
-                test_score = evaluation_metric[self._task](ml_search, X_test, y_test[self._ground_truth])
-                logging.info(f"Test subject {subject}, accuracy: {test_score:.5f}")
+            ml_search.fit(X, y[self._ground_truth])
 
-                r_df = pd.DataFrame(ml_search.cv_results_)
-                r_df = r_df.drop(["params"], axis=1)
-                r_df["test_subject"] = subject
-                r_df["test_score"] = test_score
-                result_df = pd.concat([result_df, r_df], axis=0, ignore_index=True)
+            # Evaluate the trained model
+            # logging.info(f"Best CV score: {ml_search.best_score_:.5f}, achieved by {ml_search.best_params_}")
+            # test_score = evaluation_metric[self._task](ml_search, X_test, y_test[self._ground_truth])
+            # logging.info(f"Test subject {subject}, accuracy: {test_score:.5f}")
 
-            result_df.to_csv(join(log_path, f"model__{str(model_config)}.csv"), index=False)
+            r_df = pd.DataFrame(ml_search.cv_results_)
+            r_df = r_df.drop(["params"], axis=1)
+            # r_df["test_subject"] = subject
+            # r_df["test_score"] = test_score
+            # result_df = pd.concat([result_df, r_df], axis=0, ignore_index=True)
+
+            r_df.to_csv(join(log_path, f"model__{str(model_config)}.csv"), index=False)
+
+        # result_df.to_csv(join(log_path, f"model__{str(model_config)}.csv"), index=False)

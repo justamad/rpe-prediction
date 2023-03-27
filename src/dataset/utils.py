@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 
-def zero_pad_data_frames(df: pd.DataFrame, max_length: int) -> pd.DataFrame:
+def zero_pad_data_frame(df: pd.DataFrame, max_length: int) -> pd.DataFrame:
     if len(df) > max_length:
         raise AttributeError("Data frame is longer than max length")
 

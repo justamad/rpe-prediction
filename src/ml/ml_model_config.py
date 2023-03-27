@@ -150,7 +150,8 @@ def instantiate_best_model(result_df: pd.DataFrame, model_name: str, metric: str
 
 
 def parse_report_file_to_model_parameters(result_df: pd.DataFrame, metric: str, model_name: str) -> Dict[str, float]:
-    best_combination = result_df.sort_values(by=metric, ascending=True).iloc[0]
+    best_combination = result_df.sort_values(by="rank_test_r2", ascending=True)
+    best_combination = best_combination.iloc[0]
     best_combination = best_combination[best_combination.index.str.contains("param")]
     param = {k.replace(f"param_{model_name}__", ""): parse_types(v) for k, v in best_combination.to_dict().items()}
     return param
