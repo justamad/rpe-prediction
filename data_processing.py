@@ -19,12 +19,10 @@ import os
 import pandas as pd
 import logging
 import matplotlib
-
 matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 
 from cycler import cycler
-
 default_cycler = (cycler(color=['r', 'g', 'b']) + cycler(linestyle=['-', '-', '-']))
 plt.rc('axes', prop_cycle=default_cycler)
 
@@ -45,27 +43,24 @@ class CustomFeatures(ComprehensiveFCParameters):
         del self["mean"]
 
 
-def match_flywheel_data(flywheel_df: pd.DataFrame, pos_df: pd.DataFrame) -> Tuple[List[bool], List[bool]]:
-    if len(flywheel_df) == len(pos_df):
-        return [True for _ in range(len(flywheel_df))], [True for _ in range(len(pos_df))]
+def match_to_flywheel(fw_durations: np.ndarray, azure_durations: np.ndarray) -> Tuple[List[bool], List[bool]]:
+    if len(fw_durations) == len(azure_durations):
+        return [True for _ in range(len(fw_durations))], [True for _ in range(len(azure_durations))]
 
-    flywheel_duration = flywheel_df["duration"]
-    pos_duration = pos_df["PELVIS (x)__length"] / 30
-
-    flywheel_mean = flywheel_duration / flywheel_duration.max()
-    pos_mean = pos_duration / pos_duration.max()
+    flywheel_mean = fw_durations / fw_durations.max()
+    pos_mean = azure_durations / azure_durations.max()
 
     max_length = min(len(flywheel_mean), len(pos_mean))
     if len(flywheel_mean) > len(pos_mean):
-        shift = calculate_cross_correlation_arrays(flywheel_mean.to_numpy(), pos_mean.to_numpy())
+        shift = calculate_cross_correlation_arrays(flywheel_mean, pos_mean)
         flywheel_mask = [False for _ in range(len(flywheel_mean))]
         flywheel_mask[shift:shift + max_length] = [True for _ in range(max_length)]
         return flywheel_mask, [True for _ in range(len(pos_mean))]
-    else:
-        shift = calculate_cross_correlation_arrays(pos_mean.to_numpy(), flywheel_mean.to_numpy())
-        pos_mask = [False for _ in range(len(pos_mean))]
-        pos_mask[shift:shift + max_length] = [True for _ in range(max_length)]
-        return [True for _ in range(len(flywheel_mean))], pos_mask
+
+    shift = calculate_cross_correlation_arrays(pos_mean, flywheel_mean)
+    pos_mask = [False for _ in range(len(pos_mean))]
+    pos_mask[shift:shift + max_length] = [True for _ in range(max_length)]
+    return [True for _ in range(len(flywheel_mean))], pos_mask
 
 
 def calculate_cross_correlation_arrays(reference: np.ndarray, target: np.ndarray) -> int:
@@ -174,6 +169,10 @@ def iterate_segmented_data(src_path: str, plot: bool = False, plot_path: str = N
                 min_time=30,
                 show=False,
             )
+            if len(reps) == 0:
+                logging.warning(f"No repetitions found for subject {subject}, set {set_id}")
+                continue
+
             pos_df = mask_repetitions(pos_df, reps, col_name="Repetition")
             ori_df = mask_repetitions(ori_df, reps, col_name="Repetition")
             imu_df = mask_repetitions(imu_df, reps, col_name="Repetition")
@@ -203,7 +202,6 @@ def iterate_segmented_data(src_path: str, plot: bool = False, plot_path: str = N
 
             pos_reps = pos_df["Repetition"].unique()
             imu_reps = imu_df["Repetition"].unique()
-            # assert len(pos_reps) == len(imu_reps), f"Different number of reps: {subject}, set {set_id}: {len(pos_reps)} vs. {len(imu_reps)}"
             if len(pos_reps) != len(imu_reps):
                 logging.warning(f"Different nr of reps: {subject}, set {set_id}: {len(pos_reps)} vs. {len(imu_reps)}")
                 continue
@@ -243,17 +241,17 @@ def prepare_segmented_data_for_ml(src_path: str, dst_path: str, plot: bool = Fal
             hrv_mean = hrv_df.groupby("Repetition").mean()
 
             # Match feature reps with Flywheel data
-            flywheel_mask, pos_mask = match_flywheel_data(flywheel_df, pos_features_df)
+            flywheel_mask, pos_mask = match_to_flywheel(
+                fw_durations=flywheel_df["duration"],
+                azure_durations=pos_features_df["PELVIS (x)__length"] / 30,
+            )
             flywheel_df = flywheel_df[flywheel_mask]
-            pos_features_df = pos_features_df[pos_mask]
-            ori_features_df = ori_features_df[pos_mask]
-
             total_df = pd.concat(
                 [
-                    pos_features_df.reset_index(drop=True).add_prefix("KINECTPOS_"),
-                    ori_features_df.reset_index(drop=True).add_prefix("KINECTORI_"),
+                    pos_features_df[pos_mask].reset_index(drop=True).add_prefix("KINECTPOS_"),
+                    ori_features_df[pos_mask].reset_index(drop=True).add_prefix("KINECTORI_"),
                     flywheel_df.reset_index(drop=True).add_prefix("FLYWHEEL_"),
-                    imu_features_df.reset_index(drop=True).add_prefix("PHYSILOG_"),
+                    imu_features_df[pos_mask].reset_index(drop=True).add_prefix("PHYSILOG_"),
                     hrv_mean.reset_index(drop=True).add_prefix("HRV_"),
                 ],
                 axis=1,
@@ -262,40 +260,49 @@ def prepare_segmented_data_for_ml(src_path: str, dst_path: str, plot: bool = Fal
             total_df["rpe"] = rpe
             total_df["subject"] = subject
             total_df["set_id"] = set_id
-            total_df["rep_id"] = total_df.index
+            # total_df["rep_id"] = total_df.index
             final_df = pd.concat([final_df, total_df], axis=0)
 
         except Exception as e:
             logging.error(f"Error while processing {subject} {set_id}: {e}")
 
-    if not exists(dst_path):
-        os.makedirs(dst_path)
-
     final_df = impute_dataframe(final_df)
     final_df.reset_index(drop=True, inplace=True)
-    final_df.to_csv(join(dst_path, "feat.csv"))
+    final_df.to_csv(join(dst_path, "statistical_features.csv"))
 
 
 def prepare_segmented_data_for_dl(src_path: str, mode: str, dst_path: str, plot_path: str):
-    if mode not in ["padding", "dtw"]:
-        raise ValueError(f"Mode {mode} not supported.")
+    if mode not in ["padding", "same", "dtw"]:
+        raise AttributeError(f"Mode {mode} not supported.")
 
     repetition_data = []
     for trial in iterate_segmented_data(src_path, plot=False, plot_path=plot_path):
         rpe, subject, set_id, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
+        s = "Repetition"
 
-        for repetition_id in pos_df["Repetition"].unique():
-            s = "Repetition"
+        flywheel_mask, pos_mask = match_to_flywheel(
+            fw_durations=flywheel_df["duration"].to_numpy(),
+            azure_durations=np.array([len(pos_df[pos_df[s] == rep]) / 30 for rep in sorted(pos_df[s].unique())]),
+        )
+        flywheel_df = flywheel_df[flywheel_mask].add_prefix("FLYWHEEL_")
+        for counter, valid in enumerate(pos_mask):
+            if not valid:
+                pos_df = pos_df[pos_df[s] != counter]
 
+        for flywheel_id, rep_id in enumerate(pos_df["Repetition"].unique()):
             rep_df = pd.concat(
                 [
-                    pos_df[pos_df[s] == repetition_id].drop(columns=[s]).reset_index(drop=True).add_prefix(
-                        "KINECTPOS_"),
-                    ori_df[ori_df[s] == repetition_id].drop(columns=[s]).reset_index(drop=True).add_prefix(
-                        "KINECTORI_"),
+                    pos_df[pos_df[s] == rep_id].drop(columns=[s]).reset_index(drop=True).add_prefix("KINECTPOS_"),
+                    ori_df[ori_df[s] == rep_id].drop(columns=[s]).reset_index(drop=True).add_prefix("KINECTORI_"),
                 ],
                 axis=1,
             )
+            fw_dict = flywheel_df.iloc[flywheel_id].to_dict()
+            rep_df = rep_df.assign(**fw_dict)
+
+            hrv = hrv_df[hrv_df[s] == rep_id].drop(columns=[s]).add_prefix("HRV_").mean().to_dict()
+            rep_df = rep_df.assign(**hrv)
+
             repetition_data.append({
                 "df": rep_df,
                 "rpe": rpe,
@@ -316,23 +323,23 @@ def prepare_segmented_data_for_dl(src_path: str, mode: str, dst_path: str, plot_
             padded_df["subject"] = data_dict["subject"]
             padded_df["set_id"] = data_dict["set_id"]
             final_df = pd.concat([final_df, padded_df], axis=0)
+    elif mode == "same":
+        raise NotImplementedError("Same length not implemented yet.")
     elif mode == "dtw":
         raise NotImplementedError("DTW not implemented yet.")
     else:
         raise ValueError(f"Mode {mode} not supported.")
 
-    if not exists(dst_path):
-        os.makedirs(dst_path)
-
-    final_df.to_csv(join(dst_path, f"{mode}.csv"))
+    final_df.to_csv(join(dst_path, f"{max_length}_{mode}.csv"))
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--src_path", type=str, dest="src_path", default="/media/ch/Data/RPE_Analysis")
+    parser.add_argument("--raw_path", type=str, dest="raw_path", default="/media/ch/Data/RPE_Analysis")
+    parser.add_argument("--proc_path", type=str, dest="proc_path", default="data/processed")
+    parser.add_argument("--train_path", type=str, dest="train_path", default="data/training")
     parser.add_argument("--plot_path", type=str, dest="plot_path", default="plots")
-    parser.add_argument("--dst_path", type=str, dest="dst_path", default="data")
-    parser.add_argument("--show", type=bool, dest="show", default=True)
+    parser.add_argument("--show", type=bool, dest="show", default=False)
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -341,17 +348,13 @@ if __name__ == "__main__":
         datefmt="%m-%d %H:%M:%S",
     )
 
-    if not exists(args.dst_path):
-        os.makedirs(args.dst_path)
+    if not exists(args.proc_path):
+        os.makedirs(args.proc_path)
 
-    if not exists(args.plot_path):
-        os.makedirs(args.plot_path)
+    if not exists(args.train_path):
+        os.makedirs(args.train_path)
 
-    # process_all_raw_data(args.src_path, join(args.dst_path, "processed"), args.plot_path)
-    # prepare_segmented_data_for_ml(join(args.dst_path, "processed"), join(args.dst_path, "training"), True, args.plot_path)
-    prepare_segmented_data_for_dl(
-        src_path=join(args.dst_path, "processed"),
-        mode="padding",
-        dst_path=join(args.dst_path, "training"),
-        plot_path=args.plot_path,
-    )
+    # process_all_raw_data(args.raw_path, args.proc_path, args.plot_path)
+
+    prepare_segmented_data_for_ml(args.proc_path, args.train_path, plot=args.show, plot_path=args.plot_path)
+    prepare_segmented_data_for_dl(args.proc_path, mode="padding", dst_path=args.train_path, plot_path=args.plot_path)
