@@ -97,10 +97,16 @@ def normalize_rpe_values_min_max(
 
 
 def normalize_data_by_subject(X: pd.DataFrame, y: pd.DataFrame) -> pd.DataFrame:
-    for name in y["subject"].unique():
-        mask = y["subject"] == name
+    for subject in y["subject"].unique():
+        mask = (y["subject"] == subject) & (~X.eq(0).all(axis=1))
         X.loc[mask] = (X.loc[mask] - X.loc[mask].mean()) / X.loc[mask].std()
 
+    return X
+
+
+def normalize_data_global(X: pd.DataFrame) -> pd.DataFrame:
+    mask = ~X.eq(0).all(axis=1)
+    X.loc[mask] = (X.loc[mask] - X.loc[mask].mean()) / X.loc[mask].std()
     return X
 
 

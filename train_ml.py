@@ -200,7 +200,7 @@ if __name__ == "__main__":
     parser.add_argument("--run_experiments", type=str, dest="run_experiments", default="experiments_ml")
     args = parser.parse_args()
 
-    df = pd.read_csv(join(args.src_path, "seg_hrv.csv"), index_col=0)
+    df = pd.read_csv(join(args.src_path, "statistical_features.csv"), index_col=0)
 
     # if args.eval_exp:
         # evaluate_for_specific_ml_model(args.eval_exp)

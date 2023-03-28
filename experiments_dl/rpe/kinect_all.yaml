@@ -1,11 +1,10 @@
-training_file: padding.csv
+training_file: 161_padding.csv
 drop_columns: [ ]
 drop_prefixes:
   - HRV
   - PHYSILOG
   - FLYWHEEL
 ground_truth: rpe
-seq_length: 161
 normalization_input: subject
 # opt_n_features: [25, 50, 100]
 # opt_temporal_features: [True, False]

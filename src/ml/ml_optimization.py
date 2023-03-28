@@ -78,7 +78,7 @@ class MLOptimization(object):
 
     def perform_grid_search_with_cv(self, models: List[LearningModelBase], log_path: str, n_jobs: int = -1):
         for model_config in models:
-            result_df = pd.DataFrame()
+            # result_df = pd.DataFrame()
 
             # for subject in self._y["subject"].unique():
             #     print(f"Leave out subject: {subject}")

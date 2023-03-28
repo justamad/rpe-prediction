@@ -5,7 +5,7 @@
 #SBATCH --partition=hpcpu,vcpu # -p
 #SBATCH --cpus-per-task=64 # -c
 #SBATCH --mem=200gb
-#SBATCH --time=24:00:00
+#SBATCH --time=72:00:00
 #SBATCH --output=job_test_%j.log # %j is job id
 
 # YAIB_PATH=/dhc/home/robin.vandewater/projects/yaib #/dhc/home/robin.vandewater/projects/yaib
