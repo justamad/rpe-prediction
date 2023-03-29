@@ -1,5 +1,6 @@
 from src.ml import MLOptimization, eliminate_features_with_rfe, regression_models, instantiate_best_model
 from src.plot import evaluate_sample_predictions, evaluate_aggregated_predictions
+from src.features import calculate_temporal_features
 from typing import List, Dict, Tuple
 from datetime import datetime
 from argparse import ArgumentParser
@@ -12,6 +13,7 @@ from src.dataset import (
     normalize_gt_per_subject_mean,
     extract_dataset_input_output,
     normalize_data_by_subject,
+    normalize_data_global,
 )
 
 import pandas as pd
@@ -23,21 +25,6 @@ import yaml
 import matplotlib
 matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
-
-
-def calculate_temporal_features(X: pd.DataFrame, y: pd.DataFrame, folds: int = 2) -> pd.DataFrame:
-    total_df = pd.DataFrame()
-    for subject in y["subject"].unique():
-        mask = y["subject"] == subject
-        sub_df = X.loc[mask]
-
-        data_frames = [sub_df.diff(periods=period).add_prefix(f"GRAD_{period:02d}") for period in range(1, folds + 1)]
-        temp_df = pd.concat([sub_df] + data_frames, axis=1)
-        temp_df.fillna(0, inplace=True)
-        total_df = pd.concat([total_df, temp_df])
-
-    total_df.reset_index(drop=True, inplace=True)
-    return total_df
 
 
 def train_model(
@@ -53,7 +40,7 @@ def train_model(
         temporal_features: bool = False,
         drop_columns: List = None,
         drop_prefixes: List = None,
-) -> str:
+):
     if drop_prefixes is None:
         drop_prefixes = []
     if drop_columns is None:
@@ -68,19 +55,15 @@ def train_model(
     if temporal_features:
         X = calculate_temporal_features(X, y, folds=2)
 
-    # Normalization
-    input_mean, input_std = float('inf'), float('inf')
-    label_mean, label_std = float('inf'), float('inf')
-
     if normalization_input:
         if normalization_input == "subject":
             X = normalize_data_by_subject(X, y)
         elif normalization_input == "global":
-            input_mean, input_std = X.mean(), X.std()
-            X = (X - input_mean) / input_std
+            X = normalize_data_global(X)
         else:
             raise ValueError(f"Unknown normalization_input: {normalization_input}")
 
+    label_mean, label_std = float('inf'), float('inf')
     if normalization_labels:
         if normalization_labels == "subject":
             y = normalize_gt_per_subject_mean(y, ground_truth, "mean")
@@ -115,8 +98,6 @@ def train_model(
                 "temporal_features": temporal_features,
                 "balancing": balancing,
                 "normalization_labels": normalization_labels,
-                "input_mean": float(input_mean),
-                "input_std": float(input_std),
                 "label_mean": float(label_mean),
                 "label_std": float(label_std),
             },
@@ -125,61 +106,94 @@ def train_model(
 
     ml_optimization = MLOptimization(X=X, y=y, task=task, mode=search, balance=balancing, ground_truth=ground_truth)
     ml_optimization.perform_grid_search_with_cv(models=regression_models, log_path=log_path)
-    return log_path
 
 
-def evaluate_for_specific_ml_model(result_path: str):
+def evaluate_entire_experiment_path(src_path: str):
+    result_files = []
+
+    for root, _, files in os.walk(src_path):
+        for model_file in list(filter(lambda x: "model__" in x, files)):
+            result_dict = evaluate_for_specific_ml_model(root, model_file, aggregate=True)
+            result_dict["model"] = model_file.replace("model__", "").replace(".csv", "")
+            result_dict["path"] = root
+            result_files.append(result_dict)
+
+    result_df = pd.DataFrame.from_dict(result_files)
+    result_df.to_csv(join(src_path, "results.csv"))
+
+
+def evaluate_for_specific_ml_model(result_path: str, model_file: str, aggregate: bool = False) -> Dict:
     config = yaml.load(open(join(result_path, "config.yml"), "r"), Loader=yaml.FullLoader)
     X = pd.read_csv(join(result_path, "X.csv"), index_col=0)
     y = pd.read_csv(join(result_path, "y.csv"), index_col=0)
 
-    if config["task"] == "classification":
-        score_metric = "mean_test_f1_score"
-    else:
-        score_metric = "mean_test_r2"
+    result_df = pd.read_csv(join(result_path, model_file))
+    model_name = model_file.replace("model__", "").replace(".csv", "")
+    model = instantiate_best_model(result_df, model_name, config["task"])
 
-    for model_file in list(filter(lambda x: x.startswith("model__"), os.listdir(result_path))):
-        model_name = model_file.replace("model__", "").replace(".csv", "")
-        logging.info(f"Evaluating model: {model_name}")
-        result_df = pd.read_csv(join(result_path, model_file))
-        model = instantiate_best_model(result_df, model_name, score_metric)
+    label_column = config["ground_truth"]
 
-        gt_column = config["ground_truth"]
-        subjects = y["subject"].unique()
-        result_dict = {}
-        for idx, cur_subject in enumerate(subjects):
+    metrics = {
+        "mae": mean_absolute_percentage_error,
+        "mse": mean_squared_error,
+        "r2": r2_score,
+        "mape": mean_absolute_percentage_error,
+        "pcc": pearsonr,
+    }
 
-            if config["balancing"]:
-                model = Pipeline(steps=[
-                    ("balance_sampling", RandomOverSampler()),
-                    ("learner", model),
-                ])
+    test_subject_result = {metric: [] for metric in metrics.keys()}
+    subjects = {}
+    for idx, cur_subject in enumerate(y["subject"].unique()):
+        logging.info(f"Evaluating {model_name} on subject {cur_subject}...")
 
-            X_train = X.loc[y["subject"] != cur_subject, :]
-            y_train = y.loc[y["subject"] != cur_subject, :]
-            X_test = X.loc[y["subject"] == cur_subject, :]
-            y_test = y.loc[y["subject"] == cur_subject, :].copy()
+        if config["balancing"]:
+            model = Pipeline(steps=[
+                ("balance_sampling", RandomOverSampler()),
+                ("learner", model),
+            ])
 
-            y_test.loc[:, "predictions"] = model.fit(X_train, y_train[gt_column]).predict(X_test)
+        X_train = X.loc[y["subject"] != cur_subject, :]
+        y_train = y.loc[y["subject"] != cur_subject, :]
+        X_test = X.loc[y["subject"] == cur_subject, :]
+        y_test = y.loc[y["subject"] == cur_subject, :]
 
-            if config["normalization_labels"]:
-                # raise NotImplementedError("Label normalization not implemented yet...")
-                y_test.loc[:, config["ground_truth"]] = y_test.loc[:, config["ground_truth"]] * config["label_std"] + config["label_mean"]
-                y_test.loc[:, "predictions"] = y_test.loc[:, "predictions"] * config["label_std"] + config["label_mean"]
+        ground_truth = y_test.loc[:, label_column].values
+        predictions = model.fit(X_train, y_train[label_column]).predict(X_test)
 
-            result_dict[cur_subject] = y_test
+        if config["normalization_labels"] == "global":
+            ground_truth = ground_truth * config["label_std"] + config["label_mean"]
+            predictions = predictions * config["label_std"] + config["label_mean"]
+        elif config["normalization_labels"] == "subject":
+            raise NotImplementedError("Subject normalization not implemented yet.")
 
-        evaluate_sample_predictions(
-            result_dict=result_dict,
-            gt_column=gt_column,
-            file_name=join(result_path, f"{model_name}_sample_prediction.png"),
-        )
+        # Calculate all error metrics
+        for name, metric in metrics.items():
+            test_subject_result[name].append(metric(ground_truth, predictions))
 
+        df = pd.DataFrame({"ground_truth": ground_truth, "predictions": predictions, "set_id": y_test["set_id"]})
+        subjects[cur_subject] = df
+
+        if aggregate:
+            # raise NotImplementedError("Aggregation not implemented yet.")
+            print("Aggregation not implemented yet.")
+
+    mean_result = {f"{metric} mean": np.mean(values) for metric, values in test_subject_result.items()}
+    std_result = {f"{metric} std": np.std(values) for metric, values in test_subject_result.items()}
+
+    evaluate_sample_predictions(
+        result_dict=subjects,
+        gt_column="ground_truth",
+        file_name=join(result_path, f"new_{model_name}_sample_prediction.png"),
+    )
+
+    if aggregate:
         evaluate_aggregated_predictions(
-            result_dict=result_dict,
-            gt_column=gt_column,
-            file_name=join(result_path, f"{model_name}_aggregated_prediction.png"),
+            result_dict=subjects,
+            gt_column="ground_truth",
+            file_name=join(result_path, f"new_{model_name}_aggregated_prediction.png"),
         )
+
+    return {**mean_result, **std_result}
 
 
 if __name__ == "__main__":
@@ -196,16 +210,16 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
-    parser.add_argument("--eval_exp", type=str, dest="eval_exp", default="results/rpe/2023-03-23-16-28-27")
+    parser.add_argument("--eval_exp", type=str, dest="eval_exp", default="results/rpe/2023-03-28-17-01-29_kinect_ori_n_features_25_temporal_features_True")
     parser.add_argument("--run_experiments", type=str, dest="run_experiments", default="experiments_ml")
     args = parser.parse_args()
 
-    df = pd.read_csv(join(args.src_path, "statistical_features.csv"), index_col=0)
-
     # if args.eval_exp:
+        # evaluate_entire_experiment_path("results/rpe")
         # evaluate_for_specific_ml_model(args.eval_exp)
 
     if args.run_experiments:
+        df = pd.read_csv(join(args.src_path, "statistical_features.csv"), index_col=0)
         experiments = os.listdir(args.run_experiments)
         experiments = list(filter(lambda x: os.path.isdir(join(args.run_experiments, x)), experiments))
         for experiment_folder in experiments:
@@ -230,5 +244,5 @@ if __name__ == "__main__":
                     if not exists(log_path):
                         os.makedirs(log_path)
 
-                    eval_path = train_model(df, log_path, **exp_config)
-                    evaluate_for_specific_ml_model(eval_path)
+                    train_model(df, log_path, **exp_config)
+                    # evaluate_for_specific_ml_model(eval_path)

@@ -1,14 +1,12 @@
-from .pdf_writer import PDFWriter
-from .confidence import plot_confidence_values
-
 from .data_evaluation import (
     evaluate_aggregated_predictions,
     evaluate_sample_predictions,
     plot_prediction_results_for_sets,
     plot_ml_predictions_for_frames,
-    plot_parallel_coordinates,
 )
 
+# from .pdf_writer import PDFWriter
+# from .confidence import plot_confidence_values
 # from .trajectories import (
 #     plot_sensor_data_for_axes,
 #     plot_sensor_data_for_single_axis,
