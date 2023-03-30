@@ -1,5 +1,5 @@
 from src.ml import MLOptimization
-from src.dl import build_regression_models, build_conv_lstm_regression_model, instantiate_best_dl_model
+from src.dl import regression_models, instantiate_best_dl_model
 from src.plot import evaluate_aggregated_predictions, evaluate_sample_predictions
 from typing import List
 from src.dataset import extract_dataset_input_output, normalize_data_by_subject, normalize_data_global
@@ -51,9 +51,6 @@ def train_model(
     # X = X.loc[mask]
     # y = y.loc[mask]
 
-    # Normalization
-    input_mean, input_std = float('inf'), float('inf')
-    label_mean, label_std = float('inf'), float('inf')
 
     if normalization_input == "subject":
         X = normalize_data_by_subject(X, y)
@@ -61,6 +58,13 @@ def train_model(
         X = normalize_data_global(X)
     else:
         raise AttributeError(f"Unknown normalization method: {normalization_input}")
+
+    # Normalization labels
+    label_mean, label_std = float('inf'), float('inf')
+    if normalization_labels:
+        values = y.loc[:, ground_truth].values
+        label_mean, label_std = values.mean(), values.std()
+        y.loc[:, ground_truth] = (values - label_mean) / label_std
 
     X.to_csv(join(log_path, "X.csv"))
     y.to_csv(join(log_path, "y.csv"))
@@ -83,8 +87,6 @@ def train_model(
                 "normalization_input": normalization_input,
                 "balancing": balancing,
                 "normalization_labels": normalization_labels,
-                "input_mean": float(input_mean),
-                "input_std": float(input_std),
                 "label_mean": float(label_mean),
                 "label_std": float(label_std),
             },
@@ -100,9 +102,8 @@ def train_model(
     # plt.show()
     # print(y)
 
-    models = build_regression_models(X.shape[1], X.shape[2])
     ml_optimization = MLOptimization(X=X, y=y, balance=False, task=task, mode=search, ground_truth=ground_truth)
-    ml_optimization.perform_grid_search_with_cv(models, log_path=log_path, n_jobs=1)
+    ml_optimization.perform_grid_search_with_cv(regression_models, log_path=log_path, n_jobs=1)
 
     # log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
@@ -121,11 +122,6 @@ def evaluate_ml_model(result_path: str):
     X = pd.read_csv(join(result_path, "X.csv"), index_col=0)
     y = pd.read_csv(join(result_path, "y.csv"), index_col=0)
 
-    if config["task"] == "classification":
-        score_metric = "mean_test_f1_score"
-    else:
-        score_metric = "mean_test_r2"
-
     X = X.values.reshape((-1, config["seq_length"], X.shape[1]))
     y = y.iloc[::config["seq_length"], :]
 
@@ -138,7 +134,7 @@ def evaluate_ml_model(result_path: str):
         r2_scores = []
         for subject in y["subject"].unique():
             model, meta_params = instantiate_best_dl_model(
-                result_df, model_name=model_name, metric=score_metric, n_samples=X.shape[1], n_features=X.shape[2]
+                result_df, model_name=model_name, task=config["task"], n_samples=X.shape[1], n_features=X.shape[2]
             )
 
             subject_mask = y["subject"] == subject
@@ -154,8 +150,10 @@ def evaluate_ml_model(result_path: str):
         print(f"R2 score: {np.mean(r2_scores)}, {np.std(r2_scores)}")
 
         # evaluate_aggregated_predictions(result_dicts, config["ground_truth"], file_name=join(result_path, f"{model_name}_aggregated.png"))
-        evaluate_sample_predictions(result_dicts, config["ground_truth"],
+        evaluate_sample_predictions(
+            result_dicts, config["ground_truth"],
                                     file_name=join(result_path, f"{model_name}_sample.png"))
+
 
 
 if __name__ == "__main__":
@@ -167,7 +165,7 @@ if __name__ == "__main__":
 
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-    # evaluate_ml_model("results/2023-03-27-17-32-05")
+    # evaluate_ml_model("results/2023-03-28-17-05-53")
 
     if args.run_experiments:
         for exp_name in os.listdir(args.run_experiments):
@@ -175,7 +173,7 @@ if __name__ == "__main__":
             for config_file in filter(lambda f: not f.startswith("_"), os.listdir(exp_path)):
                 exp_config = yaml.load(open(join(exp_path, config_file), "r"), Loader=yaml.FullLoader)
                 training_file = exp_config["training_file"]
-                df = pd.read_csv(join(args.src_path, training_file), index_col=0)
+                df = pd.read_csv(join(args.src_path, training_file), index_col=0, dtype={"subject": str})
                 del exp_config["training_file"]
                 seq_len = int(training_file.split("_")[0])
                 log_path = join(args.log_path, f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}")
