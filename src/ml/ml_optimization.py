@@ -28,7 +28,7 @@ metrics = {
         "r2": make_scorer(r2_score),
         "neg_mean_squared_error": make_scorer(mean_squared_error),
         "neg_mean_absolute_error": make_scorer(mean_absolute_error),
-        "max_error": make_scorer(max_error),
+        # "max_error": make_scorer(max_error),
         "mean_absolute_percentage_error": make_scorer(mean_absolute_percentage_error),
     },
     "classification": {
@@ -60,6 +60,7 @@ class MLOptimization(object):
             task: str,
             mode: str,
             ground_truth: str,
+            n_groups: int = -1,
     ):
         if task not in ["regression", "classification"]:
             raise AttributeError(f"Unknown ML task given: {task}")
@@ -68,8 +69,13 @@ class MLOptimization(object):
             raise AttributeError(f"Unknown ML mode given: {mode}")
 
         self._X = X
+
         subjects = y["subject"].unique()
-        y["group"] = y["subject"].replace(dict(zip(subjects, range(len(subjects)))))
+        if n_groups <= 0:
+            y["group"] = y["subject"].replace(dict(zip(subjects, range(len(subjects)))))
+        else:
+            y["group"] = y["subject"].replace({subject: i % n_groups for i, subject in enumerate(subjects)})
+
         self._y = y
         self._task = task
         self._mode = mode
@@ -78,14 +84,6 @@ class MLOptimization(object):
 
     def perform_grid_search_with_cv(self, models: List[LearningModelBase], log_path: str, n_jobs: int = -1):
         for model_config in models:
-            # result_df = pd.DataFrame()
-
-            # for subject in self._y["subject"].unique():
-            #     print(f"Leave out subject: {subject}")
-            #     logging.info(f"Leave out subject: {subject}")
-            #     mask = self._y["subject"] == subject
-            #     X_train, y_train = self._X[~mask], self._y[~mask]
-            #     X_test, y_test = self._X[mask], self._y[mask]
 
             steps = [
                 (str(model_config), model_config.model),
@@ -128,18 +126,7 @@ class MLOptimization(object):
             logging.info(f"Input shape: {self._X.shape}")
 
             ml_search.fit(X, y[self._ground_truth])
-
-            # Evaluate the trained model
-            # logging.info(f"Best CV score: {ml_search.best_score_:.5f}, achieved by {ml_search.best_params_}")
-            # test_score = evaluation_metric[self._task](ml_search, X_test, y_test[self._ground_truth])
-            # logging.info(f"Test subject {subject}, accuracy: {test_score:.5f}")
-
             r_df = pd.DataFrame(ml_search.cv_results_)
             r_df = r_df.drop(["params"], axis=1)
-            # r_df["test_subject"] = subject
-            # r_df["test_score"] = test_score
-            # result_df = pd.concat([result_df, r_df], axis=0, ignore_index=True)
 
             r_df.to_csv(join(log_path, f"model__{str(model_config)}.csv"), index=False)
-
-        # result_df.to_csv(join(log_path, f"model__{str(model_config)}.csv"), index=False)

@@ -9,6 +9,7 @@ from imblearn.pipeline import Pipeline
 from os.path import join, exists
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error
 from scipy.stats import pearsonr
+
 from src.dataset import (
     normalize_gt_per_subject_mean,
     extract_dataset_input_output,
@@ -24,7 +25,6 @@ import os
 import yaml
 import matplotlib
 matplotlib.use("WebAgg")
-import matplotlib.pyplot as plt
 
 
 def train_model(
@@ -46,7 +46,7 @@ def train_model(
     if drop_columns is None:
         drop_columns = []
 
-    X, y = extract_dataset_input_output(df=df, ground_truth_column=ground_truth)
+    X, y = extract_dataset_input_output(df=df, labels=ground_truth)
     for prefix in drop_prefixes:
         drop_columns += [col for col in df.columns if col.startswith(prefix)]
 
@@ -75,12 +75,7 @@ def train_model(
             raise ValueError(f"Unknown normalization_labels: {normalization_labels}")
 
     X.fillna(0, inplace=True)
-    X, _report_df = eliminate_features_with_rfe(
-        X_train=X,
-        y_train=y[ground_truth],
-        step=100,
-        n_features=n_features,
-    )
+    X, _report_df = eliminate_features_with_rfe(X_train=X, y_train=y[ground_truth], step=100, n_features=n_features)
     _report_df.to_csv(join(log_path, "rfe_report.csv"))
     X.to_csv(join(log_path, "X.csv"))
     y.to_csv(join(log_path, "y.csv"))
@@ -104,8 +99,15 @@ def train_model(
             f,
         )
 
-    ml_optimization = MLOptimization(X=X, y=y, task=task, mode=search, balance=balancing, ground_truth=ground_truth)
-    ml_optimization.perform_grid_search_with_cv(models=regression_models, log_path=log_path)
+    MLOptimization(
+        X=X,
+        y=y,
+        task=task,
+        mode=search,
+        balance=balancing,
+        ground_truth=ground_truth,
+        n_groups=4,
+    ).perform_grid_search_with_cv(models=regression_models, log_path=log_path)
 
 
 def evaluate_entire_experiment_path(src_path: str):
@@ -208,25 +210,24 @@ if __name__ == "__main__":
     logging.getLogger("my_logger").addHandler(console)
 
     parser = ArgumentParser()
-    parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
+    parser.add_argument("--src_file", type=str, dest="src_file", default="data/training/statistical_features.csv")
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
-    parser.add_argument("--eval_exp", type=str, dest="eval_exp", default="results/rpe/2023-03-28-17-01-29_kinect_ori_n_features_25_temporal_features_True")
-    parser.add_argument("--run_experiments", type=str, dest="run_experiments", default="experiments_ml")
+    parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments_ml")
+    parser.add_argument("--train", type=bool, dest="train", default=True)
+    parser.add_argument("--eval", type=bool, dest="eval", default=False)
     args = parser.parse_args()
 
-    # if args.eval_exp:
-        # evaluate_entire_experiment_path("results/rpe")
-        # evaluate_for_specific_ml_model(args.eval_exp)
+    if args.eval:
+        evaluate_entire_experiment_path("results/rpe")
 
-    if args.run_experiments:
-        df = pd.read_csv(join(args.src_path, "statistical_features.csv"), index_col=0)
-        experiments = os.listdir(args.run_experiments)
-        experiments = list(filter(lambda x: os.path.isdir(join(args.run_experiments, x)), experiments))
+    if args.train:
+        df = pd.read_csv(args.src_file, index_col=0)
+        experiments = list(filter(lambda x: os.path.isdir(join(args.exp_path, x)), os.listdir(args.exp_path)))
         for experiment_folder in experiments:
-            exp_files = filter(lambda f: not f.startswith("_"), os.listdir(join(args.run_experiments, experiment_folder)))
+            exp_files = filter(lambda f: not f.startswith("_"), os.listdir(join(args.exp_path, experiment_folder)))
 
             for exp_name in exp_files:
-                exp_config = yaml.load(open(join(args.run_experiments, experiment_folder, exp_name), "r"), Loader=yaml.FullLoader)
+                exp_config = yaml.load(open(join(args.exp_path, experiment_folder, exp_name), "r"), Loader=yaml.FullLoader)
 
                 # Construct Search space with defined experiments
                 elements = {key.replace("opt_", ""): value for key, value in exp_config.items() if key.startswith("opt_")}
@@ -245,4 +246,3 @@ if __name__ == "__main__":
                         os.makedirs(log_path)
 
                     train_model(df, log_path, **exp_config)
-                    # evaluate_for_specific_ml_model(eval_path)

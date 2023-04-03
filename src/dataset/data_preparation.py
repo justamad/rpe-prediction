@@ -1,4 +1,5 @@
-from typing import Tuple
+import logging
+from typing import Tuple, Union, List
 from scipy import stats
 
 import numpy as np
@@ -8,13 +9,23 @@ import math
 META_DATA = ["subject", "rep_id", "set_id", "rpe"]
 
 
-def extract_dataset_input_output(df: pd.DataFrame, ground_truth_column: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    if ground_truth_column not in df.columns:
-        raise ValueError(f"Ground truth column '{ground_truth_column}' not found in dataframe")
+def extract_dataset_input_output(
+        df: pd.DataFrame,
+        labels: Union[List[str], str],
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    if isinstance(labels, str):
+        columns = META_DATA + [labels]
+    elif isinstance(labels, list):
+        columns = META_DATA + labels
+    else:
+        raise ValueError(f"Unknown ground truth column type: {type(labels)}.")
 
-    lst = META_DATA + [ground_truth_column]
-    inputs = df.drop(lst, axis=1, inplace=False, errors="ignore")
-    outputs = df.loc[:, df.columns.intersection(lst)]
+    for col in columns:
+        if col not in df.columns:
+            logging.warning(f"Column {col} not in dataframe. Proceeding anyways...")
+
+    inputs = df.drop(columns, axis=1, inplace=False, errors="ignore")
+    outputs = df.loc[:, df.columns.intersection(columns)]
     return inputs, outputs
 
 
