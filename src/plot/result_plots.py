@@ -1,15 +1,13 @@
-from src.processing import get_hsv_color
+from .plot_settings import column_width, text_width, cm, dpi
 from typing import Dict
-from scipy.stats import pearsonr, spearmanr
-from matplotlib import ticker
-from pandas.api.types import is_numeric_dtype
+from scipy.stats import pearsonr
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, mean_absolute_percentage_error
 
 import matplotlib.pyplot as plt
+from os.path import join, exists
+from os import makedirs
 import pandas as pd
 import numpy as np
-
-Y_AXIS_LIM_EPSILON = 0.5
 
 
 def evaluate_sample_predictions(result_dict: Dict, gt_column: str, file_name: str):
@@ -74,64 +72,32 @@ def evaluate_aggregated_predictions(result_dict: Dict, gt_column: str, file_name
     plt.close()
 
 
-def plot_prediction_results_for_sets(df: pd.DataFrame, file_name: str = None):
-    sets = []
-    rpe = []
-    mean_predictions = []
-    std_predictions = []
+def evaluate_sample_predictions_individual(result_dict: Dict, gt_column: str, dst_path: str):
+    rmse_all = []
+    r2_all = []
+    mape_all = []
 
-    for set in df["nr_set"].unique():
-        sub_df = df[df["nr_set"] == set]
-        prediction = sub_df["prediction"]
-        ground_truth = sub_df["rpe"]
-        sets.append(set)
-        rpe.append(ground_truth.mean())
-        mean_predictions.append(prediction.mean())
-        std_predictions.append(prediction.std())
+    if not exists(dst_path):
+        makedirs(dst_path)
 
-    pear, p = pearsonr(rpe, mean_predictions)
-    r2 = r2_score(rpe, mean_predictions)
+    for idx, (subject_name, df) in enumerate(result_dict.items()):
+        plt.figure(figsize=(column_width * cm, column_width * cm), dpi=dpi)
 
-    # Create stacked error bars:
-    plt.errorbar(sets, mean_predictions, std_predictions, fmt='ok', lw=1, ecolor='green', mfc='green')
-    plt.scatter(sets, rpe, label="Ground Truth", c='red')
-    plt.xticks(sets)
-    plt.ylim(min(rpe) - Y_AXIS_LIM_EPSILON, max(rpe) + Y_AXIS_LIM_EPSILON)
-    plt.xlabel("Set Nr")
-    plt.ylabel("RPE value")
-    plt.title(f"Correlation Pearson: {pear:.2f}, R2: {r2:.2f}")
+        ground_truth = df[gt_column].to_numpy()
+        predictions = df["predictions"].to_numpy()
+        rmse = mean_squared_error(predictions, ground_truth, squared=False)
+        r2 = r2_score(ground_truth, predictions)
+        rmse_all.append(rmse)
+        r2_all.append(r2)
+        mape = mean_absolute_percentage_error(predictions, ground_truth)
+        mape_all.append(mape)
 
-    if file_name is not None:
-        plt.savefig(file_name)
-    else:
-        plt.show()
+        plt.plot(ground_truth, label="Ground Truth")
+        plt.plot(predictions, label="Prediction")
+        plt.title(f"RMSE: {rmse:.2f}, R2: {r2:.2f}, MAPE: {mape:.2f}")
+        plt.legend()
 
-    plt.clf()
-    plt.cla()
-    plt.close()
-
-
-def plot_ml_predictions_for_frames(df: pd.DataFrame, file_name: str = None):
-    predictions = df['prediction']
-    ground_truth = df['rpe']
-
-    plt.plot(ground_truth, label="Ground Truth")
-    plt.plot(predictions, label="Predictions")
-    plt.ylim(ground_truth.min() - Y_AXIS_LIM_EPSILON, ground_truth.max() + Y_AXIS_LIM_EPSILON)
-
-    plt.xlabel("Frames (Windows)")
-    plt.ylabel("RPE value")
-
-    mse = mean_squared_error(ground_truth, predictions)
-    mae = mean_absolute_error(ground_truth, predictions)
-    r2 = r2_score(ground_truth, predictions)
-    plt.title(f"MSE: {mse:.2f}, MAE: {mae:.2f}, R2: {r2:.2f}")
-
-    if file_name is not None:
-        plt.savefig(file_name)
-    else:
-        plt.show()
-
-    plt.clf()
-    plt.cla()
-    plt.close()
+        plt.savefig(join(dst_path, f"{subject_name}.png"))
+        # plt.show()
+        plt.clf()
+        plt.close()

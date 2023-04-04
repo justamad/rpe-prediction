@@ -28,7 +28,6 @@ metrics = {
         "r2": make_scorer(r2_score),
         "neg_mean_squared_error": make_scorer(mean_squared_error),
         "neg_mean_absolute_error": make_scorer(mean_absolute_error),
-        # "max_error": make_scorer(max_error),
         "mean_absolute_percentage_error": make_scorer(mean_absolute_percentage_error),
     },
     "classification": {

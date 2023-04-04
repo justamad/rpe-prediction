@@ -1,5 +1,5 @@
 from src.ml import MLOptimization, eliminate_features_with_rfe, regression_models, instantiate_best_model
-from src.plot import evaluate_sample_predictions, evaluate_aggregated_predictions
+from src.plot import evaluate_sample_predictions, evaluate_aggregated_predictions, evaluate_sample_predictions_individual
 from src.features import calculate_temporal_features
 from typing import List, Dict, Tuple
 from datetime import datetime
@@ -110,21 +110,41 @@ def train_model(
     ).perform_grid_search_with_cv(models=regression_models, log_path=log_path)
 
 
-def evaluate_entire_experiment_path(src_path: str):
+def evaluate_entire_experiment_path(
+        src_path: str,
+        criteria_rank: str = "rank_test_r2",
+        criteria_score: str = "mean_test_r2",
+):
     result_files = []
-
     for root, _, files in os.walk(src_path):
-        for model_file in list(filter(lambda x: "model__" in x, files)):
-            result_dict = evaluate_for_specific_ml_model(root, model_file, aggregate=True)
-            result_dict["model"] = model_file.replace("model__", "").replace(".csv", "")
-            result_dict["path"] = root
-            result_files.append(result_dict)
+        if "config.yml" not in files:
+            continue
 
-    result_df = pd.DataFrame.from_dict(result_files)
+        config = yaml.load(open(join(root, "config.yml"), "r"), Loader=yaml.FullLoader)
+        dp_c = ["drop_columns", "drop_prefixes", "task", "search", "ground_truth", "label_mean", "label_std"]
+        for k in dp_c:
+            del config[k]
+
+        for model_file in list(filter(lambda x: "model__" in x, files)):
+            model_df = pd.read_csv(join(root, model_file), index_col=0)
+            best_combination = model_df.sort_values(by=criteria_rank, ascending=True).iloc[0]
+            best_combination = best_combination[best_combination.index.str.contains("mean_test|std_test|rank_")]
+            config["model"] = model_file.replace("model__", "").replace(".csv", "").title()
+            config["result_path"] = root
+            config["model_file"] = model_file
+            result_files.append(pd.concat([best_combination, pd.Series(config)]))
+
+    result_df = pd.DataFrame.from_records(result_files)
     result_df.to_csv(join(src_path, "results.csv"))
 
+    for model in result_df["model"].unique():
+        cur_df = result_df[result_df["model"] == model].sort_values(by=criteria_score, ascending=False)
+        best_model = cur_df.iloc[0]
+        m = evaluate_for_specific_ml_model(best_model["result_path"], best_model["model_file"], "output", aggregate=True)
+        i = 12
 
-def evaluate_for_specific_ml_model(result_path: str, model_file: str, aggregate: bool = False) -> Dict:
+
+def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: str, aggregate: bool = False) -> Dict:
     config = yaml.load(open(join(result_path, "config.yml"), "r"), Loader=yaml.FullLoader)
     X = pd.read_csv(join(result_path, "X.csv"), index_col=0)
     y = pd.read_csv(join(result_path, "y.csv"), index_col=0)
@@ -145,8 +165,8 @@ def evaluate_for_specific_ml_model(result_path: str, model_file: str, aggregate:
 
     test_subject_result = {metric: [] for metric in metrics.keys()}
     subjects = {}
-    for idx, cur_subject in enumerate(y["subject"].unique()):
-        logging.info(f"Evaluating {model_name} on subject {cur_subject}...")
+    for idx, test_subject in enumerate(y["subject"].unique()):
+        logging.info(f"Evaluating {model_name} on subject {test_subject}...")
 
         if config["balancing"]:
             model = Pipeline(steps=[
@@ -154,10 +174,10 @@ def evaluate_for_specific_ml_model(result_path: str, model_file: str, aggregate:
                 ("learner", model),
             ])
 
-        X_train = X.loc[y["subject"] != cur_subject, :]
-        y_train = y.loc[y["subject"] != cur_subject, :]
-        X_test = X.loc[y["subject"] == cur_subject, :]
-        y_test = y.loc[y["subject"] == cur_subject, :]
+        X_train = X.loc[y["subject"] != test_subject, :]
+        y_train = y.loc[y["subject"] != test_subject, :]
+        X_test = X.loc[y["subject"] == test_subject, :]
+        y_test = y.loc[y["subject"] == test_subject, :]
 
         ground_truth = y_test.loc[:, label_column].values
         predictions = model.fit(X_train, y_train[label_column]).predict(X_test)
@@ -169,31 +189,36 @@ def evaluate_for_specific_ml_model(result_path: str, model_file: str, aggregate:
             raise NotImplementedError("Subject normalization not implemented yet.")
 
         # Calculate all error metrics
-        for name, metric in metrics.items():
-            test_subject_result[name].append(metric(ground_truth, predictions))
+        for metric_name, metric in metrics.items():
+            test_subject_result[metric_name].append(metric(ground_truth, predictions))
 
         df = pd.DataFrame({"ground_truth": ground_truth, "predictions": predictions, "set_id": y_test["set_id"]})
-        subjects[cur_subject] = df
+        subjects[test_subject] = df
 
         if aggregate:
-            # raise NotImplementedError("Aggregation not implemented yet.")
-            print("Aggregation not implemented yet.")
+            logging.error("Aggregation not implemented yet.")
 
     mean_result = {f"{metric} mean": np.mean(values) for metric, values in test_subject_result.items()}
     std_result = {f"{metric} std": np.std(values) for metric, values in test_subject_result.items()}
 
-    evaluate_sample_predictions(
+    # evaluate_sample_predictions(
+    #     result_dict=subjects,
+    #     gt_column="ground_truth",
+    #     file_name=join(result_path, f"new_{model_name}_sample_prediction.png"),
+    # )
+
+    evaluate_sample_predictions_individual(
         result_dict=subjects,
         gt_column="ground_truth",
-        file_name=join(result_path, f"new_{model_name}_sample_prediction.png"),
+        dst_path=join(dst_path, model_name),
     )
 
-    if aggregate:
-        evaluate_aggregated_predictions(
-            result_dict=subjects,
-            gt_column="ground_truth",
-            file_name=join(result_path, f"new_{model_name}_aggregated_prediction.png"),
-        )
+    # if aggregate:
+    #     evaluate_aggregated_predictions(
+    #         result_dict=subjects,
+    #         gt_column="ground_truth",
+    #         file_name=join(result_path, f"new_{model_name}_aggregated_prediction.png"),
+    #     )
 
     return {**mean_result, **std_result}
 
@@ -213,12 +238,9 @@ if __name__ == "__main__":
     parser.add_argument("--src_file", type=str, dest="src_file", default="data/training/statistical_features.csv")
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments_ml")
-    parser.add_argument("--train", type=bool, dest="train", default=True)
-    parser.add_argument("--eval", type=bool, dest="eval", default=False)
+    parser.add_argument("--train", type=bool, dest="train", default=False)
+    parser.add_argument("--eval", type=bool, dest="eval", default=True)
     args = parser.parse_args()
-
-    if args.eval:
-        evaluate_entire_experiment_path("results/rpe")
 
     if args.train:
         df = pd.read_csv(args.src_file, index_col=0)
@@ -246,3 +268,6 @@ if __name__ == "__main__":
                         os.makedirs(log_path)
 
                     train_model(df, log_path, **exp_config)
+
+    if args.eval:
+        evaluate_entire_experiment_path("results/hr")
