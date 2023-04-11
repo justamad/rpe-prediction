@@ -1,8 +1,9 @@
 from src.dataset import SubjectDataIterator, zero_pad_data_frame, impute_dataframe, mask_repetitions
+from src.features import CustomFeatures, calculate_linear_joint_positions
 from argparse import ArgumentParser
 from typing import List, Tuple
 from os.path import join, exists, isfile
-from tsfresh.feature_extraction import extract_features, ComprehensiveFCParameters, feature_calculators
+from tsfresh.feature_extraction import extract_features
 from tsfresh.utilities.dataframe_functions import impute
 from tqdm import tqdm
 
@@ -23,24 +24,9 @@ matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 
 from cycler import cycler
-default_cycler = (cycler(color=['r', 'g', 'b']) + cycler(linestyle=['-', '-', '-']))
+# default_cycler = (cycler(color=['r', 'g', 'b']) + cycler(linestyle=['-', '-', '-']))
+default_cycler = (cycler(color=['#FF007F', '#D62598']))
 plt.rc('axes', prop_cycle=default_cycler)
-
-
-class CustomFeatures(ComprehensiveFCParameters):
-
-    def __init__(self):
-        ComprehensiveFCParameters.__init__(self)
-
-        for f_name, f in feature_calculators.__dict__.items():
-            is_minimal = (hasattr(f, "minimal") and getattr(f, "minimal"))
-            is_curtosis_or_skew = f_name == "kurtosis" or f_name == "skewness"
-            if f_name in self and not is_minimal and not is_curtosis_or_skew:
-                del self[f_name]
-
-        del self["sum_values"]
-        del self["variance"]
-        del self["mean"]
 
 
 def match_to_flywheel(fw_durations: np.ndarray, azure_durations: np.ndarray) -> Tuple[List[bool], List[bool]]:
@@ -158,8 +144,8 @@ def iterate_segmented_data(src_path: str, plot: bool = False, plot_path: str = N
             dataframes = [read_and_process_dataframe(target) for target in ["imu", "pos", "ori", "hrv", "flywheel"]]
             imu_df, pos_df, ori_df, hrv_df, flywheel_df = dataframes
 
-            pos_df = apply_butterworth_filter(df=pos_df, cutoff=12, order=4, sampling_rate=30)
-            ori_df = apply_butterworth_filter(df=ori_df, cutoff=12, order=4, sampling_rate=30)
+            # pos_df = apply_butterworth_filter(df=pos_df, cutoff=12, order=4, sampling_rate=30)
+            # ori_df = apply_butterworth_filter(df=ori_df, cutoff=12, order=4, sampling_rate=30)
 
             reps = segment_kinect_signal(
                 pos_df["PELVIS (y)"],
@@ -184,7 +170,6 @@ def iterate_segmented_data(src_path: str, plot: bool = False, plot_path: str = N
                 axs[0].plot(pos_df["PELVIS (y)"], color="gray")
                 for p1, p2 in reps:
                     axs[0].plot(pos_df["PELVIS (y)"][p1:p2])
-                    axs[0].plot(ori_df["KNEE_LEFT (x)"])
 
                 axs[1].plot(imu_df["CHEST_ACCELERATION_Z"], color="gray")
                 for p1, p2 in reps:
@@ -231,52 +216,49 @@ def prepare_segmented_data_for_ml(src_path: str, dst_path: str, plot: bool = Fal
     for trial in iterate_segmented_data(src_path, plot=plot, plot_path=plot_path):
         rpe, subject, set_id, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
 
-        try:
-            imu_features_df = extract_features(imu_df, column_id="Repetition", default_fc_parameters=settings)
-            imu_features_df = impute(imu_features_df)  # Replace Nan and inf by with extreme values (min, max)
-            pos_features_df = extract_features(pos_df, column_id="Repetition", default_fc_parameters=settings)
-            pos_features_df = impute(pos_features_df)
-            ori_features_df = extract_features(ori_df, column_id="Repetition", default_fc_parameters=settings)
-            ori_features_df = impute(ori_features_df)
-            hrv_mean = hrv_df.groupby("Repetition").mean()
+        pos_df = calculate_linear_joint_positions(pos_df)
 
-            # Match feature reps with Flywheel data
-            flywheel_mask, pos_mask = match_to_flywheel(
-                fw_durations=flywheel_df["duration"],
-                azure_durations=pos_features_df["PELVIS (x)__length"] / 30,
-            )
-            flywheel_df = flywheel_df[flywheel_mask]
-            total_df = pd.concat(
-                [
-                    pos_features_df[pos_mask].reset_index(drop=True).add_prefix("KINECTPOS_"),
-                    ori_features_df[pos_mask].reset_index(drop=True).add_prefix("KINECTORI_"),
-                    flywheel_df.reset_index(drop=True).add_prefix("FLYWHEEL_"),
-                    imu_features_df[pos_mask].reset_index(drop=True).add_prefix("PHYSILOG_"),
-                    hrv_mean.reset_index(drop=True).add_prefix("HRV_"),
-                ],
-                axis=1,
-            )
+        imu_features_df = extract_features(imu_df, column_id="Repetition", default_fc_parameters=settings)
+        imu_features_df = impute(imu_features_df)  # Replace Nan and inf by with extreme values (min, max)
+        pos_features_df = extract_features(pos_df, column_id="Repetition", default_fc_parameters=settings)
+        pos_features_df = impute(pos_features_df)
+        ori_features_df = extract_features(ori_df, column_id="Repetition", default_fc_parameters=settings)
+        ori_features_df = impute(ori_features_df)
+        hrv_mean = hrv_df.groupby("Repetition").mean()
 
-            total_df["rpe"] = rpe
-            total_df["subject"] = subject
-            total_df["set_id"] = set_id
-            # total_df["rep_id"] = total_df.index
-            final_df = pd.concat([final_df, total_df], axis=0)
+        # Match feature reps with Flywheel data
+        flywheel_mask, pos_mask = match_to_flywheel(
+            fw_durations=flywheel_df["duration"],
+            azure_durations=pos_features_df["NECK (x)__length"] / 30,
+        )
+        flywheel_df = flywheel_df[flywheel_mask]
+        total_df = pd.concat(
+            [
+                pos_features_df[pos_mask].reset_index(drop=True).add_prefix("KINECTPOS_"),
+                ori_features_df[pos_mask].reset_index(drop=True).add_prefix("KINECTORI_"),
+                flywheel_df.reset_index(drop=True).add_prefix("FLYWHEEL_"),
+                imu_features_df[pos_mask].reset_index(drop=True).add_prefix("PHYSILOG_"),
+                hrv_mean.reset_index(drop=True).add_prefix("HRV_"),
+            ],
+            axis=1,
+        )
 
-        except Exception as e:
-            logging.error(f"Error while processing {subject} {set_id}: {e}")
+        total_df["rpe"] = rpe
+        total_df["subject"] = subject
+        total_df["set_id"] = set_id
+        final_df = pd.concat([final_df, total_df], axis=0)
 
     final_df = impute_dataframe(final_df)
     final_df.reset_index(drop=True, inplace=True)
     final_df.to_csv(join(dst_path, "statistical_features.csv"))
 
 
-def prepare_segmented_data_for_dl(src_path: str, mode: str, dst_path: str, plot_path: str):
+def prepare_segmented_data_for_dl(src_path: str, mode: str, dst_path: str, plot: bool, plot_path: str):
     if mode not in ["padding", "same", "dtw"]:
         raise AttributeError(f"Mode {mode} not supported.")
 
     repetition_data = []
-    for trial in iterate_segmented_data(src_path, plot=False, plot_path=plot_path):
+    for trial in iterate_segmented_data(src_path, plot=plot, plot_path=plot_path):
         rpe, subject, set_id, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
         s = "Repetition"
 
@@ -339,7 +321,7 @@ if __name__ == "__main__":
     parser.add_argument("--proc_path", type=str, dest="proc_path", default="data/processed")
     parser.add_argument("--train_path", type=str, dest="train_path", default="data/training")
     parser.add_argument("--plot_path", type=str, dest="plot_path", default="plots")
-    parser.add_argument("--show", type=bool, dest="show", default=False)
+    parser.add_argument("--show", type=bool, dest="show", default=True)
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -357,4 +339,4 @@ if __name__ == "__main__":
     # process_all_raw_data(args.raw_path, args.proc_path, args.plot_path)
 
     prepare_segmented_data_for_ml(args.proc_path, args.train_path, plot=args.show, plot_path=args.plot_path)
-    prepare_segmented_data_for_dl(args.proc_path, mode="padding", dst_path=args.train_path, plot_path=args.plot_path)
+    # prepare_segmented_data_for_dl(args.proc_path, mode="padding", dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)

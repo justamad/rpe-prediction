@@ -1,4 +1,4 @@
-from tsfresh.feature_extraction import MinimalFCParameters, EfficientFCParameters
+from tsfresh.feature_extraction import ComprehensiveFCParameters, feature_calculators
 from tsfresh.utilities.dataframe_functions import impute
 from typing import List, Tuple
 
@@ -7,22 +7,21 @@ import tsfresh
 import pandas as pd
 import math
 
-# settings = EfficientFCParameters()
-# del settings['variance']  # Variance and standard deviation are highly correlated but std integrates nr of samples
-# del settings['length']  # Length is constant for all windows
-# del settings['sum_values']  # Highly correlated with RMS and Mean
-# del settings['mean']  # Highly correlated with RMS and Sum
-# del settings['variance_larger_than_standard_deviation']
-# del settings['has_duplicate_max']
-# del settings['has_duplicate_min']
-# del settings['has_duplicate']
-# settings = {k: v for k, v in settings.items() if not isinstance(v, list)}
 
-settings = MinimalFCParameters()
-del settings['variance']  # Variance and standard deviation are highly correlated but std integrates nr of samples
-del settings['length']  # Length is constant for all windows
-del settings['sum_values']  # Highly correlated with RMS and Mean
-del settings['mean']  # Highly correlated with RMS and Sum
+class CustomFeatures(ComprehensiveFCParameters):
+
+    def __init__(self):
+        ComprehensiveFCParameters.__init__(self)
+
+        for f_name, f in feature_calculators.__dict__.items():
+            is_minimal = (hasattr(f, "minimal") and getattr(f, "minimal"))
+            is_curtosis_or_skew = f_name == "kurtosis" or f_name == "skewness"
+            if f_name in self and not is_minimal and not is_curtosis_or_skew:
+                del self[f_name]
+
+        del self["sum_values"]
+        del self["variance"]
+        del self["mean"]
 
 
 def calculate_statistical_features_with_sliding_window(
@@ -31,6 +30,7 @@ def calculate_statistical_features_with_sliding_window(
         overlap: float = 0.25,
 ) -> pd.DataFrame:
     windows = []
+    settings = CustomFeatures()
 
     n_windows, stride = calculate_window_parameters(len(df), window_size, overlap)
     for window_idx in range(n_windows):
@@ -55,6 +55,7 @@ def calculate_statistical_features_with_sliding_window_time_based(
         window_size: int,
         overlap: float,
 ) -> pd.DataFrame:
+    settings = CustomFeatures()
     origin = datetime.datetime(1970, 1, 1)
     min_start = min([df.index[0] for df in df_list])
     delta = origin - min_start

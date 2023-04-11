@@ -3,6 +3,7 @@ from src.processing import calculate_angle_in_radians_between_vectors
 import pandas as pd
 import numpy as np
 
+
 joints_with_reference = [("HIP_RIGHT", "KNEE_RIGHT"),
                          ("HIP_LEFT", "KNEE_LEFT"),
                          ("KNEE_RIGHT", "ANKLE_RIGHT"),
@@ -72,19 +73,22 @@ def calculate_angles_between_3_joints(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(data=data, index=df.index)
 
 
-def calculate_relative_coordinates_with_reference_joint(
-        df: pd.DataFrame,
-        reference_joint: str = "PELVIS",
-) -> pd.DataFrame:
-    n_joints = df.shape[1] // 3
-    ref_data = df[[c for c in df.columns if reference_joint in c]].to_numpy()
-    ref_data = np.tile(ref_data, n_joints)
+def calculate_linear_joint_positions(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculates the linear joint positions of the skeleton according to the paper:
+    'Action recognition using kinematics posture feature on 3D skeleton joint locations'
+    presented in the journal
+    'Pattern Recognition Letters'
+    """
+    ref_joint = df.loc[:, [c for c in df.columns if "PELVIS" in c]]
+    neck_df = df.loc[:, [c for c in df.columns if "NECK" in c]]
+    spine_chest_df = df.loc[:, [c for c in df.columns if "SPINE_CHEST" in c]]
 
-    data = df.to_numpy() - ref_data
-    new_df = pd.DataFrame(
-        data=data,
-        columns=[c + "_REL_POSITION" for c in df.columns],
-        index=df.index
-    )
-    new_df.drop(list(new_df.filter(regex=reference_joint)), axis=1, inplace=True)
-    return new_df
+    df = df.loc[:, [c for c in df.columns if "PELVIS" not in c]]
+    neck_length = np.linalg.norm(neck_df.values - spine_chest_df.values, axis=1).mean()
+
+    n_joints = df.shape[1] // 3
+    for j in range(n_joints):
+        df.iloc[:, j * 3:(j + 1) * 3] = (df.iloc[:, j * 3:(j + 1) * 3].values - ref_joint.values) / neck_length
+
+    return df

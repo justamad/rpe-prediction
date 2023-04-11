@@ -115,6 +115,8 @@ def segment_kinect_signal(
         log_path: str = None,
 ) -> List[Tuple]:
     signal_norm = (input_signal.to_numpy() - np.mean(input_signal)) / np.std(input_signal)
+    signal_norm = apply_butterworth_1d_signal(signal_norm, cutoff=6, order=4, sampling_rate=30)
+
     peaks, _ = signal.find_peaks(signal_norm, prominence=prominence)
     peaks = np.insert(peaks, 0, 0)
     peaks = np.append(peaks, [len(signal_norm) - 1])
@@ -173,14 +175,14 @@ def segment_kinect_signal(
 
 
 if __name__ == '__main__':
-    from src.processing import apply_butterworth_filter
+    from src.processing import apply_butterworth_1d_signal
     from os.path import join
-    imu_df = pd.read_csv(join("../../data/processed/9AE368/01_set", "pos.csv"), index_col=0)
-    imu_df.index = pd.to_datetime(imu_df.index)
+    data = pd.read_csv(join("../../data/processed/4AD6F3/00_set", "pos.csv"), index_col=0)
+    data.index = pd.to_datetime(data.index)
+    data = data["PELVIS (y)"]
 
-    # imu_df_filter = apply_butterworth_filter(df=imu_df, cutoff=10, order=4, sampling_rate=128)
     reps = segment_kinect_signal(
-        imu_df["PELVIS (y)"],
+        data,
         prominence=0.01,
         std_dev_p=0.4,
         min_dist_p=0.5,
