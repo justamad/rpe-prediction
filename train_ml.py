@@ -75,7 +75,7 @@ def train_model(
             raise ValueError(f"Unknown normalization_labels: {normalization_labels}")
 
     X.fillna(0, inplace=True)
-    X, _report_df = eliminate_features_with_rfe(X_train=X, y_train=y[ground_truth], step=100, n_features=n_features)
+    X, _report_df = eliminate_features_with_rfe(X_train=X, y_train=y[ground_truth], step=1000, n_features=n_features)
     _report_df.to_csv(join(log_path, "rfe_report.csv"))
     X.to_csv(join(log_path, "X.csv"))
     y.to_csv(join(log_path, "y.csv"))
@@ -235,15 +235,14 @@ if __name__ == "__main__":
     logging.getLogger("my_logger").addHandler(console)
 
     parser = ArgumentParser()
-    parser.add_argument("--src_file", type=str, dest="src_file", default="data/training/statistical_features.csv")
+    parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments_ml")
-    parser.add_argument("--train", type=bool, dest="train", default=False)
-    parser.add_argument("--eval", type=bool, dest="eval", default=True)
+    parser.add_argument("--train", type=bool, dest="train", default=True)
+    parser.add_argument("--eval", type=bool, dest="eval", default=False)
     args = parser.parse_args()
 
     if args.train:
-        df = pd.read_csv(args.src_file, index_col=0)
         experiments = list(filter(lambda x: os.path.isdir(join(args.exp_path, x)), os.listdir(args.exp_path)))
         for experiment_folder in experiments:
             exp_files = filter(lambda f: not f.startswith("_"), os.listdir(join(args.exp_path, experiment_folder)))
@@ -251,7 +250,20 @@ if __name__ == "__main__":
             for exp_name in exp_files:
                 exp_config = yaml.load(open(join(args.exp_path, experiment_folder, exp_name), "r"), Loader=yaml.FullLoader)
 
-                # Construct Search space with defined experiments
+                # Load data
+                file_names = exp_config["training_file"]
+                if isinstance(file_names, str):
+                    file_names = [file_names]
+
+                df = pd.read_csv(join(args.src_path, file_names[0]), index_col=0)
+                for file_name in file_names[1:]:
+                    add_df = pd.read_csv(join(args.src_path, file_name), index_col=0)
+                    add_df.drop([c for c in df.columns if c in add_df.columns], axis=1, inplace=True)
+                    df = pd.concat([df, add_df], axis=1)
+
+                del exp_config["training_file"]
+
+                # Construct search space with defined experiments
                 elements = {key.replace("opt_", ""): value for key, value in exp_config.items() if key.startswith("opt_")}
                 for name in elements.keys():
                     del exp_config[f"opt_{name}"]

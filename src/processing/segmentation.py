@@ -17,7 +17,7 @@ def segment_kinect_signal(
         show: bool = False,
         log_path: str = None,
 ) -> Tuple[List[Tuple], List[Tuple]]:
-    if mode not in ["all", "ecc", "con"]:
+    if mode not in ["full", "concentric", "eccentric"]:
         raise ValueError(f"Mode must be either 'all', 'ecc' or 'con'. Given '{mode}'.")
 
     signal_norm = (input_signal.to_numpy() - np.mean(input_signal)) / np.std(input_signal)
@@ -66,13 +66,13 @@ def segment_kinect_signal(
         plt.cla()
 
     full_repetitions = list([(input_signal.index[p0], input_signal.index[p1]) for p0, p1 in valid_peaks])
-    if mode == "all":
+    if mode == "full":
         return full_repetitions, full_repetitions
 
     final_peaks = []
     for p0, p1 in valid_peaks:
         max_peak = np.argmax(-signal_norm[p0:p1])
-        if mode == "con":
+        if mode == "concentric":
             final_peaks.append([p0, p0 + max_peak])
         else:
             final_peaks.append([p0 + max_peak, p1])

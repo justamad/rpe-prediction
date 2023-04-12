@@ -160,9 +160,10 @@ def iterate_segmented_data(src_path: str, mode: str, plot: bool = False, plot_pa
             ori_df = apply_butterworth_filter(df=ori_df, cutoff=16, order=4, sampling_rate=30)
             imu_df = apply_butterworth_filter(df=imu_df, cutoff=16, order=4, sampling_rate=128)
 
-            pos_df = mask_repetitions(pos_df, part_repetitions, col_name="Repetition")
-            ori_df = mask_repetitions(ori_df, part_repetitions, col_name="Repetition")
-            imu_df = mask_repetitions(imu_df, part_repetitions, col_name="Repetition")
+            # Mask all repetitions to delete the ones that are not full
+            pos_df = mask_repetitions(pos_df, full_repetitions, col_name="Repetition")
+            ori_df = mask_repetitions(ori_df, full_repetitions, col_name="Repetition")
+            imu_df = mask_repetitions(imu_df, full_repetitions, col_name="Repetition")
             hrv_df = mask_repetitions(hrv_df, full_repetitions, col_name="Repetition")
 
             pos_reps = pos_df["Repetition"].unique()
@@ -170,6 +171,10 @@ def iterate_segmented_data(src_path: str, mode: str, plot: bool = False, plot_pa
             if len(pos_reps) != len(imu_reps):
                 logging.warning(f"Different nr of reps: {subject}, set {set_id}: {len(pos_reps)} vs. {len(imu_reps)}")
                 continue
+
+            pos_df = mask_repetitions(pos_df, part_repetitions, col_name="Repetition")
+            ori_df = mask_repetitions(ori_df, part_repetitions, col_name="Repetition")
+            imu_df = mask_repetitions(imu_df, part_repetitions, col_name="Repetition")
 
             # Synchronize sensors to Flywheel data
             flywheel_durations = list(flywheel_df["duration"])
@@ -247,7 +252,14 @@ def prepare_segmented_data_for_ml(src_path: str, dst_path: str, mode: str, plot:
 
     for trial in iterate_segmented_data(src_path, mode=mode, plot=plot, plot_path=plot_path):
         rpe, subject, set_id, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
-        assert len(flywheel_df) == len(pos_df["Repetition"].unique()) == len(imu_df["Repetition"].unique())
+        c_f = len(flywheel_df)
+        c_p = len(pos_df["Repetition"].unique())
+        c_i = len(imu_df["Repetition"].unique())
+        if c_f != c_p != c_i:
+            logging.warning(f"Different nr of reps: {subject}, set {set_id}: {c_f} vs. {c_p} vs. {c_i}")
+            continue
+
+        # assert len(flywheel_df) == len(pos_df["Repetition"].unique()) == len(imu_df["Repetition"].unique())
 
         pos_df = calculate_linear_joint_positions(pos_df)
 
@@ -261,8 +273,8 @@ def prepare_segmented_data_for_ml(src_path: str, dst_path: str, mode: str, plot:
 
         total_df = pd.concat(
             [
-                pos_features_df.reset_index(drop=True).add_prefix("KINECTPOS_"),
-                ori_features_df.reset_index(drop=True).add_prefix("KINECTORI_"),
+                pos_features_df.reset_index(drop=True).add_prefix(f"{mode.upper()}_KINECTPOS_"),
+                ori_features_df.reset_index(drop=True).add_prefix(f"{mode.upper()}_KINECTORI_"),
                 flywheel_df.reset_index(drop=True).add_prefix("FLYWHEEL_"),
                 imu_features_df.reset_index(drop=True).add_prefix("PHYSILOG_"),
                 hrv_mean.reset_index(drop=True).add_prefix("HRV_"),
@@ -285,7 +297,7 @@ def prepare_segmented_data_for_dl(src_path: str, mode: str, dst_path: str, plot:
         raise AttributeError(f"Mode {mode} not supported.")
 
     repetition_data = []
-    for trial in iterate_segmented_data(src_path, mode="all", plot=plot, plot_path=plot_path):
+    for trial in iterate_segmented_data(src_path, mode="full", plot=plot, plot_path=plot_path):
         rpe, subject, set_id, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
         assert len(flywheel_df) == len(pos_df["Repetition"].unique()) == len(imu_df["Repetition"].unique())
         s = "Repetition"
@@ -357,8 +369,8 @@ if __name__ == "__main__":
 
     # process_all_raw_data(args.raw_path, args.proc_path, args.plot_path)
 
-    prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="con", plot=args.show, plot_path=args.plot_path)
-    prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="ecc", plot=args.show, plot_path=args.plot_path)
-    prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="all", plot=args.show, plot_path=args.plot_path)
+    prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="concentric", plot=args.show, plot_path=args.plot_path)
+    prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="eccentric", plot=args.show, plot_path=args.plot_path)
+    prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="full", plot=args.show, plot_path=args.plot_path)
 
     prepare_segmented_data_for_dl(args.proc_path, mode="padding", dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
