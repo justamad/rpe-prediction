@@ -24,12 +24,11 @@ matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 
 from cycler import cycler
-# default_cycler = (cycler(color=['r', 'g', 'b']) + cycler(linestyle=['-', '-', '-']))
 default_cycler = (cycler(color=['#FF007F', '#D62598']))
 plt.rc('axes', prop_cycle=default_cycler)
 
 
-def match_to_flywheel(fw_durations: np.ndarray, azure_durations: np.ndarray) -> Tuple[List[bool], List[bool]]:
+def synchronize_flywheel_data(fw_durations: np.ndarray, azure_durations: np.ndarray) -> Tuple[List[bool], List[bool]]:
     if len(fw_durations) == len(azure_durations):
         return [True for _ in range(len(fw_durations))], [True for _ in range(len(azure_durations))]
 
@@ -113,7 +112,7 @@ def process_all_raw_data(src_path: str, dst_path: str, plot_path: str):
             df.to_csv(join(trial["dst_path"], f"{name}.csv"))
 
 
-def iterate_segmented_data(src_path: str, plot: bool = False, plot_path: str = None):
+def iterate_segmented_data(src_path: str, mode: str, plot: bool = False, plot_path: str = None):
     if not exists(src_path):
         raise FileNotFoundError(f"Could not find source path {src_path}")
 
@@ -126,7 +125,7 @@ def iterate_segmented_data(src_path: str, plot: bool = False, plot_path: str = N
             rpe_values = json.load(f)
         rpe_values = {k: v for k, v in enumerate(rpe_values["rpe_ratings"])}
 
-        subject_plot_path = join(plot_path, "segmented", subject)
+        subject_plot_path = join(plot_path, f"segmented_{mode}", subject)
         if not exists(subject_plot_path):
             os.makedirs(subject_plot_path)
 
@@ -144,46 +143,27 @@ def iterate_segmented_data(src_path: str, plot: bool = False, plot_path: str = N
             dataframes = [read_and_process_dataframe(target) for target in ["imu", "pos", "ori", "hrv", "flywheel"]]
             imu_df, pos_df, ori_df, hrv_df, flywheel_df = dataframes
 
-            # pos_df = apply_butterworth_filter(df=pos_df, cutoff=12, order=4, sampling_rate=30)
-            # ori_df = apply_butterworth_filter(df=ori_df, cutoff=12, order=4, sampling_rate=30)
-
-            reps = segment_kinect_signal(
+            part_repetitions, full_repetitions = segment_kinect_signal(
                 pos_df["PELVIS (y)"],
                 prominence=0.01,
                 std_dev_p=0.4,
                 min_dist_p=0.5,
                 min_time=30,
+                mode=mode,
                 show=False,
             )
-            if len(reps) == 0:
+            if len(full_repetitions) == 0:
                 logging.warning(f"No repetitions found for subject {subject}, set {set_id}")
                 continue
 
-            pos_df = mask_repetitions(pos_df, reps, col_name="Repetition")
-            ori_df = mask_repetitions(ori_df, reps, col_name="Repetition")
-            imu_df = mask_repetitions(imu_df, reps, col_name="Repetition")
-            hrv_df = mask_repetitions(hrv_df, reps, col_name="Repetition")
+            pos_df = apply_butterworth_filter(df=pos_df, cutoff=16, order=4, sampling_rate=30)
+            ori_df = apply_butterworth_filter(df=ori_df, cutoff=16, order=4, sampling_rate=30)
+            imu_df = apply_butterworth_filter(df=imu_df, cutoff=16, order=4, sampling_rate=128)
 
-            if plot:
-                fig, axs = plt.subplots(3, 1, sharex=True, figsize=(15, 12))
-                axs[0].set_title(f"FlyWheel: {len(flywheel_df)} vs. Kinect: {len(reps)}")
-                axs[0].plot(pos_df["PELVIS (y)"], color="gray")
-                for p1, p2 in reps:
-                    axs[0].plot(pos_df["PELVIS (y)"][p1:p2])
-
-                axs[1].plot(imu_df["CHEST_ACCELERATION_Z"], color="gray")
-                for p1, p2 in reps:
-                    axs[1].plot(imu_df["CHEST_ACCELERATION_Z"][p1:p2])
-
-                axs[2].plot(hrv_df["Load (TRIMP)"], color="gray")
-                for p1, p2 in reps:
-                    axs[2].plot(hrv_df["Load (TRIMP)"][p1:p2])
-
-                # plt.show()
-                plt.savefig(join(subject_plot_path, f"{subject}_{set_id}.png"))
-                plt.clf()
-                plt.cla()
-                plt.close()
+            pos_df = mask_repetitions(pos_df, part_repetitions, col_name="Repetition")
+            ori_df = mask_repetitions(ori_df, part_repetitions, col_name="Repetition")
+            imu_df = mask_repetitions(imu_df, part_repetitions, col_name="Repetition")
+            hrv_df = mask_repetitions(hrv_df, full_repetitions, col_name="Repetition")
 
             pos_reps = pos_df["Repetition"].unique()
             imu_reps = imu_df["Repetition"].unique()
@@ -191,12 +171,65 @@ def iterate_segmented_data(src_path: str, plot: bool = False, plot_path: str = N
                 logging.warning(f"Different nr of reps: {subject}, set {set_id}: {len(pos_reps)} vs. {len(imu_reps)}")
                 continue
 
+            # Synchronize sensors to Flywheel data
+            flywheel_durations = list(flywheel_df["duration"])
+            azure_durations = [(p2 - p1).total_seconds() for p1, p2 in full_repetitions]
+
+            flywheel_mask, pos_mask = synchronize_flywheel_data(
+                fw_durations=np.array(flywheel_durations),
+                azure_durations=np.array(azure_durations),
+            )
+            # Remove invalid repetitions from all sensors
+            for rep_counter, valid_rep in enumerate(pos_mask):
+                if not valid_rep:
+                    pos_df = pos_df[pos_df["Repetition"] != rep_counter]
+                    ori_df = ori_df[ori_df["Repetition"] != rep_counter]
+                    imu_df = imu_df[imu_df["Repetition"] != rep_counter]
+                    hrv_df = hrv_df[hrv_df["Repetition"] != rep_counter]
+
+            if plot:
+                fig, axs = plt.subplots(nrows=3, ncols=2, figsize=(15, 12), sharex="col")
+                fig.suptitle(f"FlyWheel: {len(flywheel_df)} vs. Kinect: {len(part_repetitions)}")
+
+                axs[0, 0].plot(pos_df["PELVIS (y)"], color="gray")
+                for p1, p2 in part_repetitions:
+                    axs[0, 0].plot(pos_df["PELVIS (y)"][p1:p2])
+
+                axs[1, 0].plot(imu_df["CHEST_ACCELERATION_Z"], color="gray")
+                for p1, p2 in part_repetitions:
+                    axs[1, 0].plot(imu_df["CHEST_ACCELERATION_Z"][p1:p2])
+
+                axs[2, 0].plot(hrv_df["Load (TRIMP)"], color="gray")
+                for p1, p2 in full_repetitions:
+                    axs[2, 0].plot(hrv_df["Load (TRIMP)"][p1:p2])
+
+                x_axis = np.arange(max(len(flywheel_mask), len(pos_mask)))
+                if len(pos_mask) < len(flywheel_mask):
+                    false_idx = [i for i, x in enumerate(flywheel_mask) if not x]
+                    for i in false_idx:
+                        azure_durations.insert(i, 0)
+
+                elif len(flywheel_mask) < len(pos_mask):
+                    false_idx = [i for i, x in enumerate(pos_mask) if not x]
+                    for i in false_idx:
+                        flywheel_durations.insert(i, 0)
+
+                axs[0, 1].bar(x_axis - 0.2, flywheel_durations, 0.4)
+                axs[0, 1].bar(x_axis + 0.2, azure_durations, 0.4)
+
+                # plt.show()
+                plt.savefig(join(subject_plot_path, f"{subject}_{set_id}.png"))
+                plt.clf()
+                plt.cla()
+                plt.close()
+
+            # Truncate dataframes to valid repetitions
             pos_df = pos_df[pos_df["Repetition"] != -1]
             ori_df = ori_df[ori_df["Repetition"] != -1]
             imu_df = imu_df[imu_df["Repetition"] != -1]
             hrv_df = hrv_df[hrv_df["Repetition"] != -1]
 
-            cur_dict = {
+            yield {
                 "rpe": rpe_values[set_id],
                 "subject": subject,
                 "set_id": set_id,
@@ -204,17 +237,17 @@ def iterate_segmented_data(src_path: str, plot: bool = False, plot_path: str = N
                 "pos_df": pos_df,
                 "ori_df": ori_df,
                 "hrv_df": hrv_df,
-                "flywheel_df": flywheel_df,
+                "flywheel_df": flywheel_df[flywheel_mask],
             }
-            yield cur_dict
 
 
-def prepare_segmented_data_for_ml(src_path: str, dst_path: str, plot: bool = False, plot_path: str = None):
+def prepare_segmented_data_for_ml(src_path: str, dst_path: str, mode: str, plot: bool = False, plot_path: str = None):
     final_df = pd.DataFrame()
     settings = CustomFeatures()
 
-    for trial in iterate_segmented_data(src_path, plot=plot, plot_path=plot_path):
+    for trial in iterate_segmented_data(src_path, mode=mode, plot=plot, plot_path=plot_path):
         rpe, subject, set_id, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
+        assert len(flywheel_df) == len(pos_df["Repetition"].unique()) == len(imu_df["Repetition"].unique())
 
         pos_df = calculate_linear_joint_positions(pos_df)
 
@@ -226,18 +259,12 @@ def prepare_segmented_data_for_ml(src_path: str, dst_path: str, plot: bool = Fal
         ori_features_df = impute(ori_features_df)
         hrv_mean = hrv_df.groupby("Repetition").mean()
 
-        # Match feature reps with Flywheel data
-        flywheel_mask, pos_mask = match_to_flywheel(
-            fw_durations=flywheel_df["duration"],
-            azure_durations=pos_features_df["NECK (x)__length"] / 30,
-        )
-        flywheel_df = flywheel_df[flywheel_mask]
         total_df = pd.concat(
             [
-                pos_features_df[pos_mask].reset_index(drop=True).add_prefix("KINECTPOS_"),
-                ori_features_df[pos_mask].reset_index(drop=True).add_prefix("KINECTORI_"),
+                pos_features_df.reset_index(drop=True).add_prefix("KINECTPOS_"),
+                ori_features_df.reset_index(drop=True).add_prefix("KINECTORI_"),
                 flywheel_df.reset_index(drop=True).add_prefix("FLYWHEEL_"),
-                imu_features_df[pos_mask].reset_index(drop=True).add_prefix("PHYSILOG_"),
+                imu_features_df.reset_index(drop=True).add_prefix("PHYSILOG_"),
                 hrv_mean.reset_index(drop=True).add_prefix("HRV_"),
             ],
             axis=1,
@@ -250,7 +277,7 @@ def prepare_segmented_data_for_ml(src_path: str, dst_path: str, plot: bool = Fal
 
     final_df = impute_dataframe(final_df)
     final_df.reset_index(drop=True, inplace=True)
-    final_df.to_csv(join(dst_path, "statistical_features.csv"))
+    final_df.to_csv(join(dst_path, f"{mode}_stat.csv"))
 
 
 def prepare_segmented_data_for_dl(src_path: str, mode: str, dst_path: str, plot: bool, plot_path: str):
@@ -258,31 +285,23 @@ def prepare_segmented_data_for_dl(src_path: str, mode: str, dst_path: str, plot:
         raise AttributeError(f"Mode {mode} not supported.")
 
     repetition_data = []
-    for trial in iterate_segmented_data(src_path, plot=plot, plot_path=plot_path):
+    for trial in iterate_segmented_data(src_path, mode="all", plot=plot, plot_path=plot_path):
         rpe, subject, set_id, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
+        assert len(flywheel_df) == len(pos_df["Repetition"].unique()) == len(imu_df["Repetition"].unique())
         s = "Repetition"
 
-        flywheel_mask, pos_mask = match_to_flywheel(
-            fw_durations=flywheel_df["duration"].to_numpy(),
-            azure_durations=np.array([len(pos_df[pos_df[s] == rep]) / 30 for rep in sorted(pos_df[s].unique())]),
-        )
-        flywheel_df = flywheel_df[flywheel_mask].add_prefix("FLYWHEEL_")
-        for counter, valid in enumerate(pos_mask):
-            if not valid:
-                pos_df = pos_df[pos_df[s] != counter]
-
-        for flywheel_id, rep_id in enumerate(pos_df["Repetition"].unique()):
+        for rep_count, rep_idx in enumerate(pos_df["Repetition"].unique()):
             rep_df = pd.concat(
                 [
-                    pos_df[pos_df[s] == rep_id].drop(columns=[s]).reset_index(drop=True).add_prefix("KINECTPOS_"),
-                    ori_df[ori_df[s] == rep_id].drop(columns=[s]).reset_index(drop=True).add_prefix("KINECTORI_"),
+                    pos_df[pos_df[s] == rep_idx].drop(columns=[s]).reset_index(drop=True).add_prefix("KINECTPOS_"),
+                    ori_df[ori_df[s] == rep_idx].drop(columns=[s]).reset_index(drop=True).add_prefix("KINECTORI_"),
                 ],
                 axis=1,
             )
-            fw_dict = flywheel_df.iloc[flywheel_id].to_dict()
+            fw_dict = flywheel_df.iloc[rep_count].to_dict()
             rep_df = rep_df.assign(**fw_dict)
 
-            hrv = hrv_df[hrv_df[s] == rep_id].drop(columns=[s]).add_prefix("HRV_").mean().to_dict()
+            hrv = hrv_df[hrv_df[s] == rep_idx].drop(columns=[s]).add_prefix("HRV_").mean().to_dict()
             rep_df = rep_df.assign(**hrv)
 
             repetition_data.append({
@@ -338,5 +357,8 @@ if __name__ == "__main__":
 
     # process_all_raw_data(args.raw_path, args.proc_path, args.plot_path)
 
-    prepare_segmented_data_for_ml(args.proc_path, args.train_path, plot=args.show, plot_path=args.plot_path)
-    # prepare_segmented_data_for_dl(args.proc_path, mode="padding", dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
+    prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="con", plot=args.show, plot_path=args.plot_path)
+    prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="ecc", plot=args.show, plot_path=args.plot_path)
+    prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="all", plot=args.show, plot_path=args.plot_path)
+
+    prepare_segmented_data_for_dl(args.proc_path, mode="padding", dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)

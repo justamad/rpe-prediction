@@ -1,4 +1,4 @@
-from .segmentation import segment_imu_signal, segment_kinect_signal
+from .segmentation import segment_kinect_signal
 from .synchronization import calculate_cross_correlation, calculate_cross_correlation_with_datetime
 
 from .utils import (
