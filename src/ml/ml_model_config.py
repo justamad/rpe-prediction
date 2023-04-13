@@ -93,8 +93,8 @@ class MLPModelConfig(LearningModelBase):
             f'{str(self)}__activation': ["logistic", "relu", "tanh"],
             f'{str(self)}__solver': ["sgd", "adam"],
             f'{str(self)}__learning_rate_init': [1e-2, 1e-3, 1e-4],
-            f'{str(self)}__learning_rate': ["constant", "adaptive"],
-            f'{str(self)}__max_iter': [2000, 5000],
+            # f'{str(self)}__learning_rate': ["constant", "adaptive"],
+            f'{str(self)}__max_iter': [5000],
         }
 
         model = MLPRegressor(batch_size=32)
@@ -122,8 +122,7 @@ class XGBoostConfig(LearningModelBase):
         return "XGBoost"
 
 
-regression_models = [SVRModelConfig(), RFModelConfig(), GBRModelConfig(), MLPModelConfig()]  # , XGBoostConfig()]
-# regression_models = [SVRModelConfig()]  # , XGBoostConfig()]
+regression_models = [SVRModelConfig(), RFModelConfig(), GBRModelConfig(), MLPModelConfig()]
 models = {str(model): model for model in regression_models}
 
 

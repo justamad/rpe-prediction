@@ -1,4 +1,4 @@
-from .plot_settings import column_width, text_width, cm, dpi
+from .plot_settings import column_width, cm, dpi
 from typing import Dict
 from scipy.stats import pearsonr
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, mean_absolute_percentage_error
@@ -104,7 +104,7 @@ def evaluate_sample_predictions_individual(result_dict: Dict, gt_column: str, ds
 
 
 def evaluate_nr_features(df: pd.DataFrame, dst_path: str):
-    plt.figure(figsize=(column_width * cm, column_width * cm), dpi=dpi)
+    plt.figure(figsize=(column_width * cm, column_width * cm * 0.65), dpi=dpi)
 
     nr_features = sorted(df["n_features"].unique())
     for model in df["model"].unique():
@@ -122,6 +122,7 @@ def evaluate_nr_features(df: pd.DataFrame, dst_path: str):
         # plt.errorbar(x_axis, y_axis, yerr=errors, label=model.upper())
         plt.plot(x_axis, y_axis, label=model.upper())
 
+    plt.ylim(0, 1)
     plt.xticks(nr_features)
     plt.legend()
     plt.xlabel("Number of Features")
@@ -129,6 +130,6 @@ def evaluate_nr_features(df: pd.DataFrame, dst_path: str):
     plt.tight_layout()
 
     # plt.show()
-    plt.savefig(join(dst_path, "nr_features.png"))
+    plt.savefig(join(dst_path, "nr_features.pdf"))
     plt.clf()
     plt.close()

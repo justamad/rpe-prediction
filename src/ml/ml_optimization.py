@@ -105,7 +105,6 @@ class MLOptimization(object):
                     n_jobs=n_jobs,
                     verbose=10,
                     scoring=metrics[self._task],
-                    error_score="raise",
                     refit=refit_metrics[self._task],
                 )
             else:
@@ -117,7 +116,6 @@ class MLOptimization(object):
                     n_jobs=n_jobs,
                     verbose=10,
                     scoring=metrics[self._task],
-                    error_score="raise",
                     refit=refit_metrics[self._task],
                 )
 
