@@ -101,3 +101,34 @@ def evaluate_sample_predictions_individual(result_dict: Dict, gt_column: str, ds
         # plt.show()
         plt.clf()
         plt.close()
+
+
+def evaluate_nr_features(df: pd.DataFrame, dst_path: str):
+    plt.figure(figsize=(column_width * cm, column_width * cm), dpi=dpi)
+
+    nr_features = sorted(df["n_features"].unique())
+    for model in df["model"].unique():
+        sub_df = df[df["model"] == model]
+
+        x_axis = []
+        y_axis = []
+        errors = []
+        for nr_feature in nr_features:
+            sub_sub_df = sub_df[sub_df["n_features"] == nr_feature].sort_values(by="mean_test_r2", ascending=False).iloc[0]
+            x_axis.append(nr_feature)
+            y_axis.append(sub_sub_df["mean_test_r2"])
+            errors.append(sub_sub_df["std_test_r2"])
+
+        # plt.errorbar(x_axis, y_axis, yerr=errors, label=model.upper())
+        plt.plot(x_axis, y_axis, label=model.upper())
+
+    plt.xticks(nr_features)
+    plt.legend()
+    plt.xlabel("Number of Features")
+    plt.ylabel("$R^2$")
+    plt.tight_layout()
+
+    # plt.show()
+    plt.savefig(join(dst_path, "nr_features.png"))
+    plt.clf()
+    plt.close()

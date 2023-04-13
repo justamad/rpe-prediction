@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import math
 
-META_DATA = ["subject", "rep_id", "set_id", "rpe"]
+META_DATA = ["subject", "set_id", "rpe"]
 
 
 def extract_dataset_input_output(
@@ -121,9 +121,7 @@ def normalize_data_global(X: pd.DataFrame) -> pd.DataFrame:
     return X
 
 
-def filter_outliers_z_scores(df: pd.DataFrame):
-    z_scores = stats.zscore(df.iloc[:, :-4])
-    z_scores = z_scores.dropna(axis=1, how="all")
-    abs_z_scores = np.abs(z_scores)
-    filtered_entries = (abs_z_scores < 3).all(axis=1)
-    return filtered_entries
+def filter_outliers_z_scores(df: pd.DataFrame, sigma: float = 3.0):
+    df[df > sigma] = sigma
+    df[df < -sigma] = -sigma
+    return df

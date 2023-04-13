@@ -1,6 +1,4 @@
 from src.ml import MLOptimization, eliminate_features_with_rfe, regression_models, instantiate_best_model
-from src.plot import evaluate_sample_predictions, evaluate_aggregated_predictions, evaluate_sample_predictions_individual
-from src.features import calculate_temporal_features
 from typing import List, Dict, Tuple
 from datetime import datetime
 from argparse import ArgumentParser
@@ -10,11 +8,19 @@ from os.path import join, exists
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error
 from scipy.stats import pearsonr
 
+from src.plot import (
+    evaluate_sample_predictions,
+    evaluate_aggregated_predictions,
+    evaluate_sample_predictions_individual,
+    evaluate_nr_features,
+)
+
 from src.dataset import (
     normalize_gt_per_subject_mean,
     extract_dataset_input_output,
     normalize_data_by_subject,
     normalize_data_global,
+    filter_outliers_z_scores,
 )
 
 import pandas as pd
@@ -48,12 +54,10 @@ def train_model(
 
     X, y = extract_dataset_input_output(df=df, labels=ground_truth)
     for prefix in drop_prefixes:
-        drop_columns += [col for col in df.columns if col.startswith(prefix)]
+        drop_columns += [col for col in df.columns if prefix in col]
 
     X.drop(columns=drop_columns, inplace=True, errors="ignore")
-
-    if temporal_features:
-        X = calculate_temporal_features(X, y, folds=2)
+    X = X.loc[:, (X != 0).any(axis=0)]
 
     if normalization_input:
         if normalization_input == "subject":
@@ -74,8 +78,10 @@ def train_model(
         else:
             raise ValueError(f"Unknown normalization_labels: {normalization_labels}")
 
+    # Impute data frame and eliminate features
     X.fillna(0, inplace=True)
-    X, _report_df = eliminate_features_with_rfe(X_train=X, y_train=y[ground_truth], step=1000, n_features=n_features)
+    X = filter_outliers_z_scores(X, sigma=3.0)
+    X, _report_df = eliminate_features_with_rfe(X_train=X, y_train=y[ground_truth], step=100, n_features=n_features)
     _report_df.to_csv(join(log_path, "rfe_report.csv"))
     X.to_csv(join(log_path, "X.csv"))
     y.to_csv(join(log_path, "y.csv"))
@@ -112,9 +118,14 @@ def train_model(
 
 def evaluate_entire_experiment_path(
         src_path: str,
+        dst_path: str,
         criteria_rank: str = "rank_test_r2",
         criteria_score: str = "mean_test_r2",
 ):
+    dst_path = join(dst_path, os.path.basename(os.path.normpath(src_path)))
+    if not exists(dst_path):
+        os.makedirs(dst_path)
+
     result_files = []
     for root, _, files in os.walk(src_path):
         if "config.yml" not in files:
@@ -136,6 +147,9 @@ def evaluate_entire_experiment_path(
 
     result_df = pd.DataFrame.from_records(result_files)
     result_df.to_csv(join(src_path, "results.csv"))
+    evaluate_nr_features(result_df, dst_path)
+    return
+    logging.info("Collected all trial data. Now evaluating the best model for each ML model.")
 
     for model in result_df["model"].unique():
         cur_df = result_df[result_df["model"] == model].sort_values(by=criteria_score, ascending=False)
@@ -185,8 +199,6 @@ def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: 
         if config["normalization_labels"] == "global":
             ground_truth = ground_truth * config["label_std"] + config["label_mean"]
             predictions = predictions * config["label_std"] + config["label_mean"]
-        elif config["normalization_labels"] == "subject":
-            raise NotImplementedError("Subject normalization not implemented yet.")
 
         # Calculate all error metrics
         for metric_name, metric in metrics.items():
@@ -238,8 +250,9 @@ if __name__ == "__main__":
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments_ml")
-    parser.add_argument("--train", type=bool, dest="train", default=True)
-    parser.add_argument("--eval", type=bool, dest="eval", default=False)
+    parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation")
+    parser.add_argument("--train", type=bool, dest="train", default=False)
+    parser.add_argument("--eval", type=bool, dest="eval", default=True)
     args = parser.parse_args()
 
     if args.train:
@@ -274,12 +287,11 @@ if __name__ == "__main__":
                     cur_name = exp_name.replace(".yaml", "_") + "_".join([f"{key}_{value}" for key, value in combination.items()])
 
                     logging.info(f"Start to process experiment: {cur_name}")
-                    log_path = f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_{cur_name}"
-                    log_path = join(args.result_path, experiment_folder, log_path)
+                    log_path = join(args.result_path, experiment_folder, f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_{cur_name}")
                     if not exists(log_path):
                         os.makedirs(log_path)
 
                     train_model(df, log_path, **exp_config)
 
     if args.eval:
-        evaluate_entire_experiment_path("results/hr")
+        evaluate_entire_experiment_path("results/hr", args.dst_path)
