@@ -7,12 +7,14 @@ from imblearn.pipeline import Pipeline
 from os.path import join, exists
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error
 from scipy.stats import pearsonr
+from tqdm import tqdm
 
 from src.plot import (
     evaluate_sample_predictions,
     evaluate_aggregated_predictions,
     evaluate_sample_predictions_individual,
     evaluate_nr_features,
+    create_model_result_tables,
 )
 
 from src.dataset import (
@@ -146,16 +148,23 @@ def evaluate_entire_experiment_path(
             result_files.append(pd.concat([best_combination, pd.Series(config)]))
 
     result_df = pd.DataFrame.from_records(result_files)
-    result_df.to_csv(join(src_path, "results.csv"))
-    evaluate_nr_features(result_df, dst_path)
-    return
+    result_df.to_csv(join(dst_path, "results.csv"))
+    # evaluate_nr_features(result_df, dst_path)
+    # create_model_result_tables(result_df, dst_path)
     logging.info("Collected all trial data. Now evaluating the best model for each ML model.")
 
-    for model in result_df["model"].unique():
+    model_evaluate = []
+    models = result_df["model"].unique()
+    for model in models:
         cur_df = result_df[result_df["model"] == model].sort_values(by=criteria_score, ascending=False)
         best_model = cur_df.iloc[0]
-        m = evaluate_for_specific_ml_model(best_model["result_path"], best_model["model_file"], "output", aggregate=True)
-        i = 12
+        row = evaluate_for_specific_ml_model(best_model["result_path"], best_model["model_file"], dst_path, aggregate=True)
+        model_evaluate.append(row)
+
+    model_evaluate_df = pd.DataFrame.from_records(model_evaluate, index=models)
+    model_evaluate_df.to_latex(join(dst_path, "model_evaluate.tex"), escape=False)
+    print(model_evaluate_df)
+    i = 12
 
 
 def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: str, aggregate: bool = False) -> Dict:
@@ -166,7 +175,6 @@ def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: 
     result_df = pd.read_csv(join(result_path, model_file))
     model_name = model_file.replace("model__", "").replace(".csv", "")
     model = instantiate_best_model(result_df, model_name, config["task"])
-
     label_column = config["ground_truth"]
 
     metrics = {
@@ -179,8 +187,8 @@ def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: 
 
     test_subject_result = {metric: [] for metric in metrics.keys()}
     subjects = {}
-    for idx, test_subject in enumerate(y["subject"].unique()):
-        logging.info(f"Evaluating {model_name} on subject {test_subject}...")
+    for test_subject in tqdm(y["subject"].unique()):
+        logging.info(f"Evaluating {model_name.upper()} on subject {test_subject}...")
 
         if config["balancing"]:
             model = Pipeline(steps=[
@@ -207,23 +215,13 @@ def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: 
         df = pd.DataFrame({"ground_truth": ground_truth, "predictions": predictions, "set_id": y_test["set_id"]})
         subjects[test_subject] = df
 
-        if aggregate:
-            logging.error("Aggregation not implemented yet.")
+    res = {metric: f"${np.mean(values):.2f} \\pm {np.std(values):.2f}$" for metric, values in test_subject_result.items()}
 
-    mean_result = {f"{metric} mean": np.mean(values) for metric, values in test_subject_result.items()}
-    std_result = {f"{metric} std": np.std(values) for metric, values in test_subject_result.items()}
-
-    # evaluate_sample_predictions(
+    # evaluate_sample_predictions_individual(
     #     result_dict=subjects,
     #     gt_column="ground_truth",
-    #     file_name=join(result_path, f"new_{model_name}_sample_prediction.png"),
+    #     dst_path=join(dst_path, model_name),
     # )
-
-    evaluate_sample_predictions_individual(
-        result_dict=subjects,
-        gt_column="ground_truth",
-        dst_path=join(dst_path, model_name),
-    )
 
     # if aggregate:
     #     evaluate_aggregated_predictions(
@@ -231,8 +229,7 @@ def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: 
     #         gt_column="ground_truth",
     #         file_name=join(result_path, f"new_{model_name}_aggregated_prediction.png"),
     #     )
-
-    return {**mean_result, **std_result}
+    return res
 
 
 if __name__ == "__main__":
@@ -294,4 +291,4 @@ if __name__ == "__main__":
                     train_model(df, log_path, **exp_config)
 
     if args.eval:
-        evaluate_entire_experiment_path("results/hr", args.dst_path)
+        evaluate_entire_experiment_path("results/rpe", args.dst_path)
