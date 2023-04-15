@@ -1,14 +1,17 @@
+training_file:
+  - concentric_stat.csv
+  - eccentric_stat.csv
 drop_columns: []
 drop_prefixes:
 - HRV
 - PHYSILOG
 - FLYWHEEL
-- KINECTORI
 ground_truth: rpe
 normalization_input: subject
-opt_n_features: [25, 50, 100]
-opt_temporal_features: [True, False]
+opt_n_features: [25, 50, 75, 100]
+temporal_features: False
 search: grid
 task: regression
 balancing: True
 normalization_labels: False
+n_splits: 8

@@ -1,0 +1,17 @@
+training_file:
+  - concentric_stat.csv
+  - eccentric_stat.csv
+drop_columns: []
+drop_prefixes:
+- HRV
+- PHYSILOG
+- FLYWHEEL
+ground_truth: HRV_Mean HR (1/min)
+normalization_input: global
+normalization_labels: global
+search: grid
+task: regression
+balancing: False
+opt_n_features: [25, 50, 75, 100]
+temporal_features: False
+n_splits: 8
