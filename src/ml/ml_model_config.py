@@ -23,26 +23,11 @@ class LearningModelBase(object):
         return self.__grid_search_params
 
 
-# class SVMModelConfig(LearningModelBase):
-#
-#     def __init__(self):
-#         tuned_parameters = {
-#             f"{str(self)}__kernel": ["rbf"],  # "linear"),
-#             f"{str(self)}__gamma": [1e-3],  # , 1e-4],
-#             f"{str(self)}__C": [1e0],  # , 1e1, 1e2, 1e3],
-#         }
-#
-#         super().__init__(model=SVC(), grid_search_params=tuned_parameters)
-#
-#     def __repr__(self):
-#         return "svm"
-
-
 class SVRModelConfig(LearningModelBase):
 
     def __init__(self):
         tuned_parameters = {
-            f"{str(self)}__kernel": ["rbf", "linear"],
+            f"{str(self)}__kernel": ["rbf"],  # , "linear"],
             f"{str(self)}__gamma": [1e-3, 1e-4],
             f"{str(self)}__C": [1e0, 1e1, 1e2, 1e3],
         }
@@ -58,7 +43,7 @@ class RFModelConfig(LearningModelBase):
     def __init__(self):
         tuned_parameters = {
             f"{str(self)}__n_estimators": [50, 100, 150, 200],
-            f"{str(self)}__criterion": ["absolute_error", "squared_error"]
+            f"{str(self)}__criterion": ["squared_error"]  # "absolute_error"
         }
 
         model = RandomForestRegressor()
@@ -72,9 +57,9 @@ class GBRModelConfig(LearningModelBase):
 
     def __init__(self):
         tuned_parameters = {
-            f"{str(self)}__n_estimators": [15, 50, 150, 500],
+            f"{str(self)}__n_estimators": [50, 150, 500],
             f"{str(self)}__learning_rate": [0.05, 0.1, 0.2],
-            f"{str(self)}__loss": ["squared_error", "absolute_error", "huber"],
+            f"{str(self)}__loss": ["squared_error"],  # , "absolute_error", "huber"],
             f"{str(self)}__n_iter_no_change": [None, 5, 50, 100]
         }
 
@@ -89,11 +74,10 @@ class MLPModelConfig(LearningModelBase):
 
     def __init__(self):
         tuned_parameters = {
-            f'{str(self)}__hidden_layer_sizes': [(10, 4), (100,), (100, 50), (100, 150)],
+            f'{str(self)}__hidden_layer_sizes': [(100,), (100, 50), (100, 150)],
             f'{str(self)}__activation': ["logistic", "relu", "tanh"],
             f'{str(self)}__solver': ["sgd", "adam"],
             f'{str(self)}__learning_rate_init': [1e-2, 1e-3, 1e-4],
-            # f'{str(self)}__learning_rate': ["constant", "adaptive"],
             f'{str(self)}__max_iter': [5000],
         }
 

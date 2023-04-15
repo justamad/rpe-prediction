@@ -72,7 +72,7 @@ def evaluate_aggregated_predictions(result_dict: Dict, gt_column: str, file_name
     plt.close()
 
 
-def evaluate_sample_predictions_individual(result_dict: Dict, gt_column: str, dst_path: str):
+def evaluate_sample_predictions_individual(value_df: pd.DataFrame, gt_column: str, dst_path: str):
     rmse_all = []
     r2_all = []
     mape_all = []
@@ -80,11 +80,12 @@ def evaluate_sample_predictions_individual(result_dict: Dict, gt_column: str, ds
     if not exists(dst_path):
         makedirs(dst_path)
 
-    for idx, (subject_name, df) in enumerate(result_dict.items()):
-        plt.figure(figsize=(column_width * cm, column_width * cm), dpi=dpi)
+    for subject_name in value_df["subject"].unique():
+        subject_df = value_df[value_df["subject"] == subject_name]
 
-        ground_truth = df[gt_column].to_numpy()
-        predictions = df["predictions"].to_numpy()
+        plt.figure(figsize=(column_width * cm, column_width * cm), dpi=dpi)
+        ground_truth = subject_df[gt_column].to_numpy()
+        predictions = subject_df["predictions"].to_numpy()
         rmse = mean_squared_error(predictions, ground_truth, squared=False)
         r2 = r2_score(ground_truth, predictions)
         rmse_all.append(rmse)

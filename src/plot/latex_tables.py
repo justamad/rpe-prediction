@@ -24,4 +24,4 @@ def create_model_result_tables(df: pd.DataFrame, dst_path: str):
 
     final_df = pd.DataFrame(values, index=list(map(lambda model: model.upper(), models)))
     final_df = final_df.sort_values(by="r2", ascending=True).rename(columns=metrics).T
-    final_df.to_latex(join(dst_path, "model_result.txt"), escape=False)
+    final_df.to_latex(join(dst_path, "orig_results.txt"), escape=False)

@@ -125,3 +125,11 @@ def filter_outliers_z_scores(df: pd.DataFrame, sigma: float = 3.0):
     df[df > sigma] = sigma
     df[df < -sigma] = -sigma
     return df
+
+
+def drop_highly_correlated_features(X: pd.DataFrame, threshold: float = 0.95) -> pd.DataFrame:
+    corr_matrix = X.corr().abs()
+    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
+    to_drop = [column for column in upper.columns if any(upper[column] > threshold)]
+    X.drop(to_drop, axis=1, inplace=True)
+    return X

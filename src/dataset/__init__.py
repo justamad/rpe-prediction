@@ -10,6 +10,7 @@ from .data_preparation import (
     filter_outliers_z_scores,
     normalize_rpe_values_min_max,
     normalize_data_global,
+    drop_highly_correlated_features,
 )
 
 from .data_loaders import (
