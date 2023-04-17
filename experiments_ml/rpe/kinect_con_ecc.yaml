@@ -14,4 +14,4 @@ search: grid
 task: regression
 balancing: True
 normalization_labels: False
-n_splits: 8
+n_splits: 16

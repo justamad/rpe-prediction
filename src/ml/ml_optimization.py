@@ -67,8 +67,6 @@ class MLOptimization(object):
         if mode not in ["grid", "random"]:
             raise AttributeError(f"Unknown ML mode given: {mode}")
 
-        self._X = X
-
         subjects = y["subject"].unique()
         y["group"] = y["subject"].replace(dict(zip(subjects, range(len(subjects)))))
 
@@ -76,6 +74,7 @@ class MLOptimization(object):
             n_splits = len(subjects)
         self._n_splits = n_splits
 
+        self._X = X
         self._y = y
         self._task = task
         self._mode = mode
@@ -88,8 +87,9 @@ class MLOptimization(object):
             n_jobs: int = -1,
             verbose: int = 1,
     ):
-        X = self._X
-        y = self._y
+        X = self._X.values
+        y = self._y[self._ground_truth].values
+        groups = self._y["group"].values
 
         for model_config in models:
             steps = [
@@ -106,7 +106,7 @@ class MLOptimization(object):
                 ml_search = GridSearchCV(
                     estimator=pipe,
                     param_grid=model_config.parameters,
-                    cv=group_k_fold.split(X, y, y["group"]),
+                    cv=group_k_fold.split(X, y, groups),
                     n_jobs=n_jobs,
                     verbose=verbose,
                     scoring=metrics[self._task],
@@ -118,7 +118,7 @@ class MLOptimization(object):
                     param_distributions=model_config.parameters,
                     n_iter=12,
                     n_jobs=n_jobs,
-                    cv=group_k_fold.split(X, y, y["group"]),
+                    cv=group_k_fold.split(X, y, groups),
                     verbose=verbose,
                     scoring=metrics[self._task],
                     refit=refit_metrics[self._task],
@@ -127,7 +127,7 @@ class MLOptimization(object):
             logging.info(ml_search)
             logging.info(f"Input shape: {self._X.shape}")
 
-            ml_search.fit(X, y[self._ground_truth])
+            ml_search.fit(X, y)
             r_df = pd.DataFrame(ml_search.cv_results_)
             r_df = r_df.drop(["params"], axis=1)
 
@@ -144,7 +144,8 @@ class MLOptimization(object):
 
         tests = {metric: [] for metric in metrics.keys()}
         result_df = pd.DataFrame()
-        for test_group in tqdm(self._y["group"].unique()):
+        group_k_fold = GroupKFold(n_splits=self._n_splits)
+        for train_idx, test_idx in tqdm(group_k_fold.split(self._X, self._y[self._ground_truth], self._y["group"])):
             if self._balance:
                 model = Pipeline(steps=[
                     ("balance_sampling", RandomOverSampler()),
@@ -152,10 +153,10 @@ class MLOptimization(object):
                     ("learner", model),
                 ])
 
-            X_train = self._X.loc[self._y["group"] != test_group, :]
-            y_train = self._y.loc[self._y["group"] != test_group, :]
-            X_test = self._X.loc[self._y["group"] == test_group, :]
-            y_test = self._y.loc[self._y["group"] == test_group, :]
+            X_train = self._X.iloc[train_idx, :]
+            y_train = self._y.iloc[train_idx, :]
+            X_test = self._X.iloc[test_idx, :]
+            y_test = self._y.iloc[test_idx, :]
 
             ground_truth = y_test.loc[:, self._ground_truth].values
             predictions = model.fit(X_train, y_train[self._ground_truth]).predict(X_test)

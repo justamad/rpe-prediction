@@ -1,7 +1,7 @@
 from xgboost import XGBRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.neural_network import MLPRegressor
-from sklearn.svm import SVR  # , SVC
+from sklearn.svm import SVR
 from typing import Dict, Union, Tuple
 
 import pandas as pd
@@ -79,6 +79,7 @@ class MLPModelConfig(LearningModelBase):
             f'{str(self)}__solver': ["sgd", "adam"],
             f'{str(self)}__learning_rate_init': [1e-2, 1e-3, 1e-4],
             f'{str(self)}__max_iter': [5000],
+            f'{str(self)}__early_stopping': [True, False],
         }
 
         model = MLPRegressor(batch_size=32)

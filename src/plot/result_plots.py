@@ -123,7 +123,7 @@ def evaluate_nr_features(df: pd.DataFrame, dst_path: str):
         # plt.errorbar(x_axis, y_axis, yerr=errors, label=model.upper())
         plt.plot(x_axis, y_axis, label=model.upper())
 
-    plt.ylim(0, 1)
+    # plt.ylim(0, 1)
     plt.xticks(nr_features)
     plt.legend()
     plt.xlabel("Number of Features")

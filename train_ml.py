@@ -181,7 +181,7 @@ def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: 
         mode=config["search"],
         balance=config["balancing"],
         ground_truth=config["ground_truth"],
-        n_groups=-1,
+        n_splits=config["n_splits"],
     )
     res, res_df = opt.evaluate_model(model, config["normalization_labels"], config["label_mean"], config["label_std"])
 
@@ -217,8 +217,8 @@ if __name__ == "__main__":
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments_ml")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation")
-    parser.add_argument("--train", type=bool, dest="train", default=True)
-    parser.add_argument("--eval", type=bool, dest="eval", default=False)
+    parser.add_argument("--train", type=bool, dest="train", default=False)
+    parser.add_argument("--eval", type=bool, dest="eval", default=True)
     args = parser.parse_args()
 
     if args.train:
@@ -264,4 +264,4 @@ if __name__ == "__main__":
                     train_model(df, log_path, **exp_config)
 
     if args.eval:
-        evaluate_entire_experiment_path("results/hr", args.dst_path)
+        evaluate_entire_experiment_path("results/powerecc", args.dst_path)
