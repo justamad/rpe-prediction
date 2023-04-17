@@ -1,33 +1,65 @@
+from .models import build_conv_model, build_cnn_lstm_model
 from src.ml.ml_model_config import LearningModelBase, parse_report_file_to_model_parameters
-from src.dl import build_conv1d_lstm_regression_model
 from scikeras.wrappers import KerasRegressor
 
 import pandas as pd
 
 
-class ConvLSTMModelConfig(LearningModelBase):
+class ConvModelConfig(LearningModelBase):
 
     def __init__(self):
-        model = KerasRegressor(model=build_conv1d_lstm_regression_model, n_filters=32, kernel_size=10)
+        model = KerasRegressor(
+            model=build_conv_model,
+            n_layers=3, n_filters=32, kernel_size=(10,3), dropout=0.3, n_units=128,
+            verbose=1,
+        )
 
         tunable_parameters = {
             f"{str(self)}__batch_size": [64],
-            f"{str(self)}__epochs": [500],
-            f"{str(self)}__n_filters": [16],
-            f"{str(self)}__kernel_size": [9],
+            f"{str(self)}__epochs": [200],
+            f"{str(self)}__n_filters": [32],
+            f"{str(self)}__n_layers": [3, 4],
+            f"{str(self)}__kernel_size": [(10, 3)],
+            f"{str(self)}__dropout": [0.3],
+            f"{str(self)}__n_units": [64, 128],
         }
 
         super().__init__(model=model, grid_search_params=tunable_parameters)
 
     def __repr__(self):
-        return "convlstm"
+        return "conv"
 
 
-regression_models = [ConvLSTMModelConfig()]
-models = {str(model) for model in regression_models}
+class CNNLSTMModelConfig(LearningModelBase):
+
+    def __init__(self):
+        model = KerasRegressor(
+            model=build_cnn_lstm_model,
+            n_filters=32, kernel_size=(10, 3), n_layers=3, dropout=0.3, lstm_units=50,
+            verbose=1,
+        )
+
+        tunable_parameters = {
+            f"{str(self)}__batch_size": [64],
+            f"{str(self)}__epochs": [200],
+            f"{str(self)}__n_filters": [32],
+            f"{str(self)}__n_layers": [3, 4],
+            f"{str(self)}__kernel_size": [(10, 3)],
+            f"{str(self)}__dropout": [0.3],
+            f"{str(self)}__lstm_units": [32, 64],
+        }
+
+        super().__init__(model=model, grid_search_params=tunable_parameters)
+
+    def __repr__(self):
+        return "cnnlstm"
 
 
-def instantiate_best_dl_model(result_df: pd.DataFrame, model_name: str, task: str, n_samples: int, n_features: int):
+regression_models = [ConvModelConfig(), CNNLSTMModelConfig()]
+models = {str(model): model for model in regression_models}
+
+
+def instantiate_best_dl_model(result_df: pd.DataFrame, model_name: str, task: str):
     if model_name not in models:
         raise AttributeError(f"Model {model_name} not found.")
 
@@ -39,7 +71,8 @@ def instantiate_best_dl_model(result_df: pd.DataFrame, model_name: str, task: st
         raise ValueError(f"Task {task} not supported.")
 
     best_configuration = parse_report_file_to_model_parameters(result_df, model_name, column)
-    model = models[model_name]
-    # model = build_model(n_samples=best_model["n_samples"], n_features=best_model["n_features"])
-    # model.set_params(**best_model["params"])
-    return model, best_configuration
+    best_configuration["verbose"] = 1
+    best_configuration["epochs"] = 1
+    model = models[model_name].model
+    model.set_params(**best_configuration)
+    return model

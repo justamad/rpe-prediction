@@ -159,9 +159,9 @@ def evaluate_entire_experiment_path(
         row = evaluate_for_specific_ml_model(best_model["result_path"], best_model["model_file"], dst_path)
         model_evaluate.append(row)
 
-    model_evaluate_df = pd.DataFrame.from_records(model_evaluate, index=models)
-    model_evaluate_df.to_latex(join(dst_path, "retrain_results.tex"), escape=False)
-    print(model_evaluate_df)
+    # model_evaluate_df = pd.DataFrame.from_records(model_evaluate, index=models)
+    # model_evaluate_df.to_latex(join(dst_path, "retrain_results.tex"), escape=False)
+    # print(model_evaluate_df)
 
 
 def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: str) -> Dict:
@@ -183,14 +183,15 @@ def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: 
         ground_truth=config["ground_truth"],
         n_splits=config["n_splits"],
     )
-    res, res_df = opt.evaluate_model(model, config["normalization_labels"], config["label_mean"], config["label_std"])
+    # res, res_df = opt.evaluate_model(model, config["normalization_labels"], config["label_mean"], config["label_std"])
+    res_df = opt.evaluate_model(model, config["normalization_labels"], config["label_mean"], config["label_std"])
 
     evaluate_sample_predictions_individual(
         value_df=res_df,
         gt_column="ground_truth",
         dst_path=join(dst_path, model_name),
     )
-    return res
+    # return res
 
     # if aggregate:
     #     evaluate_aggregated_predictions(
@@ -198,7 +199,6 @@ def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: 
     #         gt_column="ground_truth",
     #         file_name=join(result_path, f"new_{model_name}_aggregated_prediction.png"),
     #     )
-    # return res
 
 
 if __name__ == "__main__":
@@ -264,4 +264,4 @@ if __name__ == "__main__":
                     train_model(df, log_path, **exp_config)
 
     if args.eval:
-        evaluate_entire_experiment_path("results/powerecc", args.dst_path)
+        evaluate_entire_experiment_path("results/hr", args.dst_path)

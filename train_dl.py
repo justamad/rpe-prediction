@@ -1,13 +1,14 @@
 from src.ml import MLOptimization
 from src.dl import regression_models, instantiate_best_dl_model
-from src.plot import evaluate_aggregated_predictions, evaluate_sample_predictions
-from typing import List
+from src.plot import evaluate_aggregated_predictions, evaluate_sample_predictions, evaluate_sample_predictions_individual
+from typing import List, Union
 from src.dataset import extract_dataset_input_output, normalize_data_by_subject, normalize_data_global
 from datetime import datetime
 from argparse import ArgumentParser
 from sklearn.metrics import r2_score
 from os.path import join, exists
 from os import makedirs
+from tensorflow import keras
 
 import pandas as pd
 import numpy as np
@@ -15,8 +16,9 @@ import logging
 import tensorflow as tf
 import yaml
 import os
-# import matplotlib
-# matplotlib.use("WebAgg")
+import time
+import matplotlib
+matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 
 
@@ -26,19 +28,20 @@ def train_model(
         seq_length: int,
         drop_columns: List,
         drop_prefixes: List,
-        ground_truth: str,
+        ground_truth: Union[List[str], str],
         normalization_input: str,
         search: str,
         balancing: bool,
         normalization_labels: str,
         task: str,
+        n_splits: int,
 ):
     if drop_prefixes is None:
         drop_prefixes = []
     if drop_columns is None:
         drop_columns = []
 
-    X, y = extract_dataset_input_output(df=df, ground_truth_column=ground_truth)
+    X, y = extract_dataset_input_output(df=df, labels=ground_truth)
     for prefix in drop_prefixes:
         drop_columns += [col for col in df.columns if col.startswith(prefix)]
 
@@ -50,7 +53,6 @@ def train_model(
     # mask = y["subject"].isin(subjects[:3])
     # X = X.loc[mask]
     # y = y.loc[mask]
-
 
     if normalization_input == "subject":
         X = normalize_data_by_subject(X, y)
@@ -68,12 +70,8 @@ def train_model(
 
     X.to_csv(join(log_path, "X.csv"))
     y.to_csv(join(log_path, "y.csv"))
-
     X = X.values.reshape((-1, seq_length, X.shape[1]))
     y = y.iloc[::seq_length, :]
-
-    # oversample = SMOTE()
-    # X, y = oversample.fit_resample(X, y["rpe"])
 
     with open(join(log_path, "config.yml"), "w") as f:
         yaml.dump(
@@ -89,35 +87,23 @@ def train_model(
                 "normalization_labels": normalization_labels,
                 "label_mean": float(label_mean),
                 "label_std": float(label_std),
+                "n_splits": n_splits,
             },
             f,
         )
 
-    # model = build_conv_lstm_regression_model(X.shape[1], X.shape[2])
-    # model.compile(loss="mse", optimizer=keras.optimizers.Adam(learning_rate=0.01), metrics=["mse", "mae"])
-    # model.summary()
-    # model.fit(X, y["rpe"], epochs=10, batch_size=16)
-    # y = model.predict(X)
-    # plt.plot(y)
-    # plt.show()
-    # print(y)
-
-    ml_optimization = MLOptimization(X=X, y=y, balance=False, task=task, mode=search, ground_truth=ground_truth)
-    ml_optimization.perform_grid_search_with_cv(regression_models, log_path=log_path, n_jobs=1)
-
-    # log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    # tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-
-    # model.fit(
-    #     train_gen,
-    #     validation_data=train_gen,
-    #     epochs=epochs,
-    #     callbacks=[tensorboard_callback],
-    # )
-    # model.save(model_name)
+    MLOptimization(
+        X=X,
+        y=y,
+        balance=False,
+        task=task,
+        mode=search,
+        ground_truth=ground_truth,
+        n_splits=n_splits,
+    ).perform_grid_search_with_cv(regression_models, log_path=log_path, n_jobs=1)
 
 
-def evaluate_ml_model(result_path: str):
+def evaluate_ml_model(result_path: str, dst_path: str):
     config = yaml.load(open(join(result_path, "config.yml"), "r"), Loader=yaml.FullLoader)
     X = pd.read_csv(join(result_path, "X.csv"), index_col=0)
     y = pd.read_csv(join(result_path, "y.csv"), index_col=0)
@@ -130,46 +116,62 @@ def evaluate_ml_model(result_path: str):
         logging.info(f"Evaluating model: {model_name}")
         result_df = pd.read_csv(join(result_path, model_file))
 
-        result_dicts = {}
-        r2_scores = []
-        for subject in y["subject"].unique():
-            model, meta_params = instantiate_best_dl_model(
-                result_df, model_name=model_name, task=config["task"], n_samples=X.shape[1], n_features=X.shape[2]
+        model = instantiate_best_dl_model(result_df, model_name=model_name, task=config["task"])
+
+        opt = MLOptimization(
+            X=X,
+            y=y,
+            balance=False,
+            task=config["task"],
+            mode=config["search"],
+            ground_truth=config["ground_truth"],
+            n_splits=config["n_splits"],
+        )
+        res_df = opt.evaluate_model(model, config["normalization_labels"], config["label_mean"], config["label_std"])
+
+        # Evaluate multiple predictions
+        for label_name in config["ground_truth"]:
+            path = join(dst_path, model_name, label_name)
+            if not exists(path):
+                makedirs(path)
+
+            name_dict = {
+                f"{label_name}_ground_truth": "ground_truth",
+                f"{label_name}_prediction": "prediction",
+            }
+            sub_df = res_df[list(name_dict.keys())].rename(columns=name_dict)
+            evaluate_sample_predictions_individual(
+                value_df=sub_df,
+                gt_column="ground_truth",
+                dst_path=path,
             )
 
-            subject_mask = y["subject"] == subject
-            X_train, y_train = X[~subject_mask], y[~subject_mask]
-            X_test, y_test = X[subject_mask], y[subject_mask]
-
-            model.fit(X_train, y_train["rpe"], **meta_params)
-            y_pred = model.predict(X_test)
-            y_test["predictions"] = y_pred
-            r2_scores.append(r2_score(y_test["rpe"], y_test["predictions"]))
-            result_dicts[subject] = y_test
-
-        print(f"R2 score: {np.mean(r2_scores)}, {np.std(r2_scores)}")
-
-        # evaluate_aggregated_predictions(result_dicts, config["ground_truth"], file_name=join(result_path, f"{model_name}_aggregated.png"))
-        evaluate_sample_predictions(
-            result_dicts, config["ground_truth"],
-                                    file_name=join(result_path, f"{model_name}_sample.png"))
-
+        # evaluate_sample_predictions(
+        #     result_dicts,
+        #     config["ground_truth"],
+        #     file_name=join(result_path, f"{model_name}_sample.png"),
+        # )
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
-    parser.add_argument("--log_path", type=str, dest="log_path", default="results")
-    parser.add_argument("--run_experiments", type=str, dest="run_experiments", default="experiments_dl")
+    parser.add_argument("--log_path", type=str, dest="log_path", default="results_dl")
+    parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments_dl")
+    parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation_dl")
+    parser.add_argument("--train", type=bool, dest="train", default=False)
+    parser.add_argument("--eval", type=bool, dest="eval", default=True)
+    parser.add_argument("--use_gpu", type=bool, dest="use_gpu", default=True)
     args = parser.parse_args()
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+    print(f"Available GPU devices: {tf.config.list_physical_devices('GPU')}")
 
-    # evaluate_ml_model("results/2023-03-28-17-05-53")
+    if args.train:
+        if not args.use_gpu:
+            os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-    if args.run_experiments:
-        for exp_name in os.listdir(args.run_experiments):
-            exp_path = join(args.run_experiments, exp_name)
+        for exp_name in os.listdir(args.exp_path):
+            exp_path = join(args.exp_path, exp_name)
             for config_file in filter(lambda f: not f.startswith("_"), os.listdir(exp_path)):
                 exp_config = yaml.load(open(join(exp_path, config_file), "r"), Loader=yaml.FullLoader)
                 training_file = exp_config["training_file"]
@@ -181,5 +183,10 @@ if __name__ == "__main__":
                 if not exists(log_path):
                     makedirs(log_path)
 
-                eval_path = train_model(df, log_path, seq_len, **exp_config)
-                # evaluate_for_specific_ml_model(eval_path)
+                train_model(df, log_path, seq_len, **exp_config)
+
+    if args.eval:
+        if not exists(args.dst_path):
+            makedirs(args.dst_path)
+
+        evaluate_ml_model(join(args.log_path, "2023-04-17-11-18-12"), args.dst_path)

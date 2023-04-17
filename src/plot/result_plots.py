@@ -85,7 +85,7 @@ def evaluate_sample_predictions_individual(value_df: pd.DataFrame, gt_column: st
 
         plt.figure(figsize=(column_width * cm, column_width * cm), dpi=dpi)
         ground_truth = subject_df[gt_column].to_numpy()
-        predictions = subject_df["predictions"].to_numpy()
+        predictions = subject_df["prediction"].to_numpy()
         rmse = mean_squared_error(predictions, ground_truth, squared=False)
         r2 = r2_score(ground_truth, predictions)
         rmse_all.append(rmse)
