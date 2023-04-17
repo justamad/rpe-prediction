@@ -87,7 +87,9 @@ class MLOptimization(object):
             n_jobs: int = -1,
             verbose: int = 1,
     ):
-        X = self._X.values
+        X = self._X
+        if isinstance(X, pd.DataFrame):
+            X = X.values
         y = self._y[self._ground_truth].values
         groups = self._y["group"].values
 
