@@ -1,10 +1,9 @@
-import logging
 from typing import Tuple, Union, List
 from scipy import stats
 
 import numpy as np
 import pandas as pd
-import math
+import logging
 
 META_DATA = ["subject", "set_id", "rpe"]
 
@@ -14,9 +13,9 @@ def extract_dataset_input_output(
         labels: Union[List[str], str],
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     if isinstance(labels, str):
-        columns = META_DATA + [labels]
+        columns = [labels] + META_DATA
     elif isinstance(labels, list):
-        columns = META_DATA + labels
+        columns = labels + META_DATA
     else:
         raise ValueError(f"Unknown ground truth column type: {type(labels)}.")
 
@@ -50,42 +49,6 @@ def discretize_subject_rpe(df: pd.DataFrame) -> pd.DataFrame:
     labels[labels > 18] = 2
     df["rpe"] = labels
     return df
-
-
-def split_data_based_on_pseudonyms(
-        X: pd.DataFrame,
-        y: pd.DataFrame,
-        train_p: float = 0.8,
-        random_seed: int = None,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    train_mask = get_subject_names_random_split(
-        df=y,
-        train_p=train_p,
-        random_seed=random_seed,
-    )
-
-    return (
-        X.loc[train_mask].copy(),
-        y.loc[train_mask].copy(),
-        X.loc[~train_mask].copy(),
-        y.loc[~train_mask].copy(),
-    )
-
-
-def get_subject_names_random_split(
-        df: pd.DataFrame,
-        train_p: float = 0.7,
-        random_seed: int = 17,
-) -> pd.Series:
-    subject_names = sorted(df["subject"].unique())
-    nr_subjects = math.ceil(len(subject_names) * train_p)
-
-    if random_seed is not None:
-        np.random.seed(random_seed)
-
-    train_subjects = np.random.choice(subject_names, nr_subjects, replace=False)
-    train_idx = df["subject"].isin(train_subjects)
-    return train_idx
 
 
 def normalize_rpe_values_min_max(
@@ -125,6 +88,24 @@ def filter_outliers_z_scores(df: pd.DataFrame, sigma: float = 3.0):
     df[df > sigma] = sigma
     df[df < -sigma] = -sigma
     return df
+
+
+def filter_ground_truth_outliers(
+        X: Union[np.ndarray, pd.DataFrame],
+        y: pd.DataFrame,
+        gt: Union[str, List[str]],
+        threshold: float = 3.1,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    abs_z_scores = np.abs(stats.zscore(y[gt]))
+
+    if isinstance(abs_z_scores, pd.Series):
+        filtered_entries = abs_z_scores < threshold
+    else:
+        filtered_entries = (abs_z_scores < threshold).all(axis=1)
+
+    X = X[filtered_entries]
+    y = y[filtered_entries]
+    return X, y
 
 
 def drop_highly_correlated_features(X: pd.DataFrame, threshold: float = 0.95) -> pd.DataFrame:

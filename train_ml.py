@@ -17,6 +17,7 @@ from src.dataset import (
     extract_dataset_input_output,
     normalize_data_by_subject,
     normalize_data_global,
+    filter_ground_truth_outliers,
     filter_outliers_z_scores,
     drop_highly_correlated_features,
 )
@@ -65,6 +66,12 @@ def train_model(
         else:
             raise ValueError(f"Unknown normalization_input: {normalization_input}")
 
+    # Impute dataframe, remove highly correlated features, and eliminate useless features
+    X.fillna(0, inplace=True)
+    X = drop_highly_correlated_features(X, threshold=0.95)
+    X, y = filter_ground_truth_outliers(X, y, ground_truth)
+    X = filter_outliers_z_scores(X, sigma=3.0)
+
     label_mean, label_std = float('inf'), float('inf')
     if normalization_labels:
         if normalization_labels == "subject":
@@ -76,10 +83,6 @@ def train_model(
         else:
             raise ValueError(f"Unknown normalization_labels: {normalization_labels}")
 
-    # Impute data frame, remove highly correlated features, and eliminate useless features
-    X.fillna(0, inplace=True)
-    X = drop_highly_correlated_features(X, threshold=0.95)
-    X = filter_outliers_z_scores(X, sigma=3.0)
     X, _report_df = eliminate_features_with_rfe(X_train=X, y_train=y[ground_truth], step=25, n_features=n_features)
     _report_df.to_csv(join(log_path, "rfe_report.csv"))
     X.to_csv(join(log_path, "X.csv"))
@@ -217,8 +220,8 @@ if __name__ == "__main__":
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments_ml")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation")
-    parser.add_argument("--train", type=bool, dest="train", default=False)
-    parser.add_argument("--eval", type=bool, dest="eval", default=True)
+    parser.add_argument("--train", type=bool, dest="train", default=True)
+    parser.add_argument("--eval", type=bool, dest="eval", default=False)
     args = parser.parse_args()
 
     if args.train:
@@ -264,4 +267,4 @@ if __name__ == "__main__":
                     train_model(df, log_path, **exp_config)
 
     if args.eval:
-        evaluate_entire_experiment_path("results/hr", args.dst_path)
+        evaluate_entire_experiment_path("results/powercon", args.dst_path)

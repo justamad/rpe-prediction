@@ -1,14 +1,21 @@
 from src.ml import MLOptimization
 from src.dl import regression_models, instantiate_best_dl_model
-from src.plot import evaluate_aggregated_predictions, evaluate_sample_predictions, evaluate_sample_predictions_individual
 from typing import List, Union
-from src.dataset import extract_dataset_input_output, normalize_data_by_subject, normalize_data_global
 from datetime import datetime
 from argparse import ArgumentParser
 from sklearn.metrics import r2_score
 from os.path import join, exists
 from os import makedirs
 from tensorflow import keras
+
+from src.plot import evaluate_aggregated_predictions, evaluate_sample_predictions, evaluate_sample_predictions_individual
+
+from src.dataset import (
+    extract_dataset_input_output,
+    normalize_data_by_subject,
+    normalize_data_global,
+    filter_ground_truth_outliers,
+)
 
 import pandas as pd
 import numpy as np
@@ -47,12 +54,7 @@ def train_model(
 
     X.drop(columns=drop_columns, inplace=True, errors="ignore")
     X = X.loc[:, (X != 0).any(axis=0)]  # Remove columns with all zeros, e.g. constrained joint orientations
-
-    # For quick checking...
-    # subjects = y["subject"].unique()
-    # mask = y["subject"].isin(subjects[:3])
-    # X = X.loc[mask]
-    # y = y.loc[mask]
+    columns = X.columns
 
     if normalization_input == "subject":
         X = normalize_data_by_subject(X, y)
@@ -61,6 +63,10 @@ def train_model(
     else:
         raise AttributeError(f"Unknown normalization method: {normalization_input}")
 
+    X = X.values.reshape((-1, seq_length, X.shape[1]))
+    y = y.iloc[::seq_length, :]
+    X, y = filter_ground_truth_outliers(X, y, ground_truth)
+
     # Normalization labels
     label_mean, label_std = float('inf'), float('inf')
     if normalization_labels:
@@ -68,10 +74,8 @@ def train_model(
         label_mean, label_std = values.mean(axis=0), values.std(axis=0)
         y.loc[:, ground_truth] = (values - label_mean) / label_std
 
-    X.to_csv(join(log_path, "X.csv"))
+    pd.DataFrame(X.reshape(-1, X.shape[2]), columns=columns).to_csv(join(log_path, "X.csv"))
     y.to_csv(join(log_path, "y.csv"))
-    X = X.values.reshape((-1, seq_length, X.shape[1]))
-    y = y.iloc[::seq_length, :]
 
     with open(join(log_path, "config.yml"), "w") as f:
         yaml.dump(
@@ -107,9 +111,7 @@ def evaluate_ml_model(result_path: str, dst_path: str):
     config = yaml.load(open(join(result_path, "config.yml"), "r"), Loader=yaml.FullLoader)
     X = pd.read_csv(join(result_path, "X.csv"), index_col=0)
     y = pd.read_csv(join(result_path, "y.csv"), index_col=0)
-
     X = X.values.reshape((-1, config["seq_length"], X.shape[1]))
-    y = y.iloc[::config["seq_length"], :]
 
     for model_file in list(filter(lambda x: x.startswith("model__"), os.listdir(result_path))):
         model_name = model_file.replace("model__", "").replace(".csv", "")
@@ -190,4 +192,4 @@ if __name__ == "__main__":
         if not exists(args.dst_path):
             makedirs(args.dst_path)
 
-        evaluate_ml_model(join(args.log_path, "2023-04-17-11-18-12"), args.dst_path)
+        evaluate_ml_model(join(args.log_path, "2023-04-18-10-50-26"), args.dst_path)
