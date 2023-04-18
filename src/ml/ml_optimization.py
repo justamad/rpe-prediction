@@ -2,8 +2,7 @@ from .ml_model_config import LearningModelBase
 from imblearn.pipeline import Pipeline
 from imblearn.over_sampling import RandomOverSampler
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, GroupKFold
-from scipy.stats import pearsonr
-from typing import List, Union, Dict, Tuple
+from typing import List, Union
 from os.path import join
 from tqdm import tqdm
 
@@ -141,25 +140,20 @@ class MLOptimization(object):
             label_mean: Union[float, List[float]],
             label_std: Union[float, List[float]],
     ) -> pd.DataFrame:
-        # metrics = {
-        #     "r2": r2_score,
-        #     "mse": mean_squared_error,
-        #     "mae": mean_absolute_percentage_error,
-        #     "mape": mean_absolute_percentage_error,
-        # }
-
         X = self._X
         if isinstance(X, pd.DataFrame):
             X = X.values
+
         y = self._y[self._ground_truth].values
         groups = self._y["group"].values
         sets = self._y["set_id"].values
         subjects = self._y["subject"].values
 
-        tests = {metric: [] for metric in metrics.keys()}
         result_df = pd.DataFrame()
         group_k_fold = GroupKFold(n_splits=self._n_splits)
         for train_idx, test_idx in tqdm(group_k_fold.split(X, y, groups)):
+            results = {"set_id": sets[test_idx], "subject": subjects[test_idx]}
+
             if self._balance:
                 model = Pipeline(steps=[
                     ("balance_sampling", RandomOverSampler()),
@@ -171,7 +165,6 @@ class MLOptimization(object):
 
             y_pred = model.fit(X_train, y_train).predict(X_test)
 
-            results = {}
             if norm_labels == "global":
                 y_test = y_test * label_std + label_mean
                 y_pred = y_pred * label_std + label_mean
@@ -184,14 +177,6 @@ class MLOptimization(object):
                 results["prediction"] = y_pred
                 results["ground_truth"] = y_test
 
-            results["set_id"] = sets[test_idx]
-            results["subject"] = subjects[test_idx]
-            df = pd.DataFrame(results)
-            result_df = pd.concat([result_df, df])
+            result_df = pd.concat([result_df, pd.DataFrame(results)])
 
-            # # Calculate all error metrics
-            # for metric_name, metric in metrics.items():
-            #     tests[metric_name].append(metric(y_test, y_pred))
-
-        # res = {metric: f"${np.mean(values):.2f} \\pm {np.std(values):.2f}$" for metric, values in tests.items()}
         return result_df

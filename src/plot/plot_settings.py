@@ -6,7 +6,7 @@ plt.rcParams.update({
     "font.family": "serif",
     # "font.serif": ["Palatino"],
     "font.serif": ["Libertine"],
-    "font.size": 10,
+    "font.size": 9,
 })
 
 cm = 1/2.54  # Convert centimeters to inches

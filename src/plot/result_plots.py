@@ -9,6 +9,13 @@ from os import makedirs
 import pandas as pd
 import numpy as np
 
+y_labels = {
+    "rpe": "RPE",
+    "hr": "Mean Heart Rate (1/min",
+    "powerCon": "Power",
+    "powerEcc": "Power",
+}
+
 
 def evaluate_sample_predictions(result_dict: Dict, gt_column: str, file_name: str):
     fig, axes = plt.subplots(len(result_dict), sharey=True, figsize=(20, 40))
@@ -72,33 +79,30 @@ def evaluate_aggregated_predictions(result_dict: Dict, gt_column: str, file_name
     plt.close()
 
 
-def evaluate_sample_predictions_individual(value_df: pd.DataFrame, gt_column: str, dst_path: str):
-    rmse_all = []
-    r2_all = []
-    mape_all = []
-
+def evaluate_sample_predictions_individual(value_df: pd.DataFrame, exp_name: str, dst_path: str):
     if not exists(dst_path):
         makedirs(dst_path)
 
     for subject_name in value_df["subject"].unique():
         subject_df = value_df[value_df["subject"] == subject_name]
+        ground_truth = subject_df["ground_truth"].values
+        predictions = subject_df["prediction"].values
+
+        r2 = r2_score(ground_truth, predictions)
+        mape = mean_absolute_percentage_error(predictions, ground_truth)
+        mae = mean_absolute_error(predictions, ground_truth)
+        rmse = mean_squared_error(predictions, ground_truth, squared=False)
 
         plt.figure(figsize=(column_width * cm, column_width * cm), dpi=dpi)
-        ground_truth = subject_df[gt_column].to_numpy()
-        predictions = subject_df["prediction"].to_numpy()
-        rmse = mean_squared_error(predictions, ground_truth, squared=False)
-        r2 = r2_score(ground_truth, predictions)
-        rmse_all.append(rmse)
-        r2_all.append(r2)
-        mape = mean_absolute_percentage_error(predictions, ground_truth)
-        mape_all.append(mape)
-
         plt.plot(ground_truth, label="Ground Truth")
         plt.plot(predictions, label="Prediction")
-        plt.title(f"RMSE: {rmse:.2f}, R2: {r2:.2f}, MAPE: {mape:.2f}")
+        plt.title(f"$R^2$={r2:.2f}, MAPE={mape:.2f}, MAE={mae:.2f}, RMSE={rmse:.2f}")
+        plt.xlabel("Repetition")
+        plt.ylabel(y_labels[exp_name])
         plt.legend()
+        plt.tight_layout()
 
-        plt.savefig(join(dst_path, f"{subject_name}.png"))
+        plt.savefig(join(dst_path, f"{subject_name}.pdf"))
         # plt.show()
         plt.clf()
         plt.close()

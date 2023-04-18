@@ -6,6 +6,7 @@ from typing import Dict, Union, Tuple
 
 import pandas as pd
 import ast
+import math
 
 
 class LearningModelBase(object):
@@ -133,9 +134,12 @@ def parse_report_file_to_model_parameters(result_df: pd.DataFrame, model_name: s
     return params
 
 
-def parse_types(value) -> Union[int, float, str, Tuple]:
-    if isinstance(value, float) and value.is_integer():
-        return int(value)
+def parse_types(value) -> Union[int, float, str, Tuple, None]:
+    if isinstance(value, float):
+        if value.is_integer():
+            return int(value)
+        if math.isnan(value):
+            return None
 
     try:
         return ast.literal_eval(value)

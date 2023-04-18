@@ -125,7 +125,8 @@ def evaluate_entire_experiment_path(
         criteria_rank: str = "rank_test_r2",
         criteria_score: str = "mean_test_r2",
 ):
-    dst_path = join(dst_path, os.path.basename(os.path.normpath(src_path)))
+    exp_name = os.path.basename(os.path.normpath(src_path))
+    dst_path = join(dst_path, exp_name)
     if not exists(dst_path):
         os.makedirs(dst_path)
 
@@ -143,7 +144,7 @@ def evaluate_entire_experiment_path(
             model_df = pd.read_csv(join(root, model_file), index_col=0)
             best_combination = model_df.sort_values(by=criteria_rank, ascending=True).iloc[0]
             best_combination = best_combination[best_combination.index.str.contains("mean_test|std_test|rank_")]
-            config["model"] = model_file.replace("model__", "").replace(".csv", "").title()
+            config["model"] = model_file.replace("model__", "").replace(".csv", "")
             config["result_path"] = root
             config["model_file"] = model_file
             result_files.append(pd.concat([best_combination, pd.Series(config)]))
@@ -159,17 +160,27 @@ def evaluate_entire_experiment_path(
     for model in models:
         cur_df = result_df[result_df["model"] == model].sort_values(by=criteria_score, ascending=False)
         best_model = cur_df.iloc[0]
-        row = evaluate_for_specific_ml_model(best_model["result_path"], best_model["model_file"], dst_path)
-        model_evaluate.append(row)
+        df = evaluate_for_specific_ml_model(best_model["result_path"], best_model["model_file"], dst_path, overwrite=False)
+        evaluate_sample_predictions_individual(
+            value_df=df,
+            exp_name=exp_name,
+            dst_path=join(dst_path, model),
+        )
+        model_evaluate.append(df)
 
     # model_evaluate_df = pd.DataFrame.from_records(model_evaluate, index=models)
     # model_evaluate_df.to_latex(join(dst_path, "retrain_results.tex"), escape=False)
     # print(model_evaluate_df)
 
 
-def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: str) -> Dict:
-    config = yaml.load(open(join(result_path, "config.yml"), "r"), Loader=yaml.FullLoader)
+def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: str, overwrite: bool) -> pd.DataFrame:
     model_name = model_file.replace("model__", "").replace(".csv", "")
+    result_filename = join(dst_path, f"{model_name}_results.csv")
+    if not overwrite and exists(result_filename):
+        logging.info(f"Skip evaluation of {model_name} as result already exists.")
+        return pd.read_csv(result_filename, index_col=0)
+
+    config = yaml.load(open(join(result_path, "config.yml"), "r"), Loader=yaml.FullLoader)
     res_df = pd.read_csv(join(result_path, model_file))
     model = instantiate_best_model(res_df, model_name, config["task"])
 
@@ -186,15 +197,9 @@ def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: 
         ground_truth=config["ground_truth"],
         n_splits=config["n_splits"],
     )
-    # res, res_df = opt.evaluate_model(model, config["normalization_labels"], config["label_mean"], config["label_std"])
     res_df = opt.evaluate_model(model, config["normalization_labels"], config["label_mean"], config["label_std"])
-
-    evaluate_sample_predictions_individual(
-        value_df=res_df,
-        gt_column="ground_truth",
-        dst_path=join(dst_path, model_name),
-    )
-    # return res
+    res_df.to_csv(result_filename)
+    return res_df
 
     # if aggregate:
     #     evaluate_aggregated_predictions(
@@ -220,8 +225,8 @@ if __name__ == "__main__":
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments_ml")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation")
-    parser.add_argument("--train", type=bool, dest="train", default=True)
-    parser.add_argument("--eval", type=bool, dest="eval", default=False)
+    parser.add_argument("--train", type=bool, dest="train", default=False)
+    parser.add_argument("--eval", type=bool, dest="eval", default=True)
     args = parser.parse_args()
 
     if args.train:
@@ -267,4 +272,4 @@ if __name__ == "__main__":
                     train_model(df, log_path, **exp_config)
 
     if args.eval:
-        evaluate_entire_experiment_path("results/powercon", args.dst_path)
+        evaluate_entire_experiment_path("results/rpe", args.dst_path)

@@ -11,7 +11,7 @@ class ConvModelConfig(LearningModelBase):
         model = KerasRegressor(
             model=build_conv_model,
             n_layers=3, n_filters=32, kernel_size=(10,3), dropout=0.3, n_units=128,
-            verbose=1,
+            verbose=False,
         )
 
         tunable_parameters = {
@@ -36,7 +36,7 @@ class CNNLSTMModelConfig(LearningModelBase):
         model = KerasRegressor(
             model=build_cnn_lstm_model,
             n_filters=32, kernel_size=(10, 3), n_layers=3, dropout=0.3, lstm_units=50,
-            verbose=1,
+            verbose=False,
         )
 
         tunable_parameters = {
