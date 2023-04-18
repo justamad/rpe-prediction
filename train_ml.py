@@ -9,7 +9,8 @@ from src.plot import (
     evaluate_aggregated_predictions,
     evaluate_sample_predictions_individual,
     evaluate_nr_features,
-    create_model_result_tables,
+    create_train_table,
+    create_retrain_table,
 )
 
 from src.dataset import (
@@ -151,26 +152,24 @@ def evaluate_entire_experiment_path(
 
     result_df = pd.DataFrame.from_records(result_files)
     result_df.to_csv(join(dst_path, "results.csv"))
-    evaluate_nr_features(result_df, dst_path)
-    create_model_result_tables(result_df, dst_path)
+    # evaluate_nr_features(result_df, dst_path)
+    create_train_table(result_df, dst_path)
     logging.info("Collected all trial data. Now evaluating the best model for each ML model.")
 
-    model_evaluate = []
-    models = result_df["model"].unique()
-    for model in models:
+    retrain_df = pd.DataFrame()
+    for model in result_df["model"].unique():
         cur_df = result_df[result_df["model"] == model].sort_values(by=criteria_score, ascending=False)
         best_model = cur_df.iloc[0]
         df = evaluate_for_specific_ml_model(best_model["result_path"], best_model["model_file"], dst_path, overwrite=False)
-        evaluate_sample_predictions_individual(
-            value_df=df,
-            exp_name=exp_name,
-            dst_path=join(dst_path, model),
-        )
-        model_evaluate.append(df)
+        df["model"] = model
+        # evaluate_sample_predictions_individual(
+        #     value_df=df,
+        #     exp_name=exp_name,
+        #     dst_path=join(dst_path, model),
+        # )
+        retrain_df = pd.concat([retrain_df, df])
 
-    # model_evaluate_df = pd.DataFrame.from_records(model_evaluate, index=models)
-    # model_evaluate_df.to_latex(join(dst_path, "retrain_results.tex"), escape=False)
-    # print(model_evaluate_df)
+    create_retrain_table(retrain_df, dst_path)
 
 
 def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: str, overwrite: bool) -> pd.DataFrame:

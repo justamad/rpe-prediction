@@ -5,4 +5,7 @@ from .result_plots import (
     evaluate_nr_features,
 )
 
-from .latex_tables import create_model_result_tables
+from .latex_tables import (
+    create_train_table,
+    create_retrain_table,
+)
