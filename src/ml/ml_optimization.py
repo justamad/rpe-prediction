@@ -135,7 +135,12 @@ class MLOptimization(object):
 
             r_df.to_csv(join(log_path, f"model__{str(model_config)}.csv"), index=False)
 
-    def evaluate_model(self, model, norm_labels: bool, label_mean: float, label_std: float) -> pd.DataFrame:
+    def evaluate_model(
+            self, model,
+            norm_labels: bool,
+            label_mean: Union[float, List[float]],
+            label_std: Union[float, List[float]],
+    ) -> pd.DataFrame:
         # metrics = {
         #     "r2": r2_score,
         #     "mse": mean_squared_error,
@@ -167,15 +172,15 @@ class MLOptimization(object):
             y_pred = model.fit(X_train, y_train).predict(X_test)
 
             results = {}
+            if norm_labels == "global":
+                y_test = y_test * label_std + label_mean
+                y_pred = y_pred * label_std + label_mean
+
             if isinstance(self._ground_truth, list):
                 for idx, label_name in enumerate(self._ground_truth):
                     results[label_name + "_prediction"] = y_pred[:, idx]
                     results[label_name + "_ground_truth"] = y_test[:, idx]
             else:
-                if norm_labels == "global":
-                    y_test = y_test * label_std + label_mean
-                    y_pred = y_pred * label_std + label_mean
-
                 results["prediction"] = y_pred
                 results["ground_truth"] = y_test
 

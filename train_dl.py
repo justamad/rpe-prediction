@@ -65,7 +65,7 @@ def train_model(
     label_mean, label_std = float('inf'), float('inf')
     if normalization_labels:
         values = y.loc[:, ground_truth].values
-        label_mean, label_std = values.mean(), values.std()
+        label_mean, label_std = values.mean(axis=0), values.std(axis=0)
         y.loc[:, ground_truth] = (values - label_mean) / label_std
 
     X.to_csv(join(log_path, "X.csv"))
@@ -85,8 +85,8 @@ def train_model(
                 "normalization_input": normalization_input,
                 "balancing": balancing,
                 "normalization_labels": normalization_labels,
-                "label_mean": float(label_mean),
-                "label_std": float(label_std),
+                "label_mean": list(map(lambda v: float(v), label_mean)),
+                "label_std": list(map(lambda v: float(v), label_std)),
                 "n_splits": n_splits,
             },
             f,
@@ -128,6 +128,7 @@ def evaluate_ml_model(result_path: str, dst_path: str):
             n_splits=config["n_splits"],
         )
         res_df = opt.evaluate_model(model, config["normalization_labels"], config["label_mean"], config["label_std"])
+        res_df.to_csv(join(dst_path, model_name + ".csv"))
 
         # Evaluate multiple predictions
         for label_name in config["ground_truth"]:
@@ -139,7 +140,7 @@ def evaluate_ml_model(result_path: str, dst_path: str):
                 f"{label_name}_ground_truth": "ground_truth",
                 f"{label_name}_prediction": "prediction",
             }
-            sub_df = res_df[list(name_dict.keys())].rename(columns=name_dict)
+            sub_df = res_df[list(name_dict.keys()) + ["subject"]].rename(columns=name_dict)
             evaluate_sample_predictions_individual(
                 value_df=sub_df,
                 gt_column="ground_truth",
