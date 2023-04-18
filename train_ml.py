@@ -123,6 +123,7 @@ def train_model(
 def evaluate_entire_experiment_path(
         src_path: str,
         dst_path: str,
+        filter_exp: str = None,
         criteria_rank: str = "rank_test_r2",
         criteria_score: str = "mean_test_r2",
 ):
@@ -134,6 +135,9 @@ def evaluate_entire_experiment_path(
     result_files = []
     for root, _, files in os.walk(src_path):
         if "config.yml" not in files:
+            continue
+
+        if filter_exp not in root:
             continue
 
         config = yaml.load(open(join(root, "config.yml"), "r"), Loader=yaml.FullLoader)
@@ -160,7 +164,7 @@ def evaluate_entire_experiment_path(
     for model in result_df["model"].unique():
         cur_df = result_df[result_df["model"] == model].sort_values(by=criteria_score, ascending=False)
         best_model = cur_df.iloc[0]
-        df = evaluate_for_specific_ml_model(best_model["result_path"], best_model["model_file"], dst_path, overwrite=False)
+        df = evaluate_for_specific_ml_model(best_model["result_path"], best_model["model_file"], dst_path, filter_exp)
         df["model"] = model
         # evaluate_sample_predictions_individual(
         #     value_df=df,
@@ -169,13 +173,14 @@ def evaluate_entire_experiment_path(
         # )
         retrain_df = pd.concat([retrain_df, df])
 
-    create_retrain_table(retrain_df, dst_path)
+    final_df = create_retrain_table(retrain_df, dst_path)
+    return final_df
 
 
-def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: str, overwrite: bool) -> pd.DataFrame:
+def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: str, filter_exp: str) -> pd.DataFrame:
     model_name = model_file.replace("model__", "").replace(".csv", "")
-    result_filename = join(dst_path, f"{model_name}_results.csv")
-    if not overwrite and exists(result_filename):
+    result_filename = join(dst_path, f"{model_name}_{filter_exp}_results.csv")
+    if exists(result_filename):
         logging.info(f"Skip evaluation of {model_name} as result already exists.")
         return pd.read_csv(result_filename, index_col=0)
 
@@ -199,13 +204,6 @@ def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: 
     res_df = opt.evaluate_model(model, config["normalization_labels"], config["label_mean"], config["label_std"])
     res_df.to_csv(result_filename)
     return res_df
-
-    # if aggregate:
-    #     evaluate_aggregated_predictions(
-    #         result_dict=subjects,
-    #         gt_column="ground_truth",
-    #         file_name=join(result_path, f"new_{model_name}_aggregated_prediction.png"),
-    #     )
 
 
 if __name__ == "__main__":
@@ -271,4 +269,12 @@ if __name__ == "__main__":
                     train_model(df, log_path, **exp_config)
 
     if args.eval:
-        evaluate_entire_experiment_path("results/rpe", args.dst_path)
+        full_df = evaluate_entire_experiment_path("results/rpe", args.dst_path, "full")
+        full_df.columns = [(c, "full") for c in full_df.columns]
+        ecc_con_df = evaluate_entire_experiment_path("results/rpe", args.dst_path, "con_ecc")
+        ecc_con_df.columns = [(c, "ecc_con") for c in ecc_con_df.columns]
+        merged = pd.concat([full_df, ecc_con_df], axis=1)
+        merged.columns = pd.MultiIndex.from_tuples(merged.columns, names=['Model', 'Mode'])
+        merged.sort_index(axis=1, level=[0, 1], ascending=[True, True], inplace=True)
+        merged.to_latex("test_new.txt", escape=False)
+        i = 12

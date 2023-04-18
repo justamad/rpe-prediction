@@ -29,7 +29,7 @@ def create_train_table(df: pd.DataFrame, dst_path: str):
     final_df.to_latex(join(dst_path, "train_results.txt"), escape=False)
 
 
-def create_retrain_table(results: pd.DataFrame, dst_path: str):
+def create_retrain_table(results: pd.DataFrame, dst_path: str) -> pd.DataFrame:
     metrics = {
         "$R^{2}$": r2_score,
         "MAPE": mean_absolute_percentage_error,
@@ -54,3 +54,4 @@ def create_retrain_table(results: pd.DataFrame, dst_path: str):
 
     final_df = pd.DataFrame.from_records(data_entries, index=list(map(lambda x: x.upper(), models))).T
     final_df.to_latex(join(dst_path, "retrain_results.txt"), escape=False)
+    return final_df
