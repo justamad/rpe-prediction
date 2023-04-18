@@ -1,0 +1,13 @@
+training_file: 170_padding.csv
+drop_columns: [ ]
+drop_prefixes:
+  - HRV
+  - PHYSILOG
+  - FLYWHEEL
+ground_truth: [rpe, HRV_Mean HR (1/min), FLYWHEEL_powerCon, FLYWHEEL_powerEcc]
+normalization_input: global
+search: grid
+task: regression
+balancing: False
+normalization_labels: global
+n_splits: 16

@@ -3,12 +3,14 @@ from src.dl import regression_models, instantiate_best_dl_model
 from typing import List, Union
 from datetime import datetime
 from argparse import ArgumentParser
-from sklearn.metrics import r2_score
 from os.path import join, exists
 from os import makedirs
-from tensorflow import keras
 
-from src.plot import evaluate_aggregated_predictions, evaluate_sample_predictions, evaluate_sample_predictions_individual
+from src.plot import (
+    evaluate_aggregated_predictions,
+    evaluate_sample_predictions,
+    evaluate_sample_predictions_individual,
+)
 
 from src.dataset import (
     extract_dataset_input_output,
@@ -18,15 +20,12 @@ from src.dataset import (
 )
 
 import pandas as pd
-import numpy as np
 import logging
 import tensorflow as tf
 import yaml
 import os
-import time
 import matplotlib
 matplotlib.use("WebAgg")
-import matplotlib.pyplot as plt
 
 
 def train_model(
@@ -73,6 +72,8 @@ def train_model(
         values = y.loc[:, ground_truth].values
         label_mean, label_std = values.mean(axis=0), values.std(axis=0)
         y.loc[:, ground_truth] = (values - label_mean) / label_std
+        label_mean = list(map(lambda v: float(v), label_mean))
+        label_std = list(map(lambda v: float(v), label_std))
 
     pd.DataFrame(X.reshape(-1, X.shape[2]), columns=columns).to_csv(join(log_path, "X.csv"))
     y.to_csv(join(log_path, "y.csv"))
@@ -89,8 +90,8 @@ def train_model(
                 "normalization_input": normalization_input,
                 "balancing": balancing,
                 "normalization_labels": normalization_labels,
-                "label_mean": list(map(lambda v: float(v), label_mean)),
-                "label_std": list(map(lambda v: float(v), label_std)),
+                "label_mean": label_mean,
+                "label_std": label_std,
                 "n_splits": n_splits,
             },
             f,
@@ -162,8 +163,8 @@ if __name__ == "__main__":
     parser.add_argument("--log_path", type=str, dest="log_path", default="results_dl")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments_dl")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation_dl")
-    parser.add_argument("--train", type=bool, dest="train", default=False)
-    parser.add_argument("--eval", type=bool, dest="eval", default=True)
+    parser.add_argument("--train", type=bool, dest="train", default=True)
+    parser.add_argument("--eval", type=bool, dest="eval", default=False)
     parser.add_argument("--use_gpu", type=bool, dest="use_gpu", default=True)
     args = parser.parse_args()
 
