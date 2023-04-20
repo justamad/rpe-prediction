@@ -56,7 +56,7 @@ def train_model(
     columns = X.columns
 
     if normalization_input == "subject":
-        X = normalize_data_by_subject(X, y)
+        X = normalize_data_by_subject(X, y, method="min_max")
     elif normalization_input == "global":
         X = normalize_data_global(X)
     else:
@@ -109,6 +109,11 @@ def train_model(
 
 
 def evaluate_ml_model(result_path: str, dst_path: str):
+    dst_path = join(dst_path, os.path.basename(os.path.normpath(result_path)))
+
+    if not exists(dst_path):
+        makedirs(dst_path)
+
     config = yaml.load(open(join(result_path, "config.yml"), "r"), Loader=yaml.FullLoader)
     X = pd.read_csv(join(result_path, "X.csv"), index_col=0)
     y = pd.read_csv(join(result_path, "y.csv"), index_col=0)
@@ -117,44 +122,29 @@ def evaluate_ml_model(result_path: str, dst_path: str):
     for model_file in list(filter(lambda x: x.startswith("model__"), os.listdir(result_path))):
         model_name = model_file.replace("model__", "").replace(".csv", "")
         logging.info(f"Evaluating model: {model_name}")
-        result_df = pd.read_csv(join(result_path, model_file))
+        file_name = join(dst_path, f"{model_name}.csv")
+        if exists(file_name):
+            res_df = pd.read_csv(file_name, index_col=0)
+        else:
+            result_df = pd.read_csv(join(result_path, model_file))
+            model = instantiate_best_dl_model(result_df, model_name=model_name, task=config["task"])
 
-        model = instantiate_best_dl_model(result_df, model_name=model_name, task=config["task"])
-
-        opt = MLOptimization(
-            X=X,
-            y=y,
-            balance=False,
-            task=config["task"],
-            mode=config["search"],
-            ground_truth=config["ground_truth"],
-            n_splits=config["n_splits"],
-        )
-        res_df = opt.evaluate_model(model, config["normalization_labels"], config["label_mean"], config["label_std"])
-        res_df.to_csv(join(dst_path, model_name + ".csv"))
-
-        # Evaluate multiple predictions
-        for label_name in config["ground_truth"]:
-            path = join(dst_path, model_name, label_name)
-            if not exists(path):
-                makedirs(path)
-
-            name_dict = {
-                f"{label_name}_ground_truth": "ground_truth",
-                f"{label_name}_prediction": "prediction",
-            }
-            sub_df = res_df[list(name_dict.keys()) + ["subject"]].rename(columns=name_dict)
-            evaluate_sample_predictions_individual(
-                value_df=sub_df,
-                gt_column="ground_truth",
-                dst_path=path,
+            opt = MLOptimization(
+                X=X,
+                y=y,
+                balance=False,
+                task=config["task"],
+                mode=config["search"],
+                ground_truth=config["ground_truth"],
+                n_splits=config["n_splits"],
             )
+            res_df = opt.evaluate_model(model, config["normalization_labels"], config["label_mean"], config["label_std"])
+            res_df.to_csv(file_name)
 
-        # evaluate_sample_predictions(
-        #     result_dicts,
-        #     config["ground_truth"],
-        #     file_name=join(result_path, f"{model_name}_sample.png"),
-        # )
+        evaluate_sample_predictions_individual(res_df, "hr", join(dst_path, model_name),
+                                               pred_col="HRV_Mean HR (1/min)_prediction",
+                                               gt_col="HRV_Mean HR (1/min)_ground_truth")
+
 
 
 if __name__ == "__main__":
@@ -193,4 +183,4 @@ if __name__ == "__main__":
         if not exists(args.dst_path):
             makedirs(args.dst_path)
 
-        evaluate_ml_model(join(args.log_path, "2023-04-18-10-50-26"), args.dst_path)
+        evaluate_ml_model(join(args.log_path, "2023-04-19-13-20-14"), args.dst_path)

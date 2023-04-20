@@ -1,7 +1,6 @@
 from .data_iterator import SubjectDataIterator
 
 from .data_preparation import (
-    normalize_gt_per_subject_mean,
     discretize_subject_rpe,
     extract_dataset_input_output,
     normalize_data_by_subject,

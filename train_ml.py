@@ -1,5 +1,5 @@
 from src.ml import MLOptimization, eliminate_features_with_rfe, regression_models, instantiate_best_model
-from typing import List, Dict, Tuple
+from typing import List, Tuple
 from datetime import datetime
 from argparse import ArgumentParser
 from os.path import join, exists
@@ -14,7 +14,6 @@ from src.plot import (
 )
 
 from src.dataset import (
-    normalize_gt_per_subject_mean,
     extract_dataset_input_output,
     normalize_data_by_subject,
     normalize_data_global,
@@ -75,14 +74,9 @@ def train_model(
 
     label_mean, label_std = float('inf'), float('inf')
     if normalization_labels:
-        if normalization_labels == "subject":
-            y = normalize_gt_per_subject_mean(y, ground_truth, "mean")
-        elif normalization_labels == "global":
-            values = y.loc[:, ground_truth].values
-            label_mean, label_std = values.mean(), values.std()
-            y.loc[:, ground_truth] = (values - label_mean) / label_std
-        else:
-            raise ValueError(f"Unknown normalization_labels: {normalization_labels}")
+        values = y.loc[:, ground_truth].values
+        label_mean, label_std = values.mean(), values.std()
+        y.loc[:, ground_truth] = (values - label_mean) / label_std
 
     X, _report_df = eliminate_features_with_rfe(X_train=X, y_train=y[ground_truth], step=25, n_features=n_features)
     _report_df.to_csv(join(log_path, "rfe_report.csv"))

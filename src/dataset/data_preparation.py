@@ -28,20 +28,6 @@ def extract_dataset_input_output(
     return inputs, outputs
 
 
-def normalize_gt_per_subject_mean(df: pd.DataFrame, column: str, normalization: str) -> pd.DataFrame:
-    for subject in df["subject"].unique():
-        mask = df["subject"] == subject
-        gt_values = df.loc[mask, column].to_numpy()
-        if normalization == "mean":
-            df.loc[mask, column] = (gt_values - gt_values.mean()) / gt_values.std()
-        elif normalization == "min_max":
-            df.loc[mask, column] = (gt_values - gt_values.min()) / (gt_values.max() - gt_values.min())
-        else:
-            raise ValueError(f"Unknown normalization: {normalization}")
-
-    return df
-
-
 def discretize_subject_rpe(df: pd.DataFrame) -> pd.DataFrame:
     labels = df["rpe"]
     labels[labels <= 15] = 0
@@ -70,10 +56,16 @@ def normalize_rpe_values_min_max(
     return df
 
 
-def normalize_data_by_subject(X: pd.DataFrame, y: pd.DataFrame) -> pd.DataFrame:
+def normalize_data_by_subject(X: pd.DataFrame, y: pd.DataFrame, method="standard") -> pd.DataFrame:
+    if method not in ["standard", "min_max"]:
+        raise ValueError(f"Unknown normalization method: {method}.")
+
     for subject in y["subject"].unique():
         mask = (y["subject"] == subject) & (~X.eq(0).all(axis=1))
-        X.loc[mask] = (X.loc[mask] - X.loc[mask].mean()) / X.loc[mask].std()
+        if method == "standard":
+            X.loc[mask] = (X.loc[mask] - X.loc[mask].mean()) / X.loc[mask].std()
+        else:
+            X.loc[mask] = (X.loc[mask] - X.loc[mask].min()) / (X.loc[mask].max() - X.loc[mask].min())
 
     return X
 

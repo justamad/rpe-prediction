@@ -4,10 +4,11 @@ drop_prefixes:
   - HRV
   - PHYSILOG
   - FLYWHEEL
-ground_truth: [rpe, HRV_Mean HR (1/min), FLYWHEEL_powerCon, FLYWHEEL_powerEcc]
-normalization_input: global
+# ground_truth: [rpe, HRV_Mean HR (1/min), FLYWHEEL_powerCon, FLYWHEEL_powerEcc]
+ground_truth: [HRV_Mean HR (1/min)]
+normalization_input: subject
 search: grid
 task: regression
 balancing: False
-normalization_labels: global
+normalization_labels: True
 n_splits: 16
