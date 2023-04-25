@@ -24,7 +24,7 @@ def read_kmeter_json_file(root_path: str, subject_name: str, aggregate: bool = F
 
     # rpe_values = (rpe_values - rpe_values.min()) / (rpe_values.max() - rpe_values.min())
 
-    flywheel_file = join(root_path, subject_name, "flywheel", "kmeter.json")
+    flywheel_file = join(root_path, subject_name, "kmeter.json")
     with open(flywheel_file) as f:
         content = json.load(f)
 
@@ -144,7 +144,7 @@ def plot_interactive(df: pd.DataFrame, subject):
     fig.show()
 
 
-path = "/media/ch/Data/RPE_DATA_SET_PAPER"
+path = "/media/ch/Data/RPE_Analysis"
 total_df = pd.DataFrame()
 for subject in filter(lambda x: not x.startswith("_"), os.listdir(path)):
     cur_df = read_kmeter_json_file(path, subject, aggregate=False)

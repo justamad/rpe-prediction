@@ -79,7 +79,7 @@ def plot_correlation_per_subject(sub_df: pd.DataFrame, feature: str):
     plt.title(f"Repetitions PCC={pear:.2f}, Sets PCC={pear_set:.2f}")
     plt.tight_layout()
     # plt.show()
-    plt.savefig(join("../plots", f"{subject_name}_{feature}.png"))
+    plt.savefig(join("../plots_wichtig", f"{subject_name}_{feature}.png"))
     return pear_set
 
 
