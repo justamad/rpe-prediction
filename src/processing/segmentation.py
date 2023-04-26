@@ -13,7 +13,7 @@ def segment_kinect_signal(
         std_dev_p: float,
         min_dist_p: float,
         min_time: int,
-        mode: str = "all",
+        mode: str = "full",
         show: bool = False,
         log_path: str = None,
 ) -> Tuple[List[Tuple], List[Tuple]]:

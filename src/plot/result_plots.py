@@ -1,19 +1,22 @@
 from .plot_settings import column_width, cm, dpi
 from typing import Dict
-from scipy.stats import pearsonr
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, mean_absolute_percentage_error
-
-import matplotlib.pyplot as plt
+from scipy.stats import spearmanr
 from os.path import join, exists
 from os import makedirs
+
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import logging
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
+
 
 y_labels = {
     "rpe": "RPE",
     "hr": "Mean Heart Rate (1/min",
-    "powerCon": "Power",
-    "powerEcc": "Power",
+    "powercon": "Power",
+    "powerecc": "Power",
 }
 
 
@@ -46,61 +49,63 @@ def evaluate_sample_predictions(result_dict: Dict, gt_column: str, file_name: st
     plt.close()
 
 
-def evaluate_aggregated_predictions(result_dict: Dict, gt_column: str, file_name: str):
-    fig, axes = plt.subplots(len(result_dict), sharey=True, figsize=(20, 40))
+def evaluate_aggregated_predictions(df: pd.DataFrame, gt_column: str, file_name: str):
+    subjects = df["subject"].unique()
+    fig, axes = plt.subplots(len(subjects), sharey=True, figsize=(20, 40))
 
-    rmse_all = []
-    r2_all = []
-    pcc_all = []
-    for idx, (subject_name, df) in enumerate(result_dict.items()):
-        mean_df = df.groupby("set_id").mean(numeric_only=True)
-        std_df = df.groupby("set_id").std(numeric_only=True)
+    for idx, (subject_name) in enumerate(subjects):
+        sub_df = df[df["subject"] == subject_name]
 
-        ground_truth = mean_df[gt_column].to_numpy()
-        predictions = mean_df["predictions"].to_numpy()
-        errors = std_df["predictions"].to_numpy()
-        rmse = mean_squared_error(predictions, ground_truth, squared=False)
-        r2 = r2_score(ground_truth, predictions)
-        pcc = pearsonr(ground_truth, predictions)[0]
-        rmse_all.append(rmse)
-        r2_all.append(r2)
-        pcc_all.append(pcc)
+        labels = []
+        pred = []
 
-        axes[idx].plot(ground_truth, label="Ground Truth")
-        axes[idx].errorbar(np.arange(len(predictions)), predictions, yerr=errors, fmt="o", label="Prediction")
-        axes[idx].set_title(f"Subject: {subject_name}, RMSE: {rmse:.2f}, R2: {r2:.2f}, PCC: {pcc:.2f}")
+        for set_ids in sub_df["set_id"].unique():
+            sub_sub_df = sub_df[sub_df["set_id"] == set_ids]
+            ground_truth = sub_sub_df["ground_truth"].to_numpy().mean()
+            # predictions = np.average(sub_sub_df["prediction"], weights=np.arange(len(sub_sub_df)))
+            predictions = np.average(sub_sub_df["prediction"])
+            labels.append(ground_truth)
+            pred.append(predictions)
 
-    fig.suptitle(
-        f"RMSE: {np.mean(rmse_all):.2f} +- {np.std(rmse_all):.2f}, R2: {np.mean(r2_all):.2f} +- {np.std(r2_all):.2f}, pcc: {np.mean(pcc_all):.2f} +- {np.std(pcc_all):.2f}")
+        axes[idx].plot(labels, label="Ground Truth")
+        axes[idx].plot(pred, label="Prediction")
+
     plt.legend()
-    plt.savefig(file_name)
-    # plt.show()
+    # plt.savefig(file_name)
+    plt.show()
     plt.clf()
     plt.close()
 
 
-def evaluate_sample_predictions_individual(value_df: pd.DataFrame, exp_name: str, dst_path: str):
-    if not exists(dst_path):
-        makedirs(dst_path)
-
+def evaluate_sample_predictions_individual(
+        value_df: pd.DataFrame,
+        exp_name: str,
+        dst_path: str,
+        pred_col: str = "prediction",
+        gt_col: str = "ground_truth"
+):
     for subject_name in value_df["subject"].unique():
         subject_df = value_df[value_df["subject"] == subject_name]
-        ground_truth = subject_df["ground_truth"].values
-        predictions = subject_df["prediction"].values
+        ground_truth = subject_df[gt_col].values
+        predictions = subject_df[pred_col].values
 
         r2 = r2_score(ground_truth, predictions)
         mape = mean_absolute_percentage_error(predictions, ground_truth)
-        mae = mean_absolute_error(predictions, ground_truth)
+        # mae = mean_absolute_error(predictions, ground_truth)
+        sp, _ = spearmanr(ground_truth, predictions)
         rmse = mean_squared_error(predictions, ground_truth, squared=False)
 
         plt.figure(figsize=(column_width * cm, column_width * cm), dpi=dpi)
         plt.plot(ground_truth, label="Ground Truth")
         plt.plot(predictions, label="Prediction")
-        plt.title(f"$R^2$={r2:.2f}, MAPE={mape:.2f}, MAE={mae:.2f}, RMSE={rmse:.2f}")
+        plt.title(f"$R^2$={r2:.2f}, MAPE={mape:.2f}, Spearman={sp:.2f}")
         plt.xlabel("Repetition")
-        plt.ylabel(y_labels[exp_name])
+        # plt.ylabel(y_labels[exp_name])
         plt.legend()
         plt.tight_layout()
+
+        if not exists(dst_path):
+            makedirs(dst_path)
 
         plt.savefig(join(dst_path, f"{subject_name}.pdf"))
         # plt.show()
@@ -136,5 +141,30 @@ def evaluate_nr_features(df: pd.DataFrame, dst_path: str):
 
     # plt.show()
     plt.savefig(join(dst_path, "nr_features.pdf"))
+    plt.clf()
+    plt.close()
+
+
+def plot_subject_performance(df: pd.DataFrame, dst_path: str):
+    metrics = []
+    subjects = df["subject"].unique()
+    for subject in df["subject"].unique():
+        sub_df = df[df["subject"] == subject]
+        metric, p_value = spearmanr(sub_df["ground_truth"], sub_df["prediction"])
+        metrics.append(metric)
+        print(f"{subject}: {metric:.2f} ({p_value:.2f})")
+
+    fig, axs = plt.subplots(1, 1, figsize=(column_width * cm, column_width * cm / 2), dpi=dpi)
+    axs.bar([f"{i+1:2d}" for i in range(len(subjects))], metrics)
+    # plt.title("Spearman's Rho")
+    plt.xlabel("Subjects")
+    plt.ylabel("Spearman's Rho")
+    plt.tight_layout()
+
+    if not exists(dst_path):
+        makedirs(dst_path)
+
+    plt.savefig(join(dst_path, "subject_performance.pdf"))
+    # plt.show()
     plt.clf()
     plt.close()

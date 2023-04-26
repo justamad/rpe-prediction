@@ -3,6 +3,7 @@ from .result_plots import (
     evaluate_sample_predictions,
     evaluate_sample_predictions_individual,
     evaluate_nr_features,
+    plot_subject_performance,
 )
 
 from .latex_tables import (

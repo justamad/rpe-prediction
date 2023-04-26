@@ -56,7 +56,7 @@ def normalize_rpe_values_min_max(
     return df
 
 
-def normalize_data_by_subject(X: pd.DataFrame, y: pd.DataFrame, method="standard") -> pd.DataFrame:
+def normalize_data_by_subject(X: pd.DataFrame, y: pd.DataFrame, method: str = "standard") -> pd.DataFrame:
     if method not in ["standard", "min_max"]:
         raise ValueError(f"Unknown normalization method: {method}.")
 
@@ -70,9 +70,13 @@ def normalize_data_by_subject(X: pd.DataFrame, y: pd.DataFrame, method="standard
     return X
 
 
-def normalize_data_global(X: pd.DataFrame) -> pd.DataFrame:
+def normalize_data_global(X: pd.DataFrame, method: str = "standard") -> pd.DataFrame:
     mask = ~X.eq(0).all(axis=1)
-    X.loc[mask] = (X.loc[mask] - X.loc[mask].mean()) / X.loc[mask].std()
+    if method == "standard":
+        X.loc[mask] = (X.loc[mask] - X.loc[mask].mean()) / X.loc[mask].std()
+    else:
+        X.loc[mask] = (X.loc[mask] - X.loc[mask].min()) / (X.loc[mask].max() - X.loc[mask].min())
+
     return X
 
 

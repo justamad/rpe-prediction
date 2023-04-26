@@ -34,7 +34,7 @@ def create_retrain_table(results: pd.DataFrame, dst_path: str) -> pd.DataFrame:
     metrics = {
         "$R^{2}$": r2_score,
         "MAPE": mean_absolute_percentage_error,
-        "MSE": calculate_mse,
+        "RMSE": calculate_mse,
         "MAE": mean_absolute_error,
         "Spearman": calculate_spearman,
     }
@@ -59,7 +59,7 @@ def create_retrain_table(results: pd.DataFrame, dst_path: str) -> pd.DataFrame:
     return final_df
 
 
-def calculate_mse(y_true, y_pred, squared=True):
+def calculate_mse(y_true, y_pred, squared=False):
     if squared:
         return mean_squared_error(y_true, y_pred, squared=True)
     return mean_squared_error(y_true, y_pred, squared=False)

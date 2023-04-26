@@ -165,7 +165,7 @@ class MLOptimization(object):
 
             y_pred = model.fit(X_train, y_train).predict(X_test)
 
-            if norm_labels == "global":
+            if norm_labels:
                 y_test = y_test * label_std + label_mean
                 y_pred = y_pred * label_std + label_mean
 

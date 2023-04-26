@@ -11,6 +11,7 @@ from src.plot import (
     evaluate_nr_features,
     create_train_table,
     create_retrain_table,
+    plot_subject_performance,
 )
 
 from src.dataset import (
@@ -23,6 +24,7 @@ from src.dataset import (
 )
 
 import pandas as pd
+import numpy as np
 import itertools
 import logging
 import os
@@ -117,12 +119,13 @@ def train_model(
 def evaluate_entire_experiment_path(
         src_path: str,
         dst_path: str,
-        filter_exp: str = None,
+        filter_exp: str = "",
+        aggregate: bool = False,
         criteria_rank: str = "rank_test_r2",
         criteria_score: str = "mean_test_r2",
 ):
     exp_name = os.path.basename(os.path.normpath(src_path))
-    dst_path = join(dst_path, exp_name)
+    dst_path = join(dst_path, exp_name, filter_exp)
     if not exists(dst_path):
         os.makedirs(dst_path)
 
@@ -156,22 +159,51 @@ def evaluate_entire_experiment_path(
 
     retrain_df = pd.DataFrame()
     for model in result_df["model"].unique():
-        cur_df = result_df[result_df["model"] == model].sort_values(by=criteria_score, ascending=False)
-        best_model = cur_df.iloc[0]
-        df = evaluate_for_specific_ml_model(best_model["result_path"], best_model["model_file"], dst_path, filter_exp)
+        best_model = result_df[result_df["model"] == model].sort_values(by=criteria_score, ascending=False).iloc[0]
+        df = retrain_model(best_model["result_path"], best_model["model_file"], dst_path, filter_exp)
         df["model"] = model
-        # evaluate_sample_predictions_individual(
-        #     value_df=df,
-        #     exp_name=exp_name,
-        #     dst_path=join(dst_path, model),
-        # )
+
+        if aggregate:
+            df = aggregate_results(df, weighting=False)
+
+        evaluate_sample_predictions_individual(value_df=df, exp_name=exp_name, dst_path=join(dst_path, model))
+        # evaluate_aggregated_predictions(df, "rpe", join(dst_path, model))
+        # plot_subject_performance(df, join(dst_path, model))
         retrain_df = pd.concat([retrain_df, df])
 
     final_df = create_retrain_table(retrain_df, dst_path)
     return final_df
 
 
-def evaluate_for_specific_ml_model(result_path: str, model_file: str, dst_path: str, filter_exp: str) -> pd.DataFrame:
+def aggregate_results(df: pd.DataFrame, weighting: bool = False):
+    result_df = pd.DataFrame()
+    for model in df["model"].unique():
+        model_df = df[df["model"] == model]
+
+        for subject_name in model_df["subject"].unique():
+            subject_df = model_df[model_df["subject"] == subject_name]
+
+            data = {"ground_truth": [], "prediction": [], "set_id": []}
+
+            for set_id in subject_df["set_id"].unique():
+                set_df = subject_df[subject_df["set_id"] == set_id]
+                data["ground_truth"].append(set_df["ground_truth"].to_numpy().mean())
+                if weighting:
+                    data["prediction"].append(np.average(set_df["prediction"], weights=np.arange(len(set_df))))
+                else:
+                    data["prediction"].append(np.average(set_df["prediction"]))
+
+                data["set_id"].append(set_id)
+
+            temp_df = pd.DataFrame(data)
+            temp_df["model"] = model
+            temp_df["subject"] = subject_name
+            result_df = pd.concat([result_df, temp_df])
+
+    return result_df
+
+
+def retrain_model(result_path: str, model_file: str, dst_path: str, filter_exp: str) -> pd.DataFrame:
     model_name = model_file.replace("model__", "").replace(".csv", "")
     result_filename = join(dst_path, f"{model_name}_{filter_exp}_results.csv")
     if exists(result_filename):
@@ -226,11 +258,10 @@ if __name__ == "__main__":
             exp_files = filter(lambda f: not f.startswith("_"), os.listdir(join(args.exp_path, experiment_folder)))
 
             for exp_name in exp_files:
-                exp_config = yaml.load(open(join(args.exp_path, experiment_folder, exp_name), "r"),
-                                       Loader=yaml.FullLoader)
+                exp_cfg = yaml.load(open(join(args.exp_path, experiment_folder, exp_name), "r"), Loader=yaml.FullLoader)
 
                 # Load data
-                file_names = exp_config["training_file"]
+                file_names = exp_cfg["training_file"]
                 if isinstance(file_names, str):
                     file_names = [file_names]
 
@@ -240,17 +271,16 @@ if __name__ == "__main__":
                     add_df.drop([c for c in df.columns if c in add_df.columns], axis=1, inplace=True)
                     df = pd.concat([df, add_df], axis=1)
 
-                del exp_config["training_file"]
+                del exp_cfg["training_file"]
 
                 # Construct search space with defined experiments
-                elements = {key.replace("opt_", ""): value for key, value in exp_config.items() if
-                            key.startswith("opt_")}
+                elements = {key.replace("opt_", ""): value for key, value in exp_cfg.items() if key.startswith("opt_")}
                 for name in elements.keys():
-                    del exp_config[f"opt_{name}"]
+                    del exp_cfg[f"opt_{name}"]
 
                 for combination in itertools.product(*elements.values()):
                     combination = dict(zip(elements.keys(), combination))
-                    exp_config.update(combination)
+                    exp_cfg.update(combination)
                     cur_name = exp_name.replace(".yaml", "_") + "_".join(
                         [f"{key}_{value}" for key, value in combination.items()])
 
@@ -260,15 +290,21 @@ if __name__ == "__main__":
                     if not exists(log_path):
                         os.makedirs(log_path)
 
-                    train_model(df, log_path, **exp_config)
+                    train_model(df, log_path, **exp_cfg)
 
     if args.eval:
-        full_df = evaluate_entire_experiment_path("results/rpe", args.dst_path, "full")
-        full_df.columns = [(c, "full") for c in full_df.columns]
-        ecc_con_df = evaluate_entire_experiment_path("results/rpe", args.dst_path, "con_ecc")
-        ecc_con_df.columns = [(c, "ecc_con") for c in ecc_con_df.columns]
-        merged = pd.concat([full_df, ecc_con_df], axis=1)
-        merged.columns = pd.MultiIndex.from_tuples(merged.columns, names=['Model', 'Mode'])
-        merged.sort_index(axis=1, level=[0, 1], ascending=[True, True], inplace=True)
-        merged.to_latex("test_new.txt", escape=False)
-        i = 12
+
+        def merge_experiments(exp_name: str, aggregate: bool):
+            full_df = evaluate_entire_experiment_path(exp_name, args.dst_path, "full", aggregate)
+            full_df.columns = [(c, "Full Rep") for c in full_df.columns]
+            ecc_con_df = evaluate_entire_experiment_path(exp_name, args.dst_path, "con_ecc", aggregate)
+            ecc_con_df.columns = [(c, "Con / Ecc") for c in ecc_con_df.columns]
+            merge_df = pd.concat([full_df, ecc_con_df], axis=1)
+            merge_df.columns = pd.MultiIndex.from_tuples(merge_df.columns, names=['Model', 'Mode'])
+            merge_df.sort_index(axis=1, level=[0, 1], ascending=[True, True], inplace=True)
+            merge_df.to_latex(
+                f"{exp_name.replace('/', '_')}.txt", escape=False,
+                column_format="l" + "r" * (len(merge_df.columns))
+            )
+
+        merge_experiments("results/rpe", aggregate=False)
