@@ -37,20 +37,12 @@ def discretize_subject_rpe(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def normalize_rpe_values_min_max(
-        df: pd.DataFrame,
-        digitize: bool = False,
-        bins: int = 10,
-):
-    subjects = df["name"].unique()
+def normalize_rpe_values_min_max(df: pd.DataFrame) -> pd.DataFrame:
+    subjects = df["subject"].unique()
     for subject_name in subjects:
-        mask = df["name"] == subject_name
+        mask = df["subject"] == subject_name
         rpe_values = df.loc[mask, "rpe"].to_numpy()
         rpe_norm = (rpe_values - rpe_values.min()) / (rpe_values.max() - rpe_values.min())
-
-        if digitize:
-            rpe_norm = np.digitize(rpe_norm, bins=np.arange(bins) / bins)
-
         df.loc[mask, "rpe"] = rpe_norm
 
     return df

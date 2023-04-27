@@ -17,11 +17,11 @@ class ConvModelConfig(LearningModelBase):
         tunable_parameters = {
             f"{str(self)}__batch_size": [64],
             f"{str(self)}__epochs": [200],
-            f"{str(self)}__n_filters": [32],
-            f"{str(self)}__n_layers": [3, 4],
+            f"{str(self)}__n_filters": [16],
+            f"{str(self)}__n_layers": [2, 3],
             f"{str(self)}__kernel_size": [(10, 3)],
             f"{str(self)}__dropout": [0.3],
-            f"{str(self)}__n_units": [64, 128],
+            f"{str(self)}__n_units": [128, 256],
         }
 
         super().__init__(model=model, grid_search_params=tunable_parameters)
@@ -42,11 +42,11 @@ class CNNLSTMModelConfig(LearningModelBase):
         tunable_parameters = {
             f"{str(self)}__batch_size": [64],
             f"{str(self)}__epochs": [200],
-            f"{str(self)}__n_filters": [32],
-            f"{str(self)}__n_layers": [3, 4],
+            f"{str(self)}__n_filters": [16],
+            f"{str(self)}__n_layers": [2, 3],
             f"{str(self)}__kernel_size": [(10, 3)],
             f"{str(self)}__dropout": [0.3],
-            f"{str(self)}__lstm_units": [32, 64],
+            f"{str(self)}__lstm_units": [8, 16],
         }
 
         super().__init__(model=model, grid_search_params=tunable_parameters)
@@ -72,7 +72,7 @@ def instantiate_best_dl_model(result_df: pd.DataFrame, model_name: str, task: st
 
     best_configuration = parse_report_file_to_model_parameters(result_df, model_name, column)
     best_configuration["verbose"] = 1
-    best_configuration["epochs"] = 1
+    # best_configuration["epochs"] = 1
     model = models[model_name].model
     model.set_params(**best_configuration)
     return model

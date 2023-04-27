@@ -1,12 +1,10 @@
 from src.ml import MLOptimization, eliminate_features_with_rfe, regression_models, instantiate_best_model
-from typing import List, Tuple
+from typing import List, Union
 from datetime import datetime
 from argparse import ArgumentParser
 from os.path import join, exists
 
 from src.plot import (
-    evaluate_sample_predictions,
-    evaluate_aggregated_predictions,
     evaluate_sample_predictions_individual,
     evaluate_nr_features,
     create_train_table,
@@ -21,6 +19,7 @@ from src.dataset import (
     filter_ground_truth_outliers,
     filter_outliers_z_scores,
     drop_highly_correlated_features,
+    normalize_rpe_values_min_max,
 )
 
 import pandas as pd
@@ -38,11 +37,12 @@ def train_model(
         log_path: str,
         task: str,
         normalization_input: str,
-        normalization_labels: Tuple[str, bool],
+        normalization_labels: bool,
         search: str,
         n_features: int,
         ground_truth: str,
         n_splits: int,
+        label_processing: Union[str, bool],
         balancing: bool = False,
         temporal_features: bool = False,
         drop_columns: List = None,
@@ -79,6 +79,8 @@ def train_model(
         values = y.loc[:, ground_truth].values
         label_mean, label_std = values.mean(), values.std()
         y.loc[:, ground_truth] = (values - label_mean) / label_std
+    elif label_processing == "rpe":
+        y = normalize_rpe_values_min_max(y)
 
     X, _report_df = eliminate_features_with_rfe(X_train=X, y_train=y[ground_truth], step=25, n_features=n_features)
     _report_df.to_csv(join(log_path, "rfe_report.csv"))
@@ -123,7 +125,7 @@ def evaluate_entire_experiment_path(
         aggregate: bool = False,
         criteria_rank: str = "rank_test_r2",
         criteria_score: str = "mean_test_r2",
-):
+) -> pd.DataFrame:
     exp_name = os.path.basename(os.path.normpath(src_path))
     dst_path = join(dst_path, exp_name, filter_exp)
     if not exists(dst_path):
@@ -205,9 +207,9 @@ def aggregate_results(df: pd.DataFrame, weighting: bool = False):
 
 def retrain_model(result_path: str, model_file: str, dst_path: str, filter_exp: str) -> pd.DataFrame:
     model_name = model_file.replace("model__", "").replace(".csv", "")
-    result_filename = join(dst_path, f"{model_name}_{filter_exp}_results.csv")
+    result_filename = join(dst_path, f"{model_name}_{filter_exp + '_' if filter_exp else ''}results.csv")
     if exists(result_filename):
-        logging.info(f"Skip evaluation of {model_name} as result already exists.")
+        logging.info(f"Skip re-training of {model_name.upper()} as result already exists.")
         return pd.read_csv(result_filename, index_col=0)
 
     config = yaml.load(open(join(result_path, "config.yml"), "r"), Loader=yaml.FullLoader)
@@ -248,8 +250,8 @@ if __name__ == "__main__":
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments_ml")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation")
-    parser.add_argument("--train", type=bool, dest="train", default=False)
-    parser.add_argument("--eval", type=bool, dest="eval", default=True)
+    parser.add_argument("--train", type=bool, dest="train", default=True)
+    parser.add_argument("--eval", type=bool, dest="eval", default=False)
     args = parser.parse_args()
 
     if args.train:
@@ -307,4 +309,17 @@ if __name__ == "__main__":
                 column_format="l" + "r" * (len(merge_df.columns))
             )
 
-        merge_experiments("results/rpe", aggregate=False)
+        # merge_experiments("results/rpe", aggregate=False)
+        # con_df = evaluate_entire_experiment_path("results/powercon", args.dst_path, aggregate=False)
+        # con_df.columns = [(c, "Con") for c in con_df.columns]
+        # ecc_df = evaluate_entire_experiment_path("results/powerecc", args.dst_path, aggregate=False)
+        # ecc_df.columns = [(c, "Ecc") for c in ecc_df.columns]
+        # merge_df = pd.concat([con_df, ecc_df], axis=1)
+        # merge_df.columns = pd.MultiIndex.from_tuples(merge_df.columns, names=['Model', 'Mode'])
+        # merge_df.sort_index(axis=1, level=[0, 1], ascending=[True, True], inplace=True)
+        # merge_df.to_latex(
+        #     f"power.txt", escape=False,
+        #     column_format="l" + "r" * (len(merge_df.columns))
+        # )
+        evaluate_entire_experiment_path("results/hr", args.dst_path, aggregate=True)
+

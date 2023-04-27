@@ -1,6 +1,8 @@
 from typing import Dict, Any, Tuple
 from tensorflow import keras
 from keras.layers import Input, Conv2D, BatchNormalization, GRU, Dropout, MaxPooling2D, Flatten, Dense, Reshape
+from tensorflow_addons.metrics import RSquare
+from keras.regularizers import l2
 
 
 def build_conv_model(
@@ -16,7 +18,7 @@ def build_conv_model(
     model.add(Input(shape=(n_samples, n_features, 1)))
 
     for i in range(n_layers):
-        model.add(Conv2D(filters=n_filters * (i + 1), kernel_size=kernel_size, padding="same", activation="relu"))
+        model.add(Conv2D(filters=n_filters * (i + 1), kernel_size=kernel_size, padding="same", activation="relu", kernel_regularizer=l2(0.01)))
         model.add(BatchNormalization())
         model.add(Dropout(dropout))
         model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -24,7 +26,7 @@ def build_conv_model(
     model.add(Flatten())
     model.add(Dense(n_units, activation="relu"))
     model.add(Dense(meta["n_outputs_"]))
-    model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3), loss="mse", metrics=["mse", "mae", "mape"], )
+    model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-4), loss="mse", metrics=["mse", "mae", "mape", RSquare()], )
     return model
 
 
