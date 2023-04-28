@@ -17,10 +17,12 @@ from src.dataset import (
     normalize_data_by_subject,
     normalize_data_global,
     filter_labels_outliers,
-    filter_outliers_z_scores,
+    clip_outliers_z_scores,
     drop_highly_correlated_features,
     normalize_labels_min_max,
     calculate_trend_labels,
+    add_lag_feature,
+    add_rolling_statistics,
 )
 
 import pandas as pd
@@ -43,9 +45,9 @@ def train_model(
         n_features: int,
         ground_truth: str,
         n_splits: int,
+        rolling_statistics: Union[str, bool],
         label_processing: Union[str, bool],
         balancing: bool = False,
-        temporal_features: bool = False,
         drop_columns: List = None,
         drop_prefixes: List = None,
 ):
@@ -73,7 +75,7 @@ def train_model(
     X.fillna(0, inplace=True)
     X = drop_highly_correlated_features(X, threshold=0.95)
     X, y = filter_labels_outliers(X, y, ground_truth)
-    X = filter_outliers_z_scores(X, sigma=3.0)
+    X = clip_outliers_z_scores(X, sigma=3.0)
 
     label_mean, label_std = float('inf'), float('inf')
     if normalization_labels:
@@ -87,6 +89,10 @@ def train_model(
 
     X, _report_df = eliminate_features_with_rfe(X_train=X, y_train=y[ground_truth], step=25, n_features=n_features)
     _report_df.to_csv(join(log_path, "rfe_report.csv"))
+
+    if rolling_statistics:
+        X = add_rolling_statistics(X, y, win=rolling_statistics, normalize=True)
+
     X.to_csv(join(log_path, "X.csv"))
     y.to_csv(join(log_path, "y.csv"))
 
@@ -100,7 +106,7 @@ def train_model(
                 "ground_truth": ground_truth,
                 "drop_prefixes": drop_prefixes,
                 "normalization_input": normalization_input,
-                "temporal_features": temporal_features,
+                "rolling_statistics": rolling_statistics,
                 "balancing": balancing,
                 "normalization_labels": normalization_labels,
                 "label_mean": float(label_mean),
@@ -324,5 +330,5 @@ if __name__ == "__main__":
         #     f"power.txt", escape=False,
         #     column_format="l" + "r" * (len(merge_df.columns))
         # )
-        # evaluate_entire_experiment_path("results/rpe_scaled", args.dst_path, aggregate=True)
-        merge_experiments("results/rpe_scaled", aggregate=False)
+        evaluate_entire_experiment_path("results/rpe_temp", args.dst_path, aggregate=True)
+        # merge_experiments("results/hr_trend", aggregate=False)

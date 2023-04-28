@@ -23,10 +23,11 @@ def build_conv_model(
         model.add(Dropout(dropout))
         model.add(MaxPooling2D(pool_size=(2, 2)))
 
+    # model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Flatten())
     model.add(Dense(n_units, activation="relu"))
     model.add(Dense(meta["n_outputs_"]))
-    model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-4), loss="mse", metrics=["mse", "mae", "mape", RSquare()], )
+    model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3), loss="mse", metrics=["mse", "mae", "mape", RSquare()], )
     return model
 
 

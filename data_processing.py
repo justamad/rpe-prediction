@@ -1,5 +1,5 @@
 from src.dataset import SubjectDataIterator, zero_pad_data_frame, impute_dataframe, mask_repetitions
-from src.features import CustomFeatures, calculate_linear_joint_positions
+from src.features import CustomFeatures, calculate_linear_joint_positions, apply_sliding_window_time_series
 from argparse import ArgumentParser
 from typing import List, Tuple
 from os.path import join, exists, isfile
@@ -347,6 +347,42 @@ def prepare_segmented_data_for_dl(src_path: str, mode: str, dst_path: str, plot:
     final_df.to_csv(join(dst_path, f"{max_length}_{mode}.csv"))
 
 
+def prepare_data_for_dl_sliding_window(
+        src_path: str,
+        win_size: int,
+        overlap: float,
+        dst_path: str,
+        plot: bool,
+        plot_path: str,
+):
+    X = pd.DataFrame()
+    y = pd.DataFrame()
+
+    for trial in iterate_segmented_data(src_path, mode="full", plot=plot, plot_path=plot_path):
+        rpe, subject, set_id, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
+        flywheel_df = flywheel_df.add_prefix("FLYWHEEL_")
+        assert len(flywheel_df) == len(pos_df["Repetition"].unique()) == len(imu_df["Repetition"].unique())
+
+        pos_df.drop("Repetition", axis=1, inplace=True)
+        ori_df = ori_df.loc[:, (ori_df != 0).any(axis=0)]  # Remove zero cols, e.g. constrained joint orientations
+        kinect_df = pd.concat([pos_df.add_prefix("KINECTPOS_"), ori_df], axis=1)
+        window_df, label_vector = apply_sliding_window_time_series(kinect_df, overlap=overlap, win_size=win_size)
+
+        # Expend ground truth data
+        flywheel_df = pd.DataFrame(np.repeat(flywheel_df.values, label_vector, axis=0), columns=flywheel_df.columns)
+        hrv_df = hrv_df.groupby("Repetition").mean()
+        hrv_df = pd.DataFrame(np.repeat(hrv_df.values, label_vector, axis=0), columns=hrv_df.columns)
+        y_temp = pd.concat([flywheel_df, hrv_df], axis=1)
+        y_temp["rpe"] = rpe
+        y_temp["subject"] = subject
+        y_temp["set_id"] = set_id
+        X = pd.concat([X, window_df], axis=0)
+        y = pd.concat([y, y_temp], axis=0)
+
+    X.to_parquet(join(dst_path, f"{win_size}_{overlap}_X.parquet"))
+    y.to_parquet(join(dst_path, f"{win_size}_{overlap}_y.parquet"))
+
+
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--raw_path", type=str, dest="raw_path", default="/media/ch/Data/RPE_Analysis")
@@ -361,6 +397,7 @@ if __name__ == "__main__":
         format="%(asctime)s %(name)-8s %(levelname)-8s %(message)s",
         datefmt="%m-%d %H:%M:%S",
     )
+    logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
     if not exists(args.proc_path):
         os.makedirs(args.proc_path)
@@ -374,4 +411,5 @@ if __name__ == "__main__":
     # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="eccentric", plot=args.show, plot_path=args.plot_path)
     # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="full", plot=args.show, plot_path=args.plot_path)
 
-    prepare_segmented_data_for_dl(args.proc_path, mode="padding", dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
+    # prepare_segmented_data_for_dl(args.proc_path, mode="padding", dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
+    prepare_data_for_dl_sliding_window(args.proc_path, win_size=45, overlap=0.5, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)

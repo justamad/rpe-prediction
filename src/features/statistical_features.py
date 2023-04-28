@@ -1,9 +1,6 @@
 from tsfresh.feature_extraction import ComprehensiveFCParameters, feature_calculators
-from tsfresh.utilities.dataframe_functions import impute
 from typing import List, Tuple
 
-import datetime
-import tsfresh
 import pandas as pd
 import math
 
@@ -24,15 +21,18 @@ class CustomFeatures(ComprehensiveFCParameters):
         del self["mean"]
 
 
-def apply_sliding_window_time_series(df: pd.DataFrame, overlap: float, window_size: int) -> pd.DataFrame:
+def apply_sliding_window_time_series(df: pd.DataFrame, overlap: float, win_size: int) -> Tuple[pd.DataFrame, List]:
     windows = []
-    n_windows, stride = calculate_window_parameters(len(df), window_size, overlap)
+    labels_majorities = []
+    n_windows, stride = calculate_window_parameters(len(df), win_size, overlap)
     for window_idx in range(n_windows):
-        window = df.iloc[window_idx * stride:window_idx * stride + window_size].copy()
-        # window["id"] = window_idx
+        window = df.iloc[window_idx * stride:window_idx * stride + win_size].copy()
+        reps = list(window["Repetition"])
+        labels_majorities.append(max(reps, key=reps.count))
         windows.append(window)
 
-    return pd.concat(windows, ignore_index=True)
+    occurrences = [labels_majorities.count(rep) for rep in list(df["Repetition"].unique())]
+    return pd.concat(windows, ignore_index=True), occurrences
 
 
 def calculate_window_parameters(length: float, window_size: float, overlap: float) -> Tuple[int, int]:

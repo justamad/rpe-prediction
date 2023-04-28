@@ -94,7 +94,7 @@ def normalize_data_global(X: pd.DataFrame, method: str = "standard") -> pd.DataF
     return X
 
 
-def filter_outliers_z_scores(df: pd.DataFrame, sigma: float = 3.0):
+def clip_outliers_z_scores(df: pd.DataFrame, sigma: float = 3.0):
     df[df > sigma] = sigma
     df[df < -sigma] = -sigma
     return df
@@ -124,3 +124,52 @@ def drop_highly_correlated_features(X: pd.DataFrame, threshold: float = 0.95) ->
     to_drop = [column for column in upper.columns if any(upper[column] > threshold)]
     X.drop(to_drop, axis=1, inplace=True)
     return X
+
+
+def add_lag_feature(X: pd.DataFrame, y: pd.DataFrame, label_col: str, lag: int = 1) -> pd.DataFrame:
+    if "subject" not in y.columns:
+        raise ValueError("Subject column not in dataframe.")
+
+    for subject in y["subject"].unique():
+        mask = y["subject"] == subject
+        y.loc[mask, "lag_feature"] = y.loc[mask, label_col].shift(lag)
+
+    return X
+
+
+def add_rolling_statistics(X: pd.DataFrame, y: pd.DataFrame, win: int = 5, normalize: bool = True) -> pd.DataFrame:
+    if "subject" not in y.columns:
+        raise ValueError("Subject column not in dataframe.")
+
+    for feature in X.columns:
+        for subject in y["subject"].unique():
+            mask = y["subject"] == subject
+            rolling_mean = X.loc[mask, feature].rolling(window=win).mean()
+            rolling_std = X.loc[mask, feature].rolling(window=win).std()
+
+            if normalize:
+                rolling_mean = (rolling_mean - rolling_mean.mean()) / rolling_mean.std()
+                rolling_std = (rolling_std - rolling_std.mean()) / rolling_std.std()
+
+            X.loc[mask, f"{feature}_mean"] = rolling_mean
+            X.loc[mask, f"{feature}_std"] = rolling_std
+
+    X.fillna(0, inplace=True)
+    return X
+
+
+def random_oversample(X: np.ndarray, y: pd.DataFrame, label_col: str) -> Tuple[np.ndarray, pd.DataFrame]:
+    labels = y[label_col].values
+    unique, counts = np.unique(labels, return_counts=True)
+    max_samples = np.max(counts)
+
+    minority_classes = {c: count for c, count in zip(unique, counts) if count < max_samples}
+    minority_indices = {c: np.where(labels == c)[0] for c in minority_classes.keys()}
+
+    new_indices = [np.random.choice(minority_indices[c], size=max_samples - num, replace=True) for c, num in minority_classes.items()]
+
+    X_resampled = np.vstack((X, *[X[i] for i in new_indices]))
+    y_resampled = np.concatenate((y.values, *[y.values[i] for i in new_indices]))
+    y_resampled = pd.DataFrame(y_resampled, columns=y.columns)
+
+    return X_resampled, pd.DataFrame(y_resampled, columns=y.columns)

@@ -1,14 +1,14 @@
 from src.ml import MLOptimization
-from src.dl import regression_models, instantiate_best_dl_model
+from src.dl import regression_models, instantiate_best_dl_model, build_conv_model
+from src.dataset import normalize_labels_min_max, random_oversample
 from typing import List, Union
 from datetime import datetime
 from argparse import ArgumentParser
 from os.path import join, exists
 from os import makedirs
+from tensorflow import keras
 
 from src.plot import (
-    evaluate_aggregated_predictions,
-    evaluate_sample_predictions,
     evaluate_sample_predictions_individual,
 )
 
@@ -16,16 +16,19 @@ from src.dataset import (
     extract_dataset_input_output,
     normalize_data_by_subject,
     normalize_data_global,
-    filter_ground_truth_outliers,
+    filter_labels_outliers,
 )
 
+import numpy as np
 import pandas as pd
 import logging
 import tensorflow as tf
 import yaml
 import os
 import matplotlib
+
 matplotlib.use("WebAgg")
+import matplotlib.pyplot as plt
 
 
 def train_model(
@@ -64,7 +67,7 @@ def train_model(
 
     X = X.values.reshape((-1, seq_length, X.shape[1]))
     y = y.iloc[::seq_length, :]
-    X, y = filter_ground_truth_outliers(X, y, ground_truth)
+    X, y = filter_labels_outliers(X, y, ground_truth)
 
     # Normalization labels
     label_mean, label_std = float('inf'), float('inf')
@@ -108,6 +111,74 @@ def train_model(
     ).perform_grid_search_with_cv(regression_models, log_path=log_path, n_jobs=1)
 
 
+def norm_data_3d(X: np.ndarray, y: pd.DataFrame, method="min_max"):
+    for subject in y["subject"].unique():
+        mask = y["subject"] == subject
+        data = X[mask]
+        if method == "min_max":
+            min_, max_ = data.min(axis=0), data.max(axis=0)
+            X[mask] = (data - min_) / (max_ - min_)
+        else:
+            mean, std = data.mean(axis=0), data.std(axis=0)
+            X[mask] = (data - mean) / std
+
+    return X
+
+
+def process_data(X: pd.DataFrame, y: pd.DataFrame, gt: str):
+    X = X.loc[:, (X != 0).any(axis=0)]  # Remove columns with all zeros, e.g. constrained joint orientations
+    X = X.values.reshape((-1, 45, X.shape[1]))
+    # X, y = random_oversample(X, y, gt)
+    X = norm_data_3d(X, y, method="min_max")
+
+    # y = normalize_labels_min_max(y, gt)
+    subjects = y["subject"].unique()
+    train_subjects = subjects[:int(len(subjects) * 0.8)]
+    train_mask = y["subject"].isin(train_subjects)
+
+    X_train, y_train = X[train_mask], y.loc[train_mask, :]
+    X_test, y_test = X[~train_mask], y.loc[~train_mask, :]
+
+    y_train = y_train[gt].values
+    y_test = y_test[gt].values
+    return X_train, y_train, X_test, y_test
+
+
+def train_single_model(X: pd.DataFrame, y: pd.DataFrame, gt="rpe"):
+    X_train, y_train, X_test, y_test = process_data(X, y, gt=gt)
+    y_train = y_train.astype(np.float32)
+    y_test = y_test.astype(np.float32)
+
+    meta = {
+        "X_shape_": X_train.shape,
+        "n_outputs_": 1,
+    }
+
+    model = build_conv_model(meta=meta, kernel_size=(13, 3), n_filters=32, n_layers=4, dropout=0.5, n_units=256)
+    model.summary()
+
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    log_dir = "logs/fit/" + timestamp
+    tb_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+    es_callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3)
+    model.fit(X_train, y_train, epochs=30, batch_size=64, validation_data=(X_test, y_test), callbacks=[tb_callback, es_callback])
+    model.save(f"models/{timestamp}/model")
+
+
+def evaluate_single_model(X_train, y_train, X_test, y_test, src_path: str):
+    model = keras.models.load_model(src_path)
+    fig, axs = plt.subplots(2, 1, figsize=(15, 10))
+    axs[0].set_title("Train")
+    axs[0].plot(model.predict(X_train), label="Prediction")
+    axs[0].plot(y_train, label="Ground Truth")
+    axs[0].legend()
+    axs[1].set_title("Test")
+    axs[1].plot(model.predict(X_test), label="Prediction")
+    axs[1].plot(y_test, label="Ground Truth")
+    axs[1].legend()
+    plt.show()
+
+
 def evaluate_ml_model(result_path: str, dst_path: str):
     dst_path = join(dst_path, os.path.basename(os.path.normpath(result_path)))
 
@@ -138,13 +209,15 @@ def evaluate_ml_model(result_path: str, dst_path: str):
                 ground_truth=config["ground_truth"],
                 n_splits=config["n_splits"],
             )
-            res_df = opt.evaluate_model(model, config["normalization_labels"], config["label_mean"], config["label_std"])
+            res_df = opt.evaluate_model(model, config["normalization_labels"], config["label_mean"],
+                                        config["label_std"])
             res_df.to_csv(file_name)
 
-        evaluate_sample_predictions_individual(res_df, "hr", join(dst_path, model_name),
-                                               pred_col="HRV_Mean HR (1/min)_prediction",
-                                               gt_col="HRV_Mean HR (1/min)_ground_truth")
-
+        evaluate_sample_predictions_individual(
+            res_df, "hr", join(dst_path, model_name),
+            pred_col="HRV_Mean HR (1/min)_prediction",
+            gt_col="HRV_Mean HR (1/min)_ground_truth",
+        )
 
 
 if __name__ == "__main__":
@@ -155,6 +228,7 @@ if __name__ == "__main__":
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation_dl")
     parser.add_argument("--train", type=bool, dest="train", default=True)
     parser.add_argument("--eval", type=bool, dest="eval", default=False)
+    parser.add_argument("--single", type=bool, dest="single", default=True)
     parser.add_argument("--use_gpu", type=bool, dest="use_gpu", default=True)
     args = parser.parse_args()
 
@@ -164,23 +238,35 @@ if __name__ == "__main__":
         if not args.use_gpu:
             os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-        for exp_name in os.listdir(args.exp_path):
-            exp_path = join(args.exp_path, exp_name)
-            for config_file in filter(lambda f: not f.startswith("_"), os.listdir(exp_path)):
-                exp_config = yaml.load(open(join(exp_path, config_file), "r"), Loader=yaml.FullLoader)
-                training_file = exp_config["training_file"]
-                df = pd.read_csv(join(args.src_path, training_file), index_col=0, dtype={"subject": str})
-                del exp_config["training_file"]
-                seq_len = int(training_file.split("_")[0])
-                log_path = join(args.log_path, f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}")
+        # gt = "rpe"
+        X = pd.read_parquet(join(args.src_path, "45_0.5_X.parquet"))
+        X.drop(["Repetition"], axis=1, inplace=True)
+        y = pd.read_parquet(join(args.src_path, "45_0.5_y.parquet"))
+        gt = "FLYWHEEL_powerCon"
+        X_train, y_train, X_test, y_test = process_data(X, y, gt=gt)
+        # gt = "HRV_Mean HR (1/min)"
 
-                if not exists(log_path):
-                    makedirs(log_path)
+        if args.single:
+            train_single_model(X, y)
+            # evaluate_single_model(X_train, y_train, X_test, y_test, src_path="models/20230428-172343/model")
+        else:
+            for exp_name in os.listdir(args.exp_path):
+                exp_path = join(args.exp_path, exp_name)
+                for config_file in filter(lambda f: not f.startswith("_"), os.listdir(exp_path)):
+                    exp_config = yaml.load(open(join(exp_path, config_file), "r"), Loader=yaml.FullLoader)
+                    training_file = exp_config["training_file"]
+                    df = pd.read_csv(join(args.src_path, training_file), index_col=0, dtype={"subject": str})
+                    del exp_config["training_file"]
+                    seq_len = int(training_file.split("_")[0])
+                    log_path = join(args.log_path, f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}")
 
-                train_model(df, log_path, seq_len, **exp_config)
+                    if not exists(log_path):
+                        makedirs(log_path)
+
+                    train_model(df, log_path, seq_len, **exp_config)
 
     if args.eval:
         if not exists(args.dst_path):
             makedirs(args.dst_path)
 
-        evaluate_ml_model(join(args.log_path, "2023-04-19-13-20-14"), args.dst_path)
+        evaluate_ml_model(join(args.log_path, "2023-04-20-16-33-17"), args.dst_path)
