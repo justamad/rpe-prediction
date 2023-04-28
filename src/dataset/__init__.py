@@ -5,10 +5,11 @@ from .data_preparation import (
     extract_dataset_input_output,
     normalize_data_by_subject,
     filter_outliers_z_scores,
-    normalize_rpe_values_min_max,
+    normalize_labels_min_max,
     normalize_data_global,
-    filter_ground_truth_outliers,
+    filter_labels_outliers,
     drop_highly_correlated_features,
+    calculate_trend_labels,
 )
 
 from .data_loaders import (

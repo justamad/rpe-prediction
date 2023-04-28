@@ -37,15 +37,37 @@ def discretize_subject_rpe(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def normalize_rpe_values_min_max(df: pd.DataFrame) -> pd.DataFrame:
+def normalize_labels_min_max(df: pd.DataFrame, label_col: str) -> pd.DataFrame:
+    if label_col not in df.columns:
+        raise ValueError(f"Label column {label_col} not in dataframe.")
+
+    if "subject" not in df.columns:
+        raise ValueError("Subject column not in dataframe.")
+
     subjects = df["subject"].unique()
     for subject_name in subjects:
         mask = df["subject"] == subject_name
-        rpe_values = df.loc[mask, "rpe"].to_numpy()
-        rpe_norm = (rpe_values - rpe_values.min()) / (rpe_values.max() - rpe_values.min())
-        df.loc[mask, "rpe"] = rpe_norm
+        values = df.loc[mask, label_col].values
+        rpe_norm = (values - values.min()) / (values.max() - values.min())
+        df.loc[mask, label_col] = rpe_norm
 
     return df
+
+
+def calculate_trend_labels(y: pd.DataFrame, label_col: str) -> pd.DataFrame:
+    if label_col not in y.columns:
+        raise ValueError(f"Label column {label_col} not in dataframe.")
+
+    if "subject" not in y.columns:
+        raise ValueError("Subject column not in dataframe.")
+
+    subjects = y["subject"].unique()
+    for subject in subjects:
+        mask = y["subject"] == subject
+        values = y.loc[mask, label_col].values
+        y.loc[mask, label_col] = np.diff(values, prepend=values[0])
+
+    return y
 
 
 def normalize_data_by_subject(X: pd.DataFrame, y: pd.DataFrame, method: str = "standard") -> pd.DataFrame:
@@ -78,7 +100,7 @@ def filter_outliers_z_scores(df: pd.DataFrame, sigma: float = 3.0):
     return df
 
 
-def filter_ground_truth_outliers(
+def filter_labels_outliers(
         X: Union[np.ndarray, pd.DataFrame],
         y: pd.DataFrame,
         gt: Union[str, List[str]],

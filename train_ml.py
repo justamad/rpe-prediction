@@ -16,10 +16,11 @@ from src.dataset import (
     extract_dataset_input_output,
     normalize_data_by_subject,
     normalize_data_global,
-    filter_ground_truth_outliers,
+    filter_labels_outliers,
     filter_outliers_z_scores,
     drop_highly_correlated_features,
-    normalize_rpe_values_min_max,
+    normalize_labels_min_max,
+    calculate_trend_labels,
 )
 
 import pandas as pd
@@ -71,7 +72,7 @@ def train_model(
     # Impute dataframe, remove highly correlated features, and eliminate useless features
     X.fillna(0, inplace=True)
     X = drop_highly_correlated_features(X, threshold=0.95)
-    X, y = filter_ground_truth_outliers(X, y, ground_truth)
+    X, y = filter_labels_outliers(X, y, ground_truth)
     X = filter_outliers_z_scores(X, sigma=3.0)
 
     label_mean, label_std = float('inf'), float('inf')
@@ -79,8 +80,10 @@ def train_model(
         values = y.loc[:, ground_truth].values
         label_mean, label_std = values.mean(), values.std()
         y.loc[:, ground_truth] = (values - label_mean) / label_std
-    elif label_processing == "rpe":
-        y = normalize_rpe_values_min_max(y)
+    elif label_processing == "min_max":
+        y = normalize_labels_min_max(y, ground_truth)
+    elif label_processing == "trend":
+        y = calculate_trend_labels(y, ground_truth)
 
     X, _report_df = eliminate_features_with_rfe(X_train=X, y_train=y[ground_truth], step=25, n_features=n_features)
     _report_df.to_csv(join(log_path, "rfe_report.csv"))
@@ -321,5 +324,5 @@ if __name__ == "__main__":
         #     f"power.txt", escape=False,
         #     column_format="l" + "r" * (len(merge_df.columns))
         # )
-        evaluate_entire_experiment_path("results/hr", args.dst_path, aggregate=True)
-
+        # evaluate_entire_experiment_path("results/rpe_scaled", args.dst_path, aggregate=True)
+        merge_experiments("results/rpe_scaled", aggregate=False)
