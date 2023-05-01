@@ -33,9 +33,9 @@ def collect_data(file_path: str):
             durations_ecc.append(len(ecc_pos) * dist_s)
             durations_total.append(len(total_pos) * dist_s)
 
-            mean_vel_con.append(np.abs(np.mean(np.diff(con_pos) * dist_s)))
-            mean_vel_ecc.append(np.abs(np.mean(np.diff(ecc_pos) * dist_s)))
-            mean_vel_total.append(np.abs(np.mean(np.diff(total_pos) * dist_s)))
+            mean_vel_con.append(np.mean(np.abs(np.diff(con_pos) * dist_s)))
+            mean_vel_ecc.append(np.mean(np.abs(np.diff(ecc_pos) * dist_s)))
+            mean_vel_total.append(np.mean(np.abs(np.diff(total_pos) * dist_s)))
 
         flywheel_df["duration_con"] = durations_con
         flywheel_df["duration_ecc"] = durations_ecc
@@ -49,15 +49,9 @@ def collect_data(file_path: str):
     train_set.to_csv(file_path, index=False)
 
 
-def apply_physics(mean_velo: np.ndarray, durations: np.ndarray, bias: float = 0) -> np.ndarray:
-    predictions = []
-    for idx in range(mean_velo.shape[0]):
-        power = mean_velo[idx]
-        duration = durations[idx]
-        pred = 0 + bias
-        predictions.append(pred)
-
-    return np.ndarray(predictions)
+def apply_physics(mean_vel: float, durations: float, bias: float = 0) -> float:
+    pred = 0 + bias
+    return pred
 
 
 def calculate_bias(fw_power, a_mean_vel, durations) -> float:
@@ -65,10 +59,11 @@ def calculate_bias(fw_power, a_mean_vel, durations) -> float:
     ground_truth = []
     differences = []
     for idx in range(fw_power.shape[0]):
-        ground_truth.append(fw_power[idx])
+        power = fw_power[idx]
+        ground_truth.append(power)
         pred = apply_physics(fw_power[idx], a_mean_vel[idx], durations[idx])
         predictions.append(pred)
-        differences.append(ground_truth / pred)
+        differences.append(power / pred)
 
     mean_bias = np.mean(differences)
     return float(mean_bias)
@@ -79,15 +74,19 @@ def train_physical_model(df: pd.DataFrame, suffix: str) -> pd.DataFrame:
     subjects = df["subject"].unique()
     for subject in subjects:
         test_subject = df[df["subject"] == subject]
-        train_subjects = subjects[subjects != subject]
+        train_subjects = df[df["subject"] != subject]
+        power = train_subjects["powerAvg"].values
+        mean_vel = train_subjects["mean_vel_total"].values
+        durations = train_subjects["duration_total"].values
 
-        c = calculate_bias(train_subjects["powerAvg"], train_subjects["mean_vel_total"], train_subjects["duration_total"])
-        predictions = apply_physics(test_subject["mean_vel_total"], test_subject["durations_total"], c)
-        temp_df = {
-            "predictions": predictions,
-            "ground_truth": test_subject["powerAvg"]
-        }
+        bias = calculate_bias(power, mean_vel, durations)
+        predictions = []
+        for idx in range(test_subject.shape[0]):
+            predictions.append(apply_physics(test_subject["mean_vel_total"], test_subject["duration_total"], bias))
+
+        temp_df = {"predictions": predictions, "ground_truth": test_subject["powerAvg"]}
         temp_df = pd.DataFrame(temp_df)
+        temp_df["subject"] = subject
         result_df = pd.concat([result_df, temp_df], axis=0, ignore_index=True)
 
     return result_df
@@ -97,6 +96,6 @@ if __name__ == "__main__":
     file_name = "data/training/physical_model.csv"
     if not exists(file_name):
         collect_data(file_name)
-    df = pd.read_csv(file_name, index_col=0)
+    df = pd.read_csv(file_name)
     training_df = train_physical_model(df, "")
     evaluate_sample_predictions_individual(training_df, "test", ".")
