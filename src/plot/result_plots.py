@@ -157,6 +157,7 @@ def plot_subject_performance(df: pd.DataFrame, dst_path: str):
     fig, axs = plt.subplots(1, 1, figsize=(column_width * cm, column_width * cm / 2), dpi=dpi)
     axs.bar([f"{i+1:2d}" for i in range(len(subjects))], metrics)
     # plt.title("Spearman's Rho")
+    plt.ylim([0, 1])
     plt.xlabel("Subjects")
     plt.ylabel("Spearman's Rho")
     plt.tight_layout()

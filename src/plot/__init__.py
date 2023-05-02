@@ -10,3 +10,5 @@ from .latex_tables import (
     create_train_table,
     create_retrain_table,
 )
+
+from .bland_altman import create_bland_altman_plot

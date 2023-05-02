@@ -10,6 +10,7 @@ from src.plot import (
     create_train_table,
     create_retrain_table,
     plot_subject_performance,
+    create_bland_altman_plot,
 )
 
 from src.dataset import (
@@ -178,11 +179,13 @@ def evaluate_entire_experiment_path(
             df = aggregate_results(df, weighting=False)
 
         evaluate_sample_predictions_individual(value_df=df, exp_name=exp_name, dst_path=join(dst_path, model))
-        # evaluate_aggregated_predictions(df, "rpe", join(dst_path, model))
         # plot_subject_performance(df, join(dst_path, model))
+        create_bland_altman_plot(df, join(dst_path), model)
+
         retrain_df = pd.concat([retrain_df, df])
 
     final_df = create_retrain_table(retrain_df, dst_path)
+    final_df.to_csv(join(dst_path, "retrain_results.csv"))
     return final_df
 
 
@@ -259,8 +262,8 @@ if __name__ == "__main__":
     parser.add_argument("--result_path", type=str, dest="result_path", default="results")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments_ml")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation")
-    parser.add_argument("--train", type=bool, dest="train", default=True)
-    parser.add_argument("--eval", type=bool, dest="eval", default=False)
+    parser.add_argument("--train", type=bool, dest="train", default=False)
+    parser.add_argument("--eval", type=bool, dest="eval", default=True)
     args = parser.parse_args()
 
     if args.train:
@@ -330,5 +333,6 @@ if __name__ == "__main__":
         #     f"power.txt", escape=False,
         #     column_format="l" + "r" * (len(merge_df.columns))
         # )
-        evaluate_entire_experiment_path("results/rpe_temp", args.dst_path, aggregate=True)
-        # merge_experiments("results/hr_trend", aggregate=False)
+        evaluate_entire_experiment_path("results/powercon", args.dst_path, aggregate=False)
+        # evaluate_entire_experiment_path("results/rpe_temp", args.dst_path, "con_ecc", aggregate=True)
+        # merge_experiments("results/hr", aggregate=False)

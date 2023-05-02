@@ -1,6 +1,7 @@
 from data_processing import iterate_segmented_data
 from src.processing import segment_kinect_signal
-from src.plot import evaluate_sample_predictions_individual
+from src.dataset import filter_labels_outliers_per_subject
+from src.plot import evaluate_sample_predictions_individual, create_retrain_table, create_bland_altman_plot
 from os.path import exists
 
 import pandas as pd
@@ -54,7 +55,8 @@ def collect_data(file_path: str):
 
 
 def calculate_power(mean_velocity: float, duration: float) -> float:
-    power_kinect = m_wheel * mean_velocity ** 2 / (2 * r_wheel ** 2 * duration)
+    delta = 0.3
+    power_kinect = m_wheel * mean_velocity ** 2 / (2 * r_wheel ** 2 * (duration - delta))
     return power_kinect
 
 
@@ -109,6 +111,30 @@ if __name__ == "__main__":
     if not exists(file_name):
         collect_data(file_name)
     df = pd.read_csv(file_name)
-    exp = "Ecc"
-    training_df = train_physical_model(df, exp)
-    evaluate_sample_predictions_individual(training_df, "test", f"physics_results_{exp}")
+
+    train = False
+    if train:
+        for exp in ["Con", "Ecc"]:
+            y = df[["power" + exp, "subject"]]
+            df, _ = filter_labels_outliers_per_subject(df, y, label_col="power" + exp)
+
+            res_df = train_physical_model(df, exp)
+            res_df.to_csv(f"results_{exp}.csv", index=False)
+            res_df["model"] = "Physics"
+            physics_res_df = create_retrain_table(res_df, ".")
+            physics_res_df.to_csv(f"{exp}_results.csv")
+
+            create_bland_altman_plot(res_df, log_path=".", file_name=exp)
+            evaluate_sample_predictions_individual(res_df, "test", f"physics_results_{exp}")
+
+    # Concentric
+    con_df = pd.read_csv("evaluation/powercon/retrain_results.csv", index_col=0)
+    physics_df = pd.read_csv("Con_results.csv", index_col=0)
+    total_df = pd.concat([con_df, physics_df], axis=1, ignore_index=False)
+    total_df.to_latex("Concentric_final.txt", escape=False, column_format="l" + "r" * (len(total_df.columns)))
+
+    ecc_df = pd.read_csv("evaluation/powerecc/retrain_results.csv", index_col=0)
+    physics_df = pd.read_csv("Ecc_results.csv", index_col=0)
+    total_df = pd.concat([ecc_df, physics_df], axis=1, ignore_index=True)
+    total_df.to_csv("Eccentric_final.csv")
+

@@ -55,7 +55,7 @@ def create_retrain_table(results: pd.DataFrame, dst_path: str) -> pd.DataFrame:
         data_entries.append(res)
 
     final_df = pd.DataFrame.from_records(data_entries, index=list(map(lambda x: x.upper(), models))).T
-    final_df.to_latex(join(dst_path, "retrain_results.txt"), escape=False)
+    final_df.to_latex(join(dst_path, "retrain_results_latex.txt"), escape=False)
     return final_df
 
 
