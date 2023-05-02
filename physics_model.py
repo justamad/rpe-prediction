@@ -20,9 +20,9 @@ def collect_data(file_path: str):
     for trial in iterate_segmented_data(src_path, "full", plot=False, plot_path="data/plots"):
         rpe, subject, set_id, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
         con_reps, _ = segment_kinect_signal(pos_df["PELVIS (y)"], prominence=0.01, std_dev_p=0.4, min_dist_p=0.5,
-                                            min_time=30, mode="concentric", show=False, )
+                                            min_time=30, mode="concentric", show=False)
         ecc_reps, full_reps = segment_kinect_signal(pos_df["PELVIS (y)"], prominence=0.01, std_dev_p=0.4,
-                                                    min_dist_p=0.5, min_time=30, mode="eccentric", show=False, )
+                                                    min_dist_p=0.5, min_time=30, mode="eccentric", show=False)
 
         durations_con, durations_ecc, durations_total = [], [], []
         mean_vel_con, mean_vel_ecc, mean_vel_total = [], [], []
@@ -41,12 +41,12 @@ def collect_data(file_path: str):
             mean_vel_total.append(np.abs(np.diff(total_pos) / delta_t).mean())
 
         flywheel_df = flywheel_df.copy()
-        flywheel_df.loc[:, "duration_con"] = durations_con
-        flywheel_df.loc[:, "duration_ecc"] = durations_ecc
-        flywheel_df.loc[:, "duration_total"] = durations_total
-        flywheel_df.loc[:, "mean_vel_con"] = mean_vel_con
-        flywheel_df.loc[:, "mean_vel_ecc"] = mean_vel_ecc
-        flywheel_df.loc[:, "mean_vel_total"] = mean_vel_total
+        flywheel_df.loc[:, "durationCon"] = durations_con
+        flywheel_df.loc[:, "durationEcc"] = durations_ecc
+        flywheel_df.loc[:, "durationTotal"] = durations_total
+        flywheel_df.loc[:, "velocityCon"] = mean_vel_con
+        flywheel_df.loc[:, "velocityEcc"] = mean_vel_ecc
+        flywheel_df.loc[:, "velocityTotal"] = mean_vel_total
         flywheel_df.loc[:, "subject"] = subject
         train_set = pd.concat([train_set, flywheel_df], axis=0, ignore_index=True)
 
@@ -58,21 +58,21 @@ def calculate_power(mean_velocity: float, duration: float) -> float:
     return power_kinect
 
 
-def calculate_correction(fw_power: np.ndarray, fw_duration: np.ndarray, mean_vel: np.ndarray, durations: np.ndarray) -> float:
+def calculate_correction(fw_power: np.ndarray, mean_vel: np.ndarray, durations: np.ndarray) -> float:
     predictions = []
     ground_truth = []
-    radii = []
+    # radii = []
 
     for idx in range(fw_power.shape[0]):
         ground_truth.append(fw_power)
-        radius = np.sqrt((m_wheel * mean_vel ** 2) / (2 * fw_power * fw_duration))
-        radii.append(radius)
+        # radius = np.sqrt((m_wheel * mean_vel ** 2) / (2 * fw_power * fw_duration))
+        # radii.append(radius)
 
         pred = calculate_power(mean_vel[idx], durations[idx])
         predictions.append(pred)
 
     mean_bias = np.mean(np.array(ground_truth) / np.array(predictions))
-    print(f"Radius Mean: {np.mean(radii)}, Radius Std: {np.std(radii)}")
+    # print(f"Radius Mean: {np.mean(radii)}, Radius Std: {np.std(radii)}")
     return float(mean_bias)
 
 
@@ -83,12 +83,12 @@ def train_physical_model(df: pd.DataFrame, suffix: str) -> pd.DataFrame:
         test_subject = df[df["subject"] == subject]
         train_subjects = df[df["subject"] != subject]
         bias = calculate_correction(
-            train_subjects["powerAvg"].values,
-            train_subjects["duration"].values,
-            train_subjects["mean_vel_total"].values,
-            train_subjects["duration_total"].values,
+            train_subjects["power" + suffix].values,
+            # train_subjects["duration"].values,
+            train_subjects["velocity" + suffix].values,
+            train_subjects["duration" + suffix].values,
         )
-        predictions = [calculate_power(vel, dur) for vel, dur in zip(test_subject["mean_vel_total"], test_subject["duration_total"])]
+        predictions = [calculate_power(vel, dur) for vel, dur in zip(test_subject["velocity" + suffix], test_subject["duration" + suffix])]
         predictions = np.array(predictions) * bias
 
         # plt.plot(predictions, label="predictions")
@@ -109,5 +109,6 @@ if __name__ == "__main__":
     if not exists(file_name):
         collect_data(file_name)
     df = pd.read_csv(file_name)
-    training_df = train_physical_model(df, "")
-    evaluate_sample_predictions_individual(training_df, "test", "physics_results")
+    exp = "Ecc"
+    training_df = train_physical_model(df, exp)
+    evaluate_sample_predictions_individual(training_df, "test", f"physics_results_{exp}")

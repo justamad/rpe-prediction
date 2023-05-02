@@ -7,11 +7,12 @@ drop_prefixes:
 - PHYSILOG
 - FLYWHEEL
 ground_truth: HRV_Mean HR (1/min)
-normalization_input: global
-normalization_labels: global
+normalization_input: subject
+normalization_labels: False
+label_processing: False
+opt_n_features: [25, 50]
+opt_rolling_statistics: [5, 10]
 search: grid
 task: regression
-balancing: False
-opt_n_features: [25, 50, 75, 100]
-temporal_features: False
+balancing: True
 n_splits: 16

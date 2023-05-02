@@ -8,9 +8,10 @@ drop_prefixes:
 ground_truth: FLYWHEEL_powerCon
 normalization_input: global
 normalization_labels: global
+label_processing: False
+opt_n_features: [25, 50, 75, 100]
 search: grid
 task: regression
 balancing: False
-opt_n_features: [25, 50, 75, 100]
-temporal_features: False
 n_splits: 16
+rolling_statistics: False

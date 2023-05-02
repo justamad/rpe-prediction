@@ -7,10 +7,11 @@ drop_prefixes:
 - FLYWHEEL
 ground_truth: rpe
 normalization_input: subject
-opt_n_features: [25, 50, 75, 100]
-temporal_features: False
+normalization_labels: False
+label_processing: False
+opt_n_features: [25, 50]
+opt_rolling_statistics: [5, 10]
 search: grid
 task: regression
 balancing: True
-normalization_labels: False
 n_splits: 16

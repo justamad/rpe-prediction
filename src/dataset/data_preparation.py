@@ -100,21 +100,23 @@ def clip_outliers_z_scores(df: pd.DataFrame, sigma: float = 3.0):
     return df
 
 
-def filter_labels_outliers(
+def filter_labels_outliers_per_subject(
         X: Union[np.ndarray, pd.DataFrame],
         y: pd.DataFrame,
-        gt: Union[str, List[str]],
+        label_col: str,
         threshold: float = 3.1,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    abs_z_scores = np.abs(stats.zscore(y[gt]))
+    if "subject" not in y.columns:
+        raise ValueError("Subject column not in dataframe.")
 
-    if isinstance(abs_z_scores, pd.Series):
-        filtered_entries = abs_z_scores < threshold
-    else:
-        filtered_entries = (abs_z_scores < threshold).all(axis=1)
+    final_mask = np.ones(len(y), dtype=bool)
+    for subject in y["subject"].unique():
+        mask = y["subject"] == subject
+        abs_z_scores = np.abs(stats.zscore(y.loc[mask, label_col]))
+        final_mask[mask] = (abs_z_scores < threshold)
 
-    X = X[filtered_entries]
-    y = y[filtered_entries]
+    X = X[final_mask]
+    y = y[final_mask]
     return X, y
 
 

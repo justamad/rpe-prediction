@@ -7,7 +7,7 @@ from .data_preparation import (
     clip_outliers_z_scores,
     normalize_labels_min_max,
     normalize_data_global,
-    filter_labels_outliers,
+    filter_labels_outliers_per_subject,
     drop_highly_correlated_features,
     calculate_trend_labels,
     add_lag_feature,

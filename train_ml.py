@@ -16,12 +16,11 @@ from src.dataset import (
     extract_dataset_input_output,
     normalize_data_by_subject,
     normalize_data_global,
-    filter_labels_outliers,
+    filter_labels_outliers_per_subject,
     clip_outliers_z_scores,
     drop_highly_correlated_features,
     normalize_labels_min_max,
     calculate_trend_labels,
-    add_lag_feature,
     add_rolling_statistics,
 )
 
@@ -33,6 +32,7 @@ import os
 import yaml
 import matplotlib
 matplotlib.use("WebAgg")
+import matplotlib.pyplot as plt
 
 
 def train_model(
@@ -45,7 +45,7 @@ def train_model(
         n_features: int,
         ground_truth: str,
         n_splits: int,
-        rolling_statistics: Union[str, bool],
+        rolling_statistics: Union[int, bool],
         label_processing: Union[str, bool],
         balancing: bool = False,
         drop_columns: List = None,
@@ -74,10 +74,10 @@ def train_model(
     # Impute dataframe, remove highly correlated features, and eliminate useless features
     X.fillna(0, inplace=True)
     X = drop_highly_correlated_features(X, threshold=0.95)
-    X, y = filter_labels_outliers(X, y, ground_truth)
+    X, y = filter_labels_outliers_per_subject(X, y, ground_truth, threshold=3.0)
     X = clip_outliers_z_scores(X, sigma=3.0)
 
-    label_mean, label_std = float('inf'), float('inf')
+    label_mean, label_std = float("inf"), float("inf")
     if normalization_labels:
         values = y.loc[:, ground_truth].values
         label_mean, label_std = values.mean(), values.std()
