@@ -412,4 +412,4 @@ if __name__ == "__main__":
     # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="full", plot=args.show, plot_path=args.plot_path)
 
     # prepare_segmented_data_for_dl(args.proc_path, mode="padding", dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
-    prepare_data_for_dl_sliding_window(args.proc_path, win_size=45, overlap=0.5, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
+    prepare_data_for_dl_sliding_window(args.proc_path, win_size=60, overlap=0.95, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)

@@ -13,3 +13,4 @@ cm = 1/2.54  # Convert centimeters to inches
 text_width = 17.7917
 column_width = 8.47415
 dpi = 300
+line_width = 1.0

@@ -1,9 +1,10 @@
-from .plot_settings import column_width, cm, dpi
+from .plot_settings import column_width, cm, dpi, line_width
 from typing import Dict
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, mean_absolute_percentage_error
-from scipy.stats import spearmanr
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error
+from scipy.stats import spearmanr, linregress
 from os.path import join, exists
 from os import makedirs
+from matplotlib.ticker import MaxNLocator, MultipleLocator, AutoLocator
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -14,9 +15,9 @@ logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
 y_labels = {
     "rpe": "RPE",
-    "hr": "Mean Heart Rate (1/min",
-    "powercon": "Power",
-    "powerecc": "Power",
+    "hr": "Mean Heart Rate (1/min)",
+    "powercon": "Power [Watts]",
+    "powerecc": "Power [Watts]",
 }
 
 
@@ -91,9 +92,7 @@ def evaluate_sample_predictions_individual(
 
         r2 = r2_score(ground_truth, predictions)
         mape = mean_absolute_percentage_error(predictions, ground_truth)
-        # mae = mean_absolute_error(predictions, ground_truth)
         sp, _ = spearmanr(ground_truth, predictions)
-        rmse = mean_squared_error(predictions, ground_truth, squared=False)
 
         plt.figure(figsize=(column_width * cm, column_width * cm), dpi=dpi)
         plt.plot(ground_truth, label="Ground Truth")
@@ -145,7 +144,7 @@ def evaluate_nr_features(df: pd.DataFrame, dst_path: str):
     plt.close()
 
 
-def plot_subject_performance(df: pd.DataFrame, dst_path: str):
+def plot_subject_correlations(df: pd.DataFrame, dst_path: str):
     metrics = []
     subjects = df["subject"].unique()
     for subject in df["subject"].unique():
@@ -168,4 +167,73 @@ def plot_subject_performance(df: pd.DataFrame, dst_path: str):
     plt.savefig(join(dst_path, "subject_performance.pdf"))
     # plt.show()
     plt.clf()
+    plt.close()
+
+
+def create_scatter_plot(
+        df: pd.DataFrame,
+        log_path: str,
+        file_name: str,
+        min_value: float = None,
+        max_value: float = None,
+):
+    ground_truth = df.loc[:, "ground_truth"]
+    prediction = df.loc[:, "prediction"]
+
+    slope, intercept, r_value, p_value_1, std_error_1 = linregress(ground_truth, prediction)
+    rmse = np.sqrt(mean_squared_error(ground_truth, prediction))
+    r2 = r_value ** 2
+
+    if min_value is None:
+        min_value = min(ground_truth.min(), prediction.min())
+
+    if max_value is None:
+        max_value = max(ground_truth.max(), prediction.max())
+
+    x_values = np.arange(int(min_value * 100), int(max_value * 100 + 50)) / 100
+    y_values = intercept + slope * x_values
+
+    fig = plt.figure(figsize=(column_width * cm, column_width * cm), dpi=dpi)
+    ax = fig.add_subplot(111)
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["bottom"].set_linewidth(line_width)
+    ax.spines["left"].set_linewidth(line_width)
+
+    plt.plot(x_values, x_values, '-', color="gray", linewidth=line_width)
+    plt.plot(x_values, y_values, '--', color="red", linewidth=line_width)
+
+    sign = "+" if intercept > 0 else ""
+    margin = (max_value - min_value) * 0.95
+    plt.text(
+        min_value + margin,
+        max_value - margin,
+        f"$RMSE={rmse:.2f}$\n$R^{{2}}={r2:.2f}$\n$y={slope:.2f}x{sign}{intercept:.2f}$",
+        style="italic",
+        horizontalalignment="right",
+    )
+
+    plt.scatter(ground_truth, prediction)  # , # s=BLOB_SIZE, # alpha=0.5, # cmap="gray",
+
+    plt.xlim(([min_value, max_value]))
+    plt.ylim(([min_value, max_value]))
+    # ax.xaxis.set_major_locator(MultipleLocator(1))
+    # ax.xaxis.set_major_locator(MultipleLocator(1))
+    ax.yaxis.set_major_locator(AutoLocator())
+    ax.yaxis.set_major_locator(AutoLocator())
+
+    ax.set_xlabel(f"Ground Truth")
+    ax.set_ylabel(f"Prediction")
+    # ax.legend(loc="upper left")
+
+    plt.title(f"N={len(ground_truth)}")
+    plt.tight_layout()
+
+    if not exists(log_path):
+        makedirs(log_path)
+
+    plt.savefig(join(log_path, f"{file_name}_scatter.pdf"))
+    plt.clf()
+    plt.cla()
     plt.close()

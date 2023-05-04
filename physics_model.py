@@ -1,8 +1,14 @@
 from data_processing import iterate_segmented_data
 from src.processing import segment_kinect_signal
 from src.dataset import filter_labels_outliers_per_subject
-from src.plot import evaluate_sample_predictions_individual, create_retrain_table, create_bland_altman_plot
 from os.path import exists
+
+from src.plot import (
+    evaluate_sample_predictions_individual,
+    create_retrain_table,
+    create_bland_altman_plot,
+    create_scatter_plot,
+)
 
 import pandas as pd
 import numpy as np
@@ -44,10 +50,10 @@ def collect_data(file_path: str):
         flywheel_df = flywheel_df.copy()
         flywheel_df.loc[:, "durationCon"] = durations_con
         flywheel_df.loc[:, "durationEcc"] = durations_ecc
-        flywheel_df.loc[:, "durationTotal"] = durations_total
+        flywheel_df.loc[:, "durationAvg"] = durations_total
         flywheel_df.loc[:, "velocityCon"] = mean_vel_con
         flywheel_df.loc[:, "velocityEcc"] = mean_vel_ecc
-        flywheel_df.loc[:, "velocityTotal"] = mean_vel_total
+        flywheel_df.loc[:, "velocityAvg"] = mean_vel_total
         flywheel_df.loc[:, "subject"] = subject
         train_set = pd.concat([train_set, flywheel_df], axis=0, ignore_index=True)
 
@@ -63,18 +69,13 @@ def calculate_power(mean_velocity: float, duration: float) -> float:
 def calculate_correction(fw_power: np.ndarray, mean_vel: np.ndarray, durations: np.ndarray) -> float:
     predictions = []
     ground_truth = []
-    # radii = []
 
     for idx in range(fw_power.shape[0]):
         ground_truth.append(fw_power)
-        # radius = np.sqrt((m_wheel * mean_vel ** 2) / (2 * fw_power * fw_duration))
-        # radii.append(radius)
-
         pred = calculate_power(mean_vel[idx], durations[idx])
         predictions.append(pred)
 
     mean_bias = np.mean(np.array(ground_truth) / np.array(predictions))
-    # print(f"Radius Mean: {np.mean(radii)}, Radius Std: {np.std(radii)}")
     return float(mean_bias)
 
 
@@ -86,17 +87,11 @@ def train_physical_model(df: pd.DataFrame, suffix: str) -> pd.DataFrame:
         train_subjects = df[df["subject"] != subject]
         bias = calculate_correction(
             train_subjects["power" + suffix].values,
-            # train_subjects["duration"].values,
             train_subjects["velocity" + suffix].values,
             train_subjects["duration" + suffix].values,
         )
         predictions = [calculate_power(vel, dur) for vel, dur in zip(test_subject["velocity" + suffix], test_subject["duration" + suffix])]
         predictions = np.array(predictions) * bias
-
-        # plt.plot(predictions, label="predictions")
-        # plt.plot(test_subject["powerAvg"].values, label="ground_truth")
-        # plt.legend()
-        # plt.show()
 
         temp_df = {"prediction": predictions, "ground_truth": test_subject["powerAvg"]}
         temp_df = pd.DataFrame(temp_df)
@@ -112,9 +107,9 @@ if __name__ == "__main__":
         collect_data(file_name)
     df = pd.read_csv(file_name)
 
-    train = False
+    train = True
     if train:
-        for exp in ["Con", "Ecc"]:
+        for exp in ["Avg", "Con", "Ecc"]:
             y = df[["power" + exp, "subject"]]
             df, _ = filter_labels_outliers_per_subject(df, y, label_col="power" + exp)
 
@@ -126,6 +121,7 @@ if __name__ == "__main__":
 
             create_bland_altman_plot(res_df, log_path=".", file_name=exp)
             evaluate_sample_predictions_individual(res_df, "test", f"physics_results_{exp}")
+            create_scatter_plot(res_df, log_path=".", file_name=exp)
 
     # Concentric
     con_df = pd.read_csv("evaluation/powercon/retrain_results.csv", index_col=0)
@@ -135,6 +131,11 @@ if __name__ == "__main__":
 
     ecc_df = pd.read_csv("evaluation/powerecc/retrain_results.csv", index_col=0)
     physics_df = pd.read_csv("Ecc_results.csv", index_col=0)
-    total_df = pd.concat([ecc_df, physics_df], axis=1, ignore_index=True)
-    total_df.to_csv("Eccentric_final.csv")
+    total_df = pd.concat([ecc_df, physics_df], axis=1, ignore_index=False)
+    total_df.to_latex("Eccentric_final.txt", escape=False, column_format="l" + "r" * (len(total_df.columns)))
+
+    avg_df = pd.read_csv("evaluation/poweravg/retrain_results.csv", index_col=0)
+    physics_df = pd.read_csv("Avg_results.csv", index_col=0)
+    total_df = pd.concat([avg_df, physics_df], axis=1, ignore_index=False)
+    total_df.to_latex("Average_final.txt", escape=False, column_format="l" + "r" * (len(total_df.columns)))
 

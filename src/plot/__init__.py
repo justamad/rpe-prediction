@@ -3,7 +3,8 @@ from .result_plots import (
     evaluate_sample_predictions,
     evaluate_sample_predictions_individual,
     evaluate_nr_features,
-    plot_subject_performance,
+    plot_subject_correlations,
+    create_scatter_plot,
 )
 
 from .latex_tables import (

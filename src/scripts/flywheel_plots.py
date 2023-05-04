@@ -1,5 +1,5 @@
 from scipy.stats import pearsonr, linregress
-from src.dataset import filter_outliers_z_scores
+from src.dataset import clip_outliers_z_scores
 from os.path import join
 
 import matplotlib
@@ -110,11 +110,11 @@ correlation_df = pd.DataFrame()
 for subject in df["subject"].unique():
     sub_df = df[df["subject"] == subject]
     l1 = len(sub_df)
-    sub_df = filter_outliers_z_scores(sub_df, "duration", sigma=2.0)
-    sub_df = filter_outliers_z_scores(sub_df, "rep_range", sigma=2.0)
-    sub_df = filter_outliers_z_scores(sub_df, "powerCon", sigma=3.0)
-    sub_df = filter_outliers_z_scores(sub_df, "powerEcc", sigma=3.0)
-    sub_df = filter_outliers_z_scores(sub_df, "powerAvg", sigma=3.0)
+    sub_df = clip_outliers_z_scores(sub_df, "duration", sigma=2.0)
+    sub_df = clip_outliers_z_scores(sub_df, "rep_range", sigma=2.0)
+    sub_df = clip_outliers_z_scores(sub_df, "powerCon", sigma=3.0)
+    sub_df = clip_outliers_z_scores(sub_df, "powerEcc", sigma=3.0)
+    sub_df = clip_outliers_z_scores(sub_df, "powerAvg", sigma=3.0)
     l2 = len(sub_df)
     print(f"Filtered {l1 - l2} outliers for subject {subject}")
     sub_df.reset_index(inplace=True)

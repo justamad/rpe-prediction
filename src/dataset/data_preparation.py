@@ -109,11 +109,12 @@ def filter_labels_outliers_per_subject(
     if "subject" not in y.columns:
         raise ValueError("Subject column not in dataframe.")
 
-    final_mask = np.ones(len(y), dtype=bool)
+    final_mask = np.zeros(len(y), dtype=bool)
     for subject in y["subject"].unique():
-        mask = y["subject"] == subject
+        mask = np.array(y["subject"] == subject)
         abs_z_scores = np.abs(stats.zscore(y.loc[mask, label_col]))
-        final_mask[mask] = (abs_z_scores < threshold)
+        filtered = np.array(abs_z_scores < threshold)
+        final_mask[mask] = filtered
 
     X = X[final_mask]
     y = y[final_mask]

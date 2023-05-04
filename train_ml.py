@@ -6,11 +6,11 @@ from os.path import join, exists
 
 from src.plot import (
     evaluate_sample_predictions_individual,
-    evaluate_nr_features,
     create_train_table,
     create_retrain_table,
-    plot_subject_performance,
+    plot_subject_correlations,
     create_bland_altman_plot,
+    create_scatter_plot,
 )
 
 from src.dataset import (
@@ -179,8 +179,9 @@ def evaluate_entire_experiment_path(
             df = aggregate_results(df, weighting=False)
 
         evaluate_sample_predictions_individual(value_df=df, exp_name=exp_name, dst_path=join(dst_path, model))
-        # plot_subject_performance(df, join(dst_path, model))
+        plot_subject_correlations(df, join(dst_path, model))
         create_bland_altman_plot(df, join(dst_path), model)
+        create_scatter_plot(df, dst_path, model)
 
         retrain_df = pd.concat([retrain_df, df])
 
@@ -333,6 +334,6 @@ if __name__ == "__main__":
         #     f"power.txt", escape=False,
         #     column_format="l" + "r" * (len(merge_df.columns))
         # )
-        evaluate_entire_experiment_path("results/powercon", args.dst_path, aggregate=False)
-        # evaluate_entire_experiment_path("results/rpe_temp", args.dst_path, "con_ecc", aggregate=True)
+        # evaluate_entire_experiment_path("results/powercon", args.dst_path, aggregate=False)
+        evaluate_entire_experiment_path("results/poweravg", args.dst_path, aggregate=False)
         # merge_experiments("results/hr", aggregate=False)

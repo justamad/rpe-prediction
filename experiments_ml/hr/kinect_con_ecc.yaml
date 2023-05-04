@@ -1,5 +1,6 @@
 training_file:
-  - full_stat.csv
+  - concentric_stat.csv
+  - eccentric_stat.csv
 drop_columns: []
 drop_prefixes:
 - HRV
@@ -13,5 +14,5 @@ opt_n_features: [25, 50]
 opt_rolling_statistics: [5, 10]
 search: grid
 task: regression
-balancing: True
+balancing: False
 n_splits: 16
