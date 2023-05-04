@@ -109,7 +109,7 @@ if __name__ == "__main__":
 
     train = True
     if train:
-        for exp in ["Avg", "Con", "Ecc"]:
+        for exp in ["Avg"]:  # , "Con", "Ecc"]:
             y = df[["power" + exp, "subject"]]
             df, _ = filter_labels_outliers_per_subject(df, y, label_col="power" + exp)
 
@@ -120,19 +120,19 @@ if __name__ == "__main__":
             physics_res_df.to_csv(f"{exp}_results.csv")
 
             create_bland_altman_plot(res_df, log_path=".", file_name=exp)
-            plot_sample_predictions(res_df, "test", f"physics_results_{exp}")
-            create_scatter_plot(res_df, log_path=".", file_name=exp)
+            plot_sample_predictions(res_df, "poweravg", f"physics_results_{exp}")
+            create_scatter_plot(res_df, log_path=".", file_name=exp, exp_name="poweravg")
 
     # Concentric
-    con_df = pd.read_csv("evaluation/powercon/retrain_results.csv", index_col=0)
-    physics_df = pd.read_csv("Con_results.csv", index_col=0)
-    total_df = pd.concat([con_df, physics_df], axis=1, ignore_index=False)
-    total_df.to_latex("Concentric_final.txt", escape=False, column_format="l" + "r" * (len(total_df.columns)))
-
-    ecc_df = pd.read_csv("evaluation/powerecc/retrain_results.csv", index_col=0)
-    physics_df = pd.read_csv("Ecc_results.csv", index_col=0)
-    total_df = pd.concat([ecc_df, physics_df], axis=1, ignore_index=False)
-    total_df.to_latex("Eccentric_final.txt", escape=False, column_format="l" + "r" * (len(total_df.columns)))
+    # con_df = pd.read_csv("evaluation/powercon/retrain_results.csv", index_col=0)
+    # physics_df = pd.read_csv("Con_results.csv", index_col=0)
+    # total_df = pd.concat([con_df, physics_df], axis=1, ignore_index=False)
+    # total_df.to_latex("Concentric_final.txt", escape=False, column_format="l" + "r" * (len(total_df.columns)))
+    #
+    # ecc_df = pd.read_csv("evaluation/powerecc/retrain_results.csv", index_col=0)
+    # physics_df = pd.read_csv("Ecc_results.csv", index_col=0)
+    # total_df = pd.concat([ecc_df, physics_df], axis=1, ignore_index=False)
+    # total_df.to_latex("Eccentric_final.txt", escape=False, column_format="l" + "r" * (len(total_df.columns)))
 
     avg_df = pd.read_csv("evaluation/poweravg/retrain_results.csv", index_col=0)
     physics_df = pd.read_csv("Avg_results.csv", index_col=0)

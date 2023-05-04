@@ -180,7 +180,7 @@ def evaluate_entire_experiment_path(
         plot_sample_predictions(value_df=df, exp_name=exp_name, dst_path=join(dst_path, model))
         plot_subject_correlations(df, join(dst_path, model))
         create_bland_altman_plot(df, join(dst_path), model)
-        create_scatter_plot(df, dst_path, model)
+        create_scatter_plot(df, dst_path, model, exp_name)
 
         retrain_df = pd.concat([retrain_df, df])
 
@@ -296,8 +296,7 @@ if __name__ == "__main__":
                 for combination in itertools.product(*elements.values()):
                     combination = dict(zip(elements.keys(), combination))
                     exp_cfg.update(combination)
-                    cur_name = exp_name.replace(".yaml", "_") + "_".join(
-                        [f"{key}_{value}" for key, value in combination.items()])
+                    cur_name = exp_name.replace(".yaml", "_") + "_".join([f"{k}_{v}" for k, v in combination.items()])
 
                     logging.info(f"Start to process experiment: {cur_name}")
                     log_path = join(args.result_path, experiment_folder,
@@ -334,7 +333,7 @@ if __name__ == "__main__":
         #     f"power.txt", escape=False,
         #     column_format="l" + "r" * (len(merge_df.columns))
         # )
-        # evaluate_entire_experiment_path("results/poweravg", args.dst_path, aggregate=False)
+        evaluate_entire_experiment_path("results/rpe", args.dst_path, "con_ecc", aggregate=False)
         # evaluate_entire_experiment_path("results/hr", args.dst_path, "con_ecc", aggregate=False)
 
-        merge_experiments("results/hr", aggregate=False)
+        # merge_experiments("results/hr", aggregate=False)

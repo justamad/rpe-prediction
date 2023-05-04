@@ -10,8 +10,8 @@ import pandas as pd
 import numpy as np
 
 
-y_labels = {"rpe": "RPE [Borg Scale]", "hr": "Heart Rate [1/min]", "power": "Power [Watts]",}
-y_limits = {"rpe": (11, 21), "hr": (90, 200), "power": (0, 700),}
+y_labels = {"rpe": "RPE [Borg Scale]", "hr": "Heart Rate [1/min]", "poweravg": "Power [Watts]",}
+y_limits = {"rpe": (11, 21), "hr": (90, 200), "poweravg": (0, 300),}
 
 
 def plot_sample_predictions(
@@ -22,7 +22,7 @@ def plot_sample_predictions(
         label_col: str = "ground_truth"
 ):
     if exp_name not in y_labels or exp_name not in y_limits:
-        raise ValueError(f"Unknown experiment name '{exp_name}'")
+        raise ValueError(f"Unknown experiment '{exp_name}' for plotting predictions.")
 
     for subject_name in value_df["subject"].unique():
         subject_df = value_df[value_df["subject"] == subject_name]
@@ -95,7 +95,7 @@ def plot_subject_correlations(df: pd.DataFrame, dst_path: str):
         print(f"{subject}: {metric:.2f} ({p_value:.2f})")
 
     fig, axs = plt.subplots(1, 1, figsize=(column_width * cm, column_width * cm / 2), dpi=dpi)
-    axs.bar([f"{i+1:2d}" for i in range(len(subjects))], metrics)
+    axs.bar([f"{i+1:2d}" for i in range(len(subjects))], metrics, color="darkgray")
     # plt.title("Spearman's Rho")
     plt.ylim([0, 1])
     plt.xlabel("Subjects")
@@ -115,9 +115,10 @@ def create_scatter_plot(
         df: pd.DataFrame,
         log_path: str,
         file_name: str,
-        min_value: float = None,
-        max_value: float = None,
+        exp_name: str,
 ):
+    max_limits = {"poweravg": 800}
+
     ground_truth = df.loc[:, "ground_truth"]
     prediction = df.loc[:, "prediction"]
 
@@ -125,10 +126,10 @@ def create_scatter_plot(
     rmse = np.sqrt(mean_squared_error(ground_truth, prediction))
     r2 = r_value ** 2
 
-    if min_value is None:
-        min_value = min(ground_truth.min(), prediction.min())
-
-    if max_value is None:
+    min_value = 0
+    if exp_name in max_limits:
+        max_value = max_limits[exp_name]
+    else:
         max_value = max(ground_truth.max(), prediction.max())
 
     x_values = np.arange(int(min_value * 100), int(max_value * 100 + 50)) / 100
@@ -155,18 +156,16 @@ def create_scatter_plot(
         horizontalalignment="right",
     )
 
-    plt.scatter(ground_truth, prediction, s=blob_size, c="gray", alpha=1.0),
-
+    plt.scatter(ground_truth, prediction, s=blob_size, c="gray", alpha=0.5),
     plt.xlim(([min_value, max_value]))
     plt.ylim(([min_value, max_value]))
+
     locator = AutoLocator()
     ax.xaxis.set_major_locator(locator)
     ax.yaxis.set_major_locator(locator)
 
     ax.set_xlabel(f"Ground Truth")
     ax.set_ylabel(f"Prediction")
-
-    # plt.title(f"N={len(ground_truth)}")
     plt.tight_layout()
 
     if not exists(log_path):
@@ -200,7 +199,7 @@ def create_bland_altman_plot(
     std_diff = np.std(diffs, axis=0)
 
     # Plot individual gait speed colors
-    ax.scatter(means, diffs, s=blob_size, c="gray", alpha=1.0)
+    ax.scatter(means, diffs, s=blob_size, c="gray", alpha=0.5)
     ax.axhline(mean_diff, **{"color": "gray", "linewidth": 1, "linestyle": "--"})
 
     if x_min is not None and x_max is not None:
