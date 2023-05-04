@@ -4,7 +4,7 @@ from src.dataset import filter_labels_outliers_per_subject
 from os.path import exists
 
 from src.plot import (
-    evaluate_sample_predictions_individual,
+    plot_sample_predictions,
     create_retrain_table,
     create_bland_altman_plot,
     create_scatter_plot,
@@ -120,7 +120,7 @@ if __name__ == "__main__":
             physics_res_df.to_csv(f"{exp}_results.csv")
 
             create_bland_altman_plot(res_df, log_path=".", file_name=exp)
-            evaluate_sample_predictions_individual(res_df, "test", f"physics_results_{exp}")
+            plot_sample_predictions(res_df, "test", f"physics_results_{exp}")
             create_scatter_plot(res_df, log_path=".", file_name=exp)
 
     # Concentric

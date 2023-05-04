@@ -9,7 +9,7 @@ from os import makedirs
 from tensorflow import keras
 
 from src.plot import (
-    evaluate_sample_predictions_individual,
+    plot_sample_predictions,
 )
 
 from src.dataset import (
@@ -210,10 +210,10 @@ def evaluate_ml_model(result_path: str, dst_path: str):
                                         config["label_std"])
             res_df.to_csv(file_name)
 
-        evaluate_sample_predictions_individual(
+        plot_sample_predictions(
             res_df, "hr", join(dst_path, model_name),
             pred_col="HRV_Mean HR (1/min)_prediction",
-            gt_col="HRV_Mean HR (1/min)_ground_truth",
+            label_col="HRV_Mean HR (1/min)_ground_truth",
         )
 
 
