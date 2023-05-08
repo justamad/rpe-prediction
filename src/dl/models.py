@@ -14,6 +14,7 @@ def build_conv_model(
         n_units: int = 128,
 ):
     _, n_samples, n_features = meta["X_shape_"]
+    _, n_outputs = meta["n_outputs_"]
     model = keras.Sequential()
     model.add(Input(shape=(n_samples, n_features, 1)))
 
@@ -26,7 +27,7 @@ def build_conv_model(
     # model.add(GlobalMaxPooling2D())
     model.add(Flatten())
     model.add(Dense(n_units, activation="relu"))
-    model.add(Dense(meta["n_outputs_"]))
+    model.add(Dense(n_outputs))
     model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3), loss="mse", metrics=["mse", "mae", "mape", RSquare()], )
     return model
 

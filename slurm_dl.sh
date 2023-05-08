@@ -4,7 +4,7 @@
 #SBATCH --mail-user=justin.albert@hpi.de
 #SBATCH --partition=gpu # -p
 #SBATCH --cpus-per-task=16 # -c
-#SBATCH --mem=10gb
+#SBATCH --mem=20gb
 #SBATCH --gpus=1
 #SBATCH --time=72:00:00
 #SBATCH --output=job_test_%j.log # %j is job id
@@ -26,4 +26,3 @@ echo "This is a SLURM job named" $SLURM_JOB_NAME
 htop
 
 python3 train_dl.py
-# python3 test.py

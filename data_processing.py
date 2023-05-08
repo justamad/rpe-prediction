@@ -367,6 +367,7 @@ def prepare_data_for_dl_sliding_window(
         ori_df = ori_df.loc[:, (ori_df != 0).any(axis=0)]  # Remove zero cols, e.g. constrained joint orientations
         kinect_df = pd.concat([pos_df.add_prefix("KINECTPOS_"), ori_df], axis=1)
         window_df, label_vector = apply_sliding_window_time_series(kinect_df, overlap=overlap, win_size=win_size)
+        window_df.drop("Repetition", axis=1, inplace=True)
 
         # Expend ground truth data
         flywheel_df = pd.DataFrame(np.repeat(flywheel_df.values, label_vector, axis=0), columns=flywheel_df.columns)

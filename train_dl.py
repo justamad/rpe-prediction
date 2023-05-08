@@ -1,6 +1,6 @@
 from src.ml import MLOptimization
 from src.dl import regression_models, instantiate_best_dl_model, build_conv_model
-from src.dataset import normalize_labels_min_max, random_oversample
+from src.dataset import normalize_labels_min_max, dl_random_oversample, dl_split_data
 from typing import List, Union
 from datetime import datetime
 from argparse import ArgumentParser
@@ -14,8 +14,7 @@ from src.plot import (
 
 from src.dataset import (
     extract_dataset_input_output,
-    normalize_data_by_subject,
-    normalize_data_global,
+    dl_normalize_data_3d_subject,
     filter_labels_outliers_per_subject,
 )
 
@@ -56,13 +55,6 @@ def train_model(
     X.drop(columns=drop_columns, inplace=True, errors="ignore")
     X = X.loc[:, (X != 0).any(axis=0)]  # Remove columns with all zeros, e.g. constrained joint orientations
     columns = X.columns
-
-    if normalization_input == "subject":
-        X = normalize_data_by_subject(X, y, method="min_max")
-    elif normalization_input == "global":
-        X = normalize_data_global(X)
-    else:
-        raise AttributeError(f"Unknown normalization method: {normalization_input}")
 
     X = X.values.reshape((-1, seq_length, X.shape[1]))
     y = y.iloc[::seq_length, :]
@@ -110,55 +102,42 @@ def train_model(
     ).perform_grid_search_with_cv(regression_models, log_path=log_path, n_jobs=1)
 
 
-def norm_data_3d(X: np.ndarray, y: pd.DataFrame, method="min_max"):
-    for subject in y["subject"].unique():
-        mask = y["subject"] == subject
-        data = X[mask]
-        if method == "min_max":
-            min_, max_ = data.min(axis=0), data.max(axis=0)
-            X[mask] = (data - min_) / (max_ - min_)
+def train_single_model(
+        X: np.ndarray,
+        y: pd.DataFrame,
+        labels: List[str],
+        epochs: int,
+        batch_size: int,
+        normalization_input: Union[bool, str],
+        normalization_labels: Union[bool, str],
+        balancing: bool,
+):
+    if normalization_input:
+        if normalization_input == "subject":
+            X = dl_normalize_data_3d_subject(X, y, method="min_max")
+        elif normalization_input == "global":
+            X = (X - X.min(axis=0)) / (X.max(axis=0) - X.min(axis=0))
         else:
-            mean, std = data.mean(axis=0), data.std(axis=0)
-            X[mask] = (data - mean) / std
+            raise ValueError("Invalid normalization_input parameter")
 
-    return X
-
-
-def process_data(X: pd.DataFrame, y: pd.DataFrame, label_col: str):
-    X = X.loc[:, (X != 0).any(axis=0)]  # Remove columns with all zeros, e.g. constrained joint orientations
-    X = X.values.reshape((-1, 45, X.shape[1]))
-    # X, y = random_oversample(X, y, gt)
-    # X = norm_data_3d(X, y, method="min_max")
-    X = (X - X.min(axis=0)) / (X.max(axis=0) - X.min(axis=0))
-    # y = normalize_labels_min_max(y, gt)
-    return X, y
-
-
-def split_data(X: np.ndarray, y: pd.DataFrame, label_col: str):
-    subjects = y["subject"].unique()
-    train_subjects = subjects[:int(len(subjects) * 0.8)]
-    train_mask = y["subject"].isin(train_subjects)
-
-    X_train, y_train = X[train_mask], y.loc[train_mask, :]
-    X_test, y_test = X[~train_mask], y.loc[~train_mask, :]
-
-    y_train = y_train[label_col].values
-    y_test = y_test[label_col].values
-    y_train = y_train.astype(np.float32)
-    y_test = y_test.astype(np.float32)
-    return X_train, y_train, X_test, y_test
-
-
-def train_single_model(X_train, y_train, X_test, y_test, epochs: int):
-    meta = {"X_shape_": X_train.shape, "n_outputs_": 1}
+    X_train, y_train, X_test, y_test = dl_split_data(X, y, label_col=labels, p_train=0.9)
+    meta = {"X_shape_": X_train.shape, "n_outputs_": y_train.shape}
     model = build_conv_model(meta=meta, kernel_size=(11, 3), n_filters=32, n_layers=3, dropout=0.5, n_units=128)
     model.summary()
+
+    # Prepare the training dataset
+    train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
+    train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
+
+    # Prepare the validation dataset
+    val_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
+    val_dataset = val_dataset.batch(batch_size)
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     log_dir = "logs/fit/" + timestamp
     tb_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
     # es_callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3)
-    model.fit(X_train, y_train, epochs=epochs, batch_size=64, validation_data=(X_test, y_test), callbacks=[tb_callback])
+    model.fit(train_dataset, epochs=epochs, validation_data=val_dataset, callbacks=[tb_callback])
     model.save(f"models/{timestamp}/model")
 
 
@@ -223,6 +202,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_path", type=str, dest="log_path", default="results_dl")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments_dl")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation_dl")
+    parser.add_argument("--exp_file", type=str, dest="exp_file", default="experiments_dl/kinect.yaml")
     parser.add_argument("--train", type=bool, dest="train", default=True)
     parser.add_argument("--eval", type=bool, dest="eval", default=False)
     parser.add_argument("--single", type=bool, dest="single", default=True)
@@ -235,17 +215,20 @@ if __name__ == "__main__":
         if not args.use_gpu:
             os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-        X = pd.read_parquet(join(args.src_path, "45_0.95_X.parquet"))
-        X.drop(["Repetition"], axis=1, inplace=True)
-        y = pd.read_parquet(join(args.src_path, "45_0.95_y.parquet"))
-        # gt = "HRV_Mean HR (1/min)"
-        labels = "FLYWHEEL_powerCon"
-        X, y = process_data(X, y, label_col=labels)
-        X_train, y_train, X_test, y_test = split_data(X, y, label_col=labels)
+        cfg = yaml.load(open(args.exp_file, "r"), Loader=yaml.FullLoader)
+        X = pd.read_parquet(join(args.src_path, cfg["X_file"]))
+        y = pd.read_parquet(join(args.src_path, cfg["y_file"]))
+        seq_len = int(cfg["X_file"].split("_")[0])
+        X = X.values.astype(np.float32)
+        X = X.reshape((-1, seq_len, X.shape[1]))
+
+        # "HRV_Mean HR (1/min)"
 
         if args.single:
-            # train_single_model(X_train, y_train, X_test, y_test, epochs=100)
-            evaluate_single_model(X_train, y_train, X_test, y_test, src_path="models/20230429-103728/model")
+            for key in ["X_file", "y_file", "n_splits", "task", "drop_prefixes", "search"]:
+                del cfg[key]
+            train_single_model(X, y, **cfg)
+            # evaluate_single_model(X_train, y_train, X_test, y_test, src_path="models/20230429-103728/model")
         else:
             for exp_name in os.listdir(args.exp_path):
                 exp_path = join(args.exp_path, exp_name)

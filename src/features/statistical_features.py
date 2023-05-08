@@ -22,6 +22,9 @@ class CustomFeatures(ComprehensiveFCParameters):
 
 
 def apply_sliding_window_time_series(df: pd.DataFrame, overlap: float, win_size: int) -> Tuple[pd.DataFrame, List]:
+    if "Repetition" not in df.columns:
+        raise ValueError("Repetition column is missing")
+
     windows = []
     labels_majorities = []
     n_windows, stride = calculate_window_parameters(len(df), win_size, overlap)

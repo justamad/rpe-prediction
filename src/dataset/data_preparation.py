@@ -1,5 +1,6 @@
 from typing import Tuple, Union, List
 from scipy import stats
+from memory_profiler import profile
 
 import numpy as np
 import pandas as pd
@@ -161,7 +162,7 @@ def add_rolling_statistics(X: pd.DataFrame, y: pd.DataFrame, win: int = 5, norma
     return X
 
 
-def random_oversample(X: np.ndarray, y: pd.DataFrame, label_col: str) -> Tuple[np.ndarray, pd.DataFrame]:
+def dl_random_oversample(X: np.ndarray, y: pd.DataFrame, label_col: str) -> Tuple[np.ndarray, pd.DataFrame]:
     labels = y[label_col].values
     unique, counts = np.unique(labels, return_counts=True)
     max_samples = np.max(counts)
@@ -176,3 +177,43 @@ def random_oversample(X: np.ndarray, y: pd.DataFrame, label_col: str) -> Tuple[n
     y_resampled = pd.DataFrame(y_resampled, columns=y.columns)
 
     return X_resampled, pd.DataFrame(y_resampled, columns=y.columns)
+
+
+@profile
+def dl_split_data(
+        X: np.ndarray,
+        y: pd.DataFrame,
+        label_col: Union[str, List[str]],
+        p_train: float = 0.8,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    if isinstance(label_col, str):
+        label_col = [label_col]
+
+    subjects = y["subject"].unique()
+    train_subjects = subjects[:int(len(subjects) * p_train)]
+    train_mask = y["subject"].isin(train_subjects)
+
+    X_test, y_test = X[~train_mask], y.loc[~train_mask, :]
+    X_train, y_train = X[train_mask], y.loc[train_mask, :]
+
+    del X
+
+    y_train = y_train[label_col].values
+    y_test = y_test[label_col].values
+    y_train = y_train.astype(np.float32)
+    y_test = y_test.astype(np.float32)
+    return X_train, y_train, X_test, y_test
+
+
+def dl_normalize_data_3d_subject(X: np.ndarray, y: pd.DataFrame, method="min_max"):
+    for subject in y["subject"].unique():
+        mask = y["subject"] == subject
+        data = X[mask]
+        if method == "min_max":
+            min_, max_ = data.min(axis=0), data.max(axis=0)
+            X[mask] = (data - min_) / (max_ - min_)
+        else:
+            mean, std = data.mean(axis=0), data.std(axis=0)
+            X[mask] = (data - mean) / std
+
+    return X
