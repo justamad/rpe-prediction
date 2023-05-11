@@ -25,7 +25,7 @@ from .data_loaders import (
 )
 
 from .utils import (
-    zero_pad_data_frame,
+    zero_pad_array,
     impute_dataframe,
     mask_repetitions,
 )

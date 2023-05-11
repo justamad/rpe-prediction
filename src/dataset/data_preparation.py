@@ -1,6 +1,5 @@
 from typing import Tuple, Union, List
 from scipy import stats
-from memory_profiler import profile
 
 import numpy as np
 import pandas as pd
@@ -104,18 +103,21 @@ def clip_outliers_z_scores(df: pd.DataFrame, sigma: float = 3.0):
 def filter_labels_outliers_per_subject(
         X: Union[np.ndarray, pd.DataFrame],
         y: pd.DataFrame,
-        label_col: str,
-        threshold: float = 3.1,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        label_col: Union[str, List[str]],
+        sigma: float = 3.1,
+) -> Tuple[np.ndarray, pd.DataFrame]:
     if "subject" not in y.columns:
         raise ValueError("Subject column not in dataframe.")
 
-    final_mask = np.zeros(len(y), dtype=bool)
+    if isinstance(label_col, str):
+        label_col = [label_col]
+
+    final_mask = np.ones(len(y), dtype=bool)
     for subject in y["subject"].unique():
         mask = np.array(y["subject"] == subject)
-        abs_z_scores = np.abs(stats.zscore(y.loc[mask, label_col]))
-        filtered = np.array(abs_z_scores < threshold)
-        final_mask[mask] = filtered
+        for col in label_col:
+            new_mask = np.abs(stats.zscore(y.loc[mask, col].values)) < sigma
+            final_mask[mask] = final_mask[mask] & new_mask
 
     X = X[final_mask]
     y = y[final_mask]
@@ -179,7 +181,6 @@ def dl_random_oversample(X: np.ndarray, y: pd.DataFrame, label_col: str) -> Tupl
     return X_resampled, pd.DataFrame(y_resampled, columns=y.columns)
 
 
-@profile
 def dl_split_data(
         X: np.ndarray,
         y: pd.DataFrame,

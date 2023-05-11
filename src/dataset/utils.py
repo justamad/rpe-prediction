@@ -4,16 +4,16 @@ import numpy as np
 import pandas as pd
 
 
-def zero_pad_data_frame(df: pd.DataFrame, max_length: int) -> pd.DataFrame:
-    if len(df) > max_length:
+def zero_pad_array(array: np.ndarray, max_length: int) -> np.ndarray:
+    if len(array) > max_length:
         raise AttributeError("Data frame is longer than max length")
 
-    if len(df) == max_length:
-        return df
+    if len(array) == max_length:
+        return array
 
-    rows_to_pad = max_length - len(df)
-    resample = np.pad(df, pad_width=((0, rows_to_pad), (0, 0)), mode="constant", constant_values=0)
-    return pd.DataFrame(resample, columns=df.columns)
+    rows_to_pad = max_length - len(array)
+    resample = np.pad(array, pad_width=((0, rows_to_pad), (0, 0), (0, 0)), mode="constant", constant_values=0)
+    return resample
 
 
 def mask_repetitions(df: pd.DataFrame, repetitions: List, col_name: str = "Repetition") -> pd.DataFrame:

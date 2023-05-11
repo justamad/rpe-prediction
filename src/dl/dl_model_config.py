@@ -1,4 +1,4 @@
-from .models import build_conv_model, build_cnn_lstm_model
+from .models import build_conv2d_model, build_cnn_lstm_model
 from src.ml.ml_model_config import LearningModelBase, parse_report_file_to_model_parameters
 from scikeras.wrappers import KerasRegressor
 
@@ -9,7 +9,7 @@ class ConvModelConfig(LearningModelBase):
 
     def __init__(self):
         model = KerasRegressor(
-            model=build_conv_model,
+            model=build_conv2d_model,
             n_layers=3, n_filters=32, kernel_size=(10,3), dropout=0.3, n_units=128,
             verbose=False,
         )

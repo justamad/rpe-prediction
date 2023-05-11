@@ -2,5 +2,5 @@ from .statistical_features import CustomFeatures, apply_sliding_window_time_seri
 
 from .skeleton_features import (
     calculate_linear_joint_positions,
-    calculate_acceleration_from_position,
+    calculate_skeleton_images,
 )

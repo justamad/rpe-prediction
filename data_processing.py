@@ -1,5 +1,5 @@
-from src.dataset import SubjectDataIterator, zero_pad_data_frame, impute_dataframe, mask_repetitions
-from src.features import CustomFeatures, calculate_linear_joint_positions, apply_sliding_window_time_series
+from src.dataset import SubjectDataIterator, zero_pad_array, impute_dataframe, mask_repetitions
+from src.features import CustomFeatures, calculate_linear_joint_positions, apply_sliding_window_time_series, calculate_skeleton_images
 from argparse import ArgumentParser
 from typing import List, Tuple
 from os.path import join, exists, isfile
@@ -292,59 +292,43 @@ def prepare_segmented_data_for_ml(src_path: str, dst_path: str, mode: str, plot:
     final_df.to_csv(join(dst_path, f"{mode}_stat.csv"))
 
 
-def prepare_segmented_data_for_dl(src_path: str, mode: str, dst_path: str, plot: bool, plot_path: str):
-    if mode not in ["padding", "same", "dtw"]:
-        raise AttributeError(f"Mode {mode} not supported.")
-
+def prepare_segmented_data_for_dl(src_path: str, dst_path: str, plot: bool, plot_path: str):
     repetition_data = []
+    skeleton_images = []
     for trial in iterate_segmented_data(src_path, mode="full", plot=plot, plot_path=plot_path):
         rpe, subject, set_id, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
         flywheel_df = flywheel_df.add_prefix("FLYWHEEL_")
         assert len(flywheel_df) == len(pos_df["Repetition"].unique()) == len(imu_df["Repetition"].unique())
         s = "Repetition"
+        reps = pos_df[s]
+        skeleton_df = calculate_skeleton_images(pos_df, ori_df)
+        for rep_count, rep_idx in enumerate(reps.unique()):
+            skeleton_images.append(skeleton_df[reps == rep_idx])
 
-        for rep_count, rep_idx in enumerate(pos_df["Repetition"].unique()):
-            rep_df = pd.concat(
-                [
-                    pos_df[pos_df[s] == rep_idx].drop(columns=[s]).reset_index(drop=True).add_prefix("KINECTPOS_"),
-                    ori_df[ori_df[s] == rep_idx].drop(columns=[s]).reset_index(drop=True).add_prefix("KINECTORI_"),
-                ],
-                axis=1,
-            )
-            fw_dict = flywheel_df.iloc[rep_count].to_dict()
-            rep_df = rep_df.assign(**fw_dict)
+            meta_data = {"rpe": rpe, "subject": subject, "set_id": set_id}
+            meta_data.update(flywheel_df.iloc[rep_count].to_dict())
+            meta_data.update(hrv_df[hrv_df[s] == rep_idx].drop(columns=[s]).add_prefix("HRV_").mean().to_dict())
+            repetition_data.append(meta_data)
 
-            hrv = hrv_df[hrv_df[s] == rep_idx].drop(columns=[s]).add_prefix("HRV_").mean().to_dict()
-            rep_df = rep_df.assign(**hrv)
-
-            repetition_data.append({
-                "df": rep_df,
-                "rpe": rpe,
-                "subject": subject,
-                "set_id": set_id,
-            })
-
-    lengths = [len(data_dict["df"]) for data_dict in repetition_data]
+    lengths = [len(img) for img in skeleton_images]
     max_length = max(lengths)
     max_subject = repetition_data[np.argmax(lengths)]
     logging.info(f"Max Rep Length: {max_length} by subject {max_subject['subject']}, set {max_subject['set_id']}")
 
-    final_df = pd.DataFrame()
-    if mode == "padding":
-        for data_dict in tqdm(repetition_data):
-            padded_df = zero_pad_data_frame(data_dict["df"], max_length)
-            padded_df["rpe"] = data_dict["rpe"]
-            padded_df["subject"] = data_dict["subject"]
-            padded_df["set_id"] = data_dict["set_id"]
-            final_df = pd.concat([final_df, padded_df], axis=0)
-    elif mode == "same":
-        raise NotImplementedError("Same length not implemented yet.")
-    elif mode == "dtw":
-        raise NotImplementedError("DTW not implemented yet.")
-    else:
-        raise ValueError(f"Mode {mode} not supported.")
+    # Normalize skeleton images
+    image_min = np.array([img.reshape((img.shape[0]*img.shape[1], 3)).min(axis=0) for img in skeleton_images]).min(axis=0)
+    image_max = np.array([img.reshape((img.shape[0]*img.shape[1], 3)).max(axis=0) for img in skeleton_images]).max(axis=0)
 
-    final_df.to_csv(join(dst_path, f"{max_length}_{mode}.csv"))
+    pad_images = []
+    for image in tqdm(skeleton_images):
+        image = (image - image_min) / (image_max - image_min)
+        pad_images.append(zero_pad_array(image, max_length))
+
+    pad_images = np.array(pad_images)
+    np.save(join(dst_path, f"{max_length}.npy"), pad_images)
+
+    final_df = pd.DataFrame(repetition_data)
+    final_df.to_csv(join(dst_path, f"{max_length}.csv"), index=False)
 
 
 def prepare_data_for_dl_sliding_window(
@@ -412,5 +396,5 @@ if __name__ == "__main__":
     # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="eccentric", plot=args.show, plot_path=args.plot_path)
     # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="full", plot=args.show, plot_path=args.plot_path)
 
-    # prepare_segmented_data_for_dl(args.proc_path, mode="padding", dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
-    prepare_data_for_dl_sliding_window(args.proc_path, win_size=60, overlap=0.95, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
+    prepare_segmented_data_for_dl(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
+    # prepare_data_for_dl_sliding_window(args.proc_path, win_size=60, overlap=0.95, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)

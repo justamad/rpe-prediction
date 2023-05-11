@@ -1,23 +1,3 @@
-from src.ml import MLOptimization
-from src.dl import regression_models, instantiate_best_dl_model, build_conv_model
-from src.dataset import normalize_labels_min_max, dl_random_oversample, dl_split_data
-from typing import List, Union
-from datetime import datetime
-from argparse import ArgumentParser
-from os.path import join, exists
-from os import makedirs
-from tensorflow import keras
-
-from src.plot import (
-    plot_sample_predictions,
-)
-
-from src.dataset import (
-    extract_dataset_input_output,
-    dl_normalize_data_3d_subject,
-    filter_labels_outliers_per_subject,
-)
-
 import numpy as np
 import pandas as pd
 import logging
@@ -25,12 +5,33 @@ import tensorflow as tf
 import yaml
 import os
 import matplotlib
-matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
+
+from src.ml import MLOptimization
+from src.dl import regression_models, instantiate_best_dl_model, build_conv1d_model, build_cnn_lstm_model
+from src.features import calculate_skeleton_images
+from typing import List, Union
+# from src.plot import (plot_sample_predictions)
+from datetime import datetime
+from argparse import ArgumentParser
+from os.path import join, exists
+from os import makedirs
+from tensorflow import keras
+
+from src.dataset import (
+    dl_split_data,
+    extract_dataset_input_output,
+    dl_normalize_data_3d_subject,
+    normalize_data_global,
+    filter_labels_outliers_per_subject,
+)
+
+matplotlib.use("WebAgg")
 
 
 def train_model(
-        df: pd.DataFrame,
+        X: pd.DataFrame,
+        y: pd.DataFrame,
         log_path: str,
         seq_length: int,
         drop_columns: List,
@@ -43,23 +44,6 @@ def train_model(
         task: str,
         n_splits: int,
 ):
-    if drop_prefixes is None:
-        drop_prefixes = []
-    if drop_columns is None:
-        drop_columns = []
-
-    X, y = extract_dataset_input_output(df=df, labels=ground_truth)
-    for prefix in drop_prefixes:
-        drop_columns += [col for col in df.columns if col.startswith(prefix)]
-
-    X.drop(columns=drop_columns, inplace=True, errors="ignore")
-    X = X.loc[:, (X != 0).any(axis=0)]  # Remove columns with all zeros, e.g. constrained joint orientations
-    columns = X.columns
-
-    X = X.values.reshape((-1, seq_length, X.shape[1]))
-    y = y.iloc[::seq_length, :]
-    X, y = filter_labels_outliers_per_subject(X, y, ground_truth)
-
     # Normalization labels
     label_mean, label_std = float('inf'), float('inf')
     if normalization_labels:
@@ -103,26 +87,16 @@ def train_model(
 
 
 def train_single_model(
-        X: np.ndarray,
-        y: pd.DataFrame,
-        labels: List[str],
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+        X_test: np.ndarray,
+        y_test: np.ndarray,
         epochs: int,
         batch_size: int,
-        normalization_input: Union[bool, str],
-        normalization_labels: Union[bool, str],
-        balancing: bool,
 ):
-    if normalization_input:
-        if normalization_input == "subject":
-            X = dl_normalize_data_3d_subject(X, y, method="min_max")
-        elif normalization_input == "global":
-            X = (X - X.min(axis=0)) / (X.max(axis=0) - X.min(axis=0))
-        else:
-            raise ValueError("Invalid normalization_input parameter")
-
-    X_train, y_train, X_test, y_test = dl_split_data(X, y, label_col=labels, p_train=0.9)
     meta = {"X_shape_": X_train.shape, "n_outputs_": y_train.shape}
-    model = build_conv_model(meta=meta, kernel_size=(11, 3), n_filters=32, n_layers=3, dropout=0.5, n_units=128)
+    # model = build_cnn_lstm_model(meta=meta, kernel_size=(11, 3), n_filters=32, n_layers=3, dropout=0.5, lstm_units=32)
+    model = build_conv1d_model(meta=meta, kernel_size=3, n_filters=16, n_layers=3, dropout=0.5, n_units=128)
     model.summary()
 
     # Prepare the training dataset
@@ -143,15 +117,26 @@ def train_single_model(
 
 def evaluate_single_model(X_train, y_train, X_test, y_test, src_path: str):
     model = keras.models.load_model(src_path)
-    fig, axs = plt.subplots(2, 1, figsize=(15, 10))
-    axs[0].set_title("Train")
-    axs[0].plot(model.predict(X_train), label="Prediction")
-    axs[0].plot(y_train, label="Ground Truth")
-    axs[0].legend()
-    axs[1].set_title("Test")
-    axs[1].plot(model.predict(X_test), label="Prediction")
-    axs[1].plot(y_test, label="Ground Truth")
-    axs[1].legend()
+    pred_train = model.predict(X_train)
+    pred_test = model.predict(X_test)
+
+    fig, axs = plt.subplots(2, y_train.shape[1]) # , figsize=(15, 10))
+    matplotlib.rcParams.update(matplotlib.rcParamsDefault)
+
+    # Plot Train
+    for i in range(pred_train.shape[1]):
+        axs[0, i].set_title("Train")
+        axs[0, i].plot(pred_train[:, i], label="Prediction")
+        axs[0, i].plot(y_train[:, i], label="Ground Truth")
+        axs[0, i].legend()
+
+    # Plot Test
+    for i in range(pred_test.shape[1]):
+        axs[1, i].set_title("Test")
+        axs[1, i].plot(pred_test[:, i], label="Prediction")
+        axs[1, i].plot(y_test[:, i], label="Ground Truth")
+        axs[1, i].legend()
+
     plt.show()
 
 
@@ -216,19 +201,45 @@ if __name__ == "__main__":
             os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
         cfg = yaml.load(open(args.exp_file, "r"), Loader=yaml.FullLoader)
-        X = pd.read_parquet(join(args.src_path, cfg["X_file"]))
-        y = pd.read_parquet(join(args.src_path, cfg["y_file"]))
-        seq_len = int(cfg["X_file"].split("_")[0])
-        X = X.values.astype(np.float32)
-        X = X.reshape((-1, seq_len, X.shape[1]))
 
-        # "HRV_Mean HR (1/min)"
+        # X = pd.read_parquet(join(args.src_path, cfg["X_file"]))
+        X = np.load(join(args.src_path, cfg["X_file"]))
+        # y = pd.read_parquet(join(args.src_path, cfg["y_file"]))
+        y = pd.read_csv(join(args.src_path, cfg["y_file"]))
+        # X = X.values.astype(np.float32)
+        # df = pd.read_csv(join(args.src_path, cfg["X_file"]), index_col=0)
+        # X, y = extract_dataset_input_output(df, cfg["labels"])
+
+        # drop_columns = []
+        # for prefix in cfg["drop_prefixes"]:
+            # drop_columns += [col for col in y.columns if col.startswith(prefix)]
+
+        # y.drop(columns=drop_columns, inplace=True, errors="ignore")
+        # X = calculate_skeleton_images(X)
+            # X = X.loc[:, (X != 0).any(axis=0)]  # Remove columns with all zeros, e.g. constrained joint orientations
+
+        # from PyMoCapViewer import MoCapViewer
+        # viewer = MoCapViewer()
+        # viewer.add_skeleton(X, skeleton_connection="azure")
+        # viewer.show_window()
+
+        # if cfg["normalization_input"]:
+        #     if cfg["normalization_input"] == "subject":
+        #         X = dl_normalize_data_3d_subject(X, y, method="min_max")
+        #     elif cfg["normalization_input"] == "global":
+        #         X = normalize_data_global(X, method="min_max")
+        #     else:
+        #         raise ValueError("Invalid normalization_input parameter")
+
+        # seq_len = int(cfg["X_file"].split("_")[0])
+        # X = X.values.reshape((-1, seq_len, X.shape[1]))
+        # y = y.iloc[::seq_len, :]
+        # X, y = filter_labels_outliers_per_subject(X, y, cfg["labels"], sigma=3.0)
 
         if args.single:
-            for key in ["X_file", "y_file", "n_splits", "task", "drop_prefixes", "search"]:
-                del cfg[key]
-            train_single_model(X, y, **cfg)
-            # evaluate_single_model(X_train, y_train, X_test, y_test, src_path="models/20230429-103728/model")
+            X_train, y_train, X_test, y_test = dl_split_data(X, y, label_col=cfg["labels"], p_train=0.9)
+            train_single_model(X_train, y_train, X_test, y_test, epochs=cfg["epochs"], batch_size=cfg["batch_size"])
+            # evaluate_single_model(X_train, y_train, X_test, y_test, src_path="models/20230511-100550/model")
         else:
             for exp_name in os.listdir(args.exp_path):
                 exp_path = join(args.exp_path, exp_name)

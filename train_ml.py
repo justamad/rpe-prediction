@@ -74,7 +74,7 @@ def train_model(
     # Impute dataframe, remove highly correlated features, and eliminate useless features
     X.fillna(0, inplace=True)
     X = drop_highly_correlated_features(X, threshold=0.95)
-    X, y = filter_labels_outliers_per_subject(X, y, ground_truth, threshold=3.0)
+    X, y = filter_labels_outliers_per_subject(X, y, ground_truth, sigma=3.0)
     X = clip_outliers_z_scores(X, sigma=3.0)
 
     label_mean, label_std = float("inf"), float("inf")
