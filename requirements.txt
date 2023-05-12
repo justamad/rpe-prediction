@@ -20,3 +20,4 @@ tqdm
 cycler
 pyarrow
 fastparquet
+tensorflow-addons

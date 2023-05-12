@@ -40,8 +40,6 @@ def calculate_displacement(df: pd.DataFrame):
 
 def calculate_skeleton_images(pos_df: pd.DataFrame, ori_df):
     unused_joints = ["WRIST", "FOOT"]
-    pos_df.drop("Repetition", axis=1, inplace=True)
-    ori_df.drop("Repetition", axis=1, inplace=True)
     pos_df = pos_df.loc[:, [c for c in pos_df.columns if not any([j in c for j in unused_joints])]]
     ori_df = ori_df.loc[:, [c for c in ori_df.columns if not any([j in c for j in unused_joints])]]
     pos_df = calculate_relative_joint_positions(pos_df)

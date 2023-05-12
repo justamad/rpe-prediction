@@ -235,9 +235,7 @@ def iterate_segmented_data(src_path: str, mode: str, plot: bool = False, plot_pa
             hrv_df = hrv_df[hrv_df["Repetition"] != -1]
 
             yield {
-                "rpe": rpe_values[set_id],
-                "subject": subject,
-                "set_id": set_id,
+                "meta": {"rpe": rpe_values[set_id], "subject": subject, "set_id": set_id,},
                 "imu_df": imu_df,
                 "pos_df": pos_df,
                 "ori_df": ori_df,
@@ -296,16 +294,14 @@ def prepare_segmented_data_for_dl(src_path: str, dst_path: str, plot: bool, plot
     repetition_data = []
     skeleton_images = []
     for trial in iterate_segmented_data(src_path, mode="full", plot=plot, plot_path=plot_path):
-        rpe, subject, set_id, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
+        meta_data, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
         flywheel_df = flywheel_df.add_prefix("FLYWHEEL_")
-        assert len(flywheel_df) == len(pos_df["Repetition"].unique()) == len(imu_df["Repetition"].unique())
+
         s = "Repetition"
         reps = pos_df[s]
         skeleton_df = calculate_skeleton_images(pos_df, ori_df)
         for rep_count, rep_idx in enumerate(reps.unique()):
             skeleton_images.append(skeleton_df[reps == rep_idx])
-
-            meta_data = {"rpe": rpe, "subject": subject, "set_id": set_id}
             meta_data.update(flywheel_df.iloc[rep_count].to_dict())
             meta_data.update(hrv_df[hrv_df[s] == rep_idx].drop(columns=[s]).add_prefix("HRV_").mean().to_dict())
             repetition_data.append(meta_data)
@@ -316,56 +312,40 @@ def prepare_segmented_data_for_dl(src_path: str, dst_path: str, plot: bool, plot
     logging.info(f"Max Rep Length: {max_length} by subject {max_subject['subject']}, set {max_subject['set_id']}")
 
     # Normalize skeleton images
-    image_min = np.array([img.reshape((img.shape[0]*img.shape[1], 3)).min(axis=0) for img in skeleton_images]).min(axis=0)
-    image_max = np.array([img.reshape((img.shape[0]*img.shape[1], 3)).max(axis=0) for img in skeleton_images]).max(axis=0)
+    min_i = np.array([img.reshape((img.shape[0]*img.shape[1], 3)).min(axis=0) for img in skeleton_images]).min(axis=0)
+    max_i = np.array([img.reshape((img.shape[0]*img.shape[1], 3)).max(axis=0) for img in skeleton_images]).max(axis=0)
 
-    pad_images = []
-    for image in tqdm(skeleton_images):
-        image = (image - image_min) / (image_max - image_min)
-        pad_images.append(zero_pad_array(image, max_length))
+    for i in tqdm(range(len(skeleton_images))):
+        skeleton_images[i] = zero_pad_array((skeleton_images[i] - min_i) / (max_i - min_i), max_length)
 
-    pad_images = np.array(pad_images)
+    pad_images = np.array(skeleton_images)
     np.save(join(dst_path, f"{max_length}.npy"), pad_images)
 
     final_df = pd.DataFrame(repetition_data)
     final_df.to_csv(join(dst_path, f"{max_length}.csv"), index=False)
 
 
-def prepare_data_for_dl_sliding_window(
-        src_path: str,
-        win_size: int,
-        overlap: float,
-        dst_path: str,
-        plot: bool,
-        plot_path: str,
-):
-    X = pd.DataFrame()
-    y = pd.DataFrame()
-
+def prepare_data_for_dl_sliding_window(src_path: str, dst_path: str, plot: bool, plot_path: str):
+    skeleton_images = []
+    labels = []
+    i = 0
     for trial in iterate_segmented_data(src_path, mode="full", plot=plot, plot_path=plot_path):
-        rpe, subject, set_id, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
-        flywheel_df = flywheel_df.add_prefix("FLYWHEEL_")
-        assert len(flywheel_df) == len(pos_df["Repetition"].unique()) == len(imu_df["Repetition"].unique())
+        meta_dict, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
 
         pos_df.drop("Repetition", axis=1, inplace=True)
-        ori_df = ori_df.loc[:, (ori_df != 0).any(axis=0)]  # Remove zero cols, e.g. constrained joint orientations
-        kinect_df = pd.concat([pos_df.add_prefix("KINECTPOS_"), ori_df], axis=1)
-        window_df, label_vector = apply_sliding_window_time_series(kinect_df, overlap=overlap, win_size=win_size)
-        window_df.drop("Repetition", axis=1, inplace=True)
+        ori_df.drop("Repetition", axis=1, inplace=True)
+        skeleton_img = calculate_skeleton_images(pos_df, ori_df)
+        skeleton_images.append(skeleton_img)
+        labels.append(meta_dict)
+        i += 1
+        if i > 15:
+            break
 
-        # Expend ground truth data
-        flywheel_df = pd.DataFrame(np.repeat(flywheel_df.values, label_vector, axis=0), columns=flywheel_df.columns)
-        hrv_df = hrv_df.groupby("Repetition").mean()
-        hrv_df = pd.DataFrame(np.repeat(hrv_df.values, label_vector, axis=0), columns=hrv_df.columns)
-        y_temp = pd.concat([flywheel_df, hrv_df], axis=1)
-        y_temp["rpe"] = rpe
-        y_temp["subject"] = subject
-        y_temp["set_id"] = set_id
-        X = pd.concat([X, window_df], axis=0)
-        y = pd.concat([y, y_temp], axis=0)
-
-    X.to_parquet(join(dst_path, f"{win_size}_{overlap}_X.parquet"))
-    y.to_parquet(join(dst_path, f"{win_size}_{overlap}_y.parquet"))
+    y = pd.DataFrame(labels)
+    y.to_csv(join(dst_path, "y_lstm.csv"))
+    X = np.array(skeleton_images, dtype=object)
+    np.savez(join(dst_path, "X_lstm.npz"), X=X)
+    # X.save(join(dst_path, "X_lstm.npy"))
 
 
 if __name__ == "__main__":
@@ -396,5 +376,5 @@ if __name__ == "__main__":
     # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="eccentric", plot=args.show, plot_path=args.plot_path)
     # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="full", plot=args.show, plot_path=args.plot_path)
 
-    prepare_segmented_data_for_dl(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
-    # prepare_data_for_dl_sliding_window(args.proc_path, win_size=60, overlap=0.95, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
+    # prepare_segmented_data_for_dl(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
+    prepare_data_for_dl_sliding_window(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)

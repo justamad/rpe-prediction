@@ -1,0 +1,17 @@
+X_file: 170.npy
+y_file: 170.csv
+drop_columns: [ ]
+drop_prefixes:
+  - HRV
+  - PHYSILOG
+  - FLYWHEEL
+# ground_truth: [rpe, HRV_Mean HR (1/min), FLYWHEEL_powerCon, FLYWHEEL_powerEcc]
+labels: [FLYWHEEL_powerCon]
+# normalization_input: global
+# normalization_labels: True
+search: grid
+task: regression
+balancing: False
+n_splits: 16
+batch_size: 4
+epochs: 200

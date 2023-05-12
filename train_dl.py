@@ -7,26 +7,16 @@ import os
 import matplotlib
 import matplotlib.pyplot as plt
 
-from src.ml import MLOptimization
-from src.dl import regression_models, instantiate_best_dl_model, build_conv1d_model, build_cnn_lstm_model
-from src.features import calculate_skeleton_images
 from typing import List, Union
-# from src.plot import (plot_sample_predictions)
 from datetime import datetime
 from argparse import ArgumentParser
 from os.path import join, exists
 from os import makedirs
 from tensorflow import keras
-
-from src.dataset import (
-    dl_split_data,
-    extract_dataset_input_output,
-    dl_normalize_data_3d_subject,
-    normalize_data_global,
-    filter_labels_outliers_per_subject,
-)
-
-matplotlib.use("WebAgg")
+from src.ml import MLOptimization
+from src.dl import regression_models, instantiate_best_dl_model, build_conv1d_model, build_cnn_lstm_model
+from src.dataset import dl_split_data
+# from src.plot import (plot_sample_predictions)
 
 
 def train_model(
@@ -96,7 +86,7 @@ def train_single_model(
 ):
     meta = {"X_shape_": X_train.shape, "n_outputs_": y_train.shape}
     # model = build_cnn_lstm_model(meta=meta, kernel_size=(11, 3), n_filters=32, n_layers=3, dropout=0.5, lstm_units=32)
-    model = build_conv1d_model(meta=meta, kernel_size=3, n_filters=16, n_layers=3, dropout=0.5, n_units=128)
+    model = build_conv1d_model(meta=meta, kernel_size=3, n_filters=32, n_layers=3, dropout=0.5, n_units=128)
     model.summary()
 
     # Prepare the training dataset
@@ -196,45 +186,16 @@ if __name__ == "__main__":
 
     print(f"Available GPU devices: {tf.config.list_physical_devices('GPU')}")
 
+    matplotlib.use("WebAgg")
+
     if args.train:
         if not args.use_gpu:
             os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
         cfg = yaml.load(open(args.exp_file, "r"), Loader=yaml.FullLoader)
 
-        # X = pd.read_parquet(join(args.src_path, cfg["X_file"]))
         X = np.load(join(args.src_path, cfg["X_file"]))
-        # y = pd.read_parquet(join(args.src_path, cfg["y_file"]))
         y = pd.read_csv(join(args.src_path, cfg["y_file"]))
-        # X = X.values.astype(np.float32)
-        # df = pd.read_csv(join(args.src_path, cfg["X_file"]), index_col=0)
-        # X, y = extract_dataset_input_output(df, cfg["labels"])
-
-        # drop_columns = []
-        # for prefix in cfg["drop_prefixes"]:
-            # drop_columns += [col for col in y.columns if col.startswith(prefix)]
-
-        # y.drop(columns=drop_columns, inplace=True, errors="ignore")
-        # X = calculate_skeleton_images(X)
-            # X = X.loc[:, (X != 0).any(axis=0)]  # Remove columns with all zeros, e.g. constrained joint orientations
-
-        # from PyMoCapViewer import MoCapViewer
-        # viewer = MoCapViewer()
-        # viewer.add_skeleton(X, skeleton_connection="azure")
-        # viewer.show_window()
-
-        # if cfg["normalization_input"]:
-        #     if cfg["normalization_input"] == "subject":
-        #         X = dl_normalize_data_3d_subject(X, y, method="min_max")
-        #     elif cfg["normalization_input"] == "global":
-        #         X = normalize_data_global(X, method="min_max")
-        #     else:
-        #         raise ValueError("Invalid normalization_input parameter")
-
-        # seq_len = int(cfg["X_file"].split("_")[0])
-        # X = X.values.reshape((-1, seq_len, X.shape[1]))
-        # y = y.iloc[::seq_len, :]
-        # X, y = filter_labels_outliers_per_subject(X, y, cfg["labels"], sigma=3.0)
 
         if args.single:
             X_train, y_train, X_test, y_test = dl_split_data(X, y, label_col=cfg["labels"], p_train=0.9)
