@@ -69,10 +69,10 @@ def build_cnn_lstm_model(
         dropout: float = 0.3,
         lstm_units: int = 32,
 ):
-    _, n_samples, n_features = meta["X_shape_"]
+    _, n_samples, n_features, n_channels = meta["X_shape_"]
     _, n_outputs = meta["n_outputs_"]
     model = keras.Sequential()
-    model.add(Input(shape=(n_samples, n_features, 1)))
+    model.add(Input(shape=(n_samples, n_features, n_channels)))
 
     for i in range(n_layers):
         model.add(Conv2D(filters=n_filters * 2 ** i, kernel_size=kernel_size, padding="same", activation="relu"))

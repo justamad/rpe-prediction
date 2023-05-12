@@ -1,7 +1,7 @@
-X_file: 170.npy
-y_file: 170.csv
-labels: [FLYWHEEL_powerCon]
-lstm: False
+X_file: X_lstm.npz
+y_file: y_lstm.csv
+labels: rpe
+lstm: True
 search: grid
 task: regression
 balancing: False

@@ -1,31 +1,26 @@
-from src.dataset import SubjectDataIterator, zero_pad_array, impute_dataframe, mask_repetitions
-from src.features import CustomFeatures, calculate_linear_joint_positions, apply_sliding_window_time_series, calculate_skeleton_images
-from argparse import ArgumentParser
-from typing import List, Tuple
-from os.path import join, exists, isfile
-from tsfresh.feature_extraction import extract_features
-from tsfresh.utilities.dataframe_functions import impute
-from tqdm import tqdm
-
-from src.processing import (
-    segment_kinect_signal,
-    apply_butterworth_filter,
-    calculate_acceleration,
-    calculate_cross_correlation_with_datetime,
-)
-
 import numpy as np
 import json
 import os
 import pandas as pd
 import logging
 import matplotlib
-matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 
+from typing import List, Tuple
+from argparse import ArgumentParser
+from os.path import join, exists, isfile
+from tsfresh.feature_extraction import extract_features
+from tsfresh.utilities.dataframe_functions import impute
+from tqdm import tqdm
 from cycler import cycler
-default_cycler = (cycler(color=['#FF007F', '#D62598']))
-plt.rc('axes', prop_cycle=default_cycler)
+from src.dataset import SubjectDataIterator, zero_pad_array, impute_dataframe, mask_repetitions
+from src.features import CustomFeatures, calculate_linear_joint_positions, calculate_skeleton_images
+from src.processing import (
+    segment_kinect_signal,
+    apply_butterworth_filter,
+    calculate_acceleration,
+    calculate_cross_correlation_with_datetime,
+)
 
 
 def synchronize_flywheel_data(fw_durations: np.ndarray, azure_durations: np.ndarray) -> Tuple[List[bool], List[bool]]:
@@ -249,15 +244,13 @@ def prepare_segmented_data_for_ml(src_path: str, dst_path: str, mode: str, plot:
     settings = CustomFeatures()
 
     for trial in iterate_segmented_data(src_path, mode=mode, plot=plot, plot_path=plot_path):
-        rpe, subject, set_id, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
+        meta_data, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
         c_f = len(flywheel_df)
         c_p = len(pos_df["Repetition"].unique())
         c_i = len(imu_df["Repetition"].unique())
         if c_f != c_p != c_i:
             logging.warning(f"Different nr of reps: {subject}, set {set_id}: {c_f} vs. {c_p} vs. {c_i}")
             continue
-
-        # assert len(flywheel_df) == len(pos_df["Repetition"].unique()) == len(imu_df["Repetition"].unique())
 
         pos_df = calculate_linear_joint_positions(pos_df)
 
@@ -276,13 +269,11 @@ def prepare_segmented_data_for_ml(src_path: str, dst_path: str, mode: str, plot:
                 flywheel_df.reset_index(drop=True).add_prefix("FLYWHEEL_"),
                 imu_features_df.reset_index(drop=True).add_prefix("PHYSILOG_"),
                 hrv_mean.reset_index(drop=True).add_prefix("HRV_"),
-            ],
-            axis=1,
+            ], axis=1,
         )
 
-        total_df["rpe"] = rpe
-        total_df["subject"] = subject
-        total_df["set_id"] = set_id
+        for key, value in meta_data.items():
+            total_df[key] = value
         final_df = pd.concat([final_df, total_df], axis=0)
 
     final_df = impute_dataframe(final_df)
@@ -343,9 +334,21 @@ def prepare_data_for_dl_sliding_window(src_path: str, dst_path: str, plot: bool,
 
     y = pd.DataFrame(labels)
     y.to_csv(join(dst_path, "y_lstm.csv"))
+
     X = np.array(skeleton_images, dtype=object)
+    for subject in y["subject"].unique():
+        mask = y["subject"] == subject
+
+        images = X[mask]
+        min_i = np.array([img.reshape((img.shape[0]*img.shape[1], 3)).min(axis=0) for img in images]).min(axis=0)
+        max_i = np.array([img.reshape((img.shape[0]*img.shape[1], 3)).max(axis=0) for img in images]).max(axis=0)
+
+        for i in range(len(images)):
+            images[i] = (images[i] - min_i) / (max_i - min_i)
+
+        X[mask] = images
+
     np.savez(join(dst_path, "X_lstm.npz"), X=X)
-    # X.save(join(dst_path, "X_lstm.npy"))
 
 
 if __name__ == "__main__":
@@ -363,6 +366,10 @@ if __name__ == "__main__":
         datefmt="%m-%d %H:%M:%S",
     )
     logging.getLogger('matplotlib').setLevel(logging.WARNING)
+
+    matplotlib.use("WebAgg")
+    default_cycler = (cycler(color=['#FF007F', '#D62598']))
+    plt.rc('axes', prop_cycle=default_cycler)
 
     if not exists(args.proc_path):
         os.makedirs(args.proc_path)
