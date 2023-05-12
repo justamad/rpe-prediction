@@ -187,8 +187,8 @@ def dl_split_data(
         label_col: Union[str, List[str]],
         p_train: float = 0.8,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    if isinstance(label_col, str):
-        label_col = [label_col]
+    # if isinstance(label_col, str):
+        # label_col = [label_col]
 
     subjects = y["subject"].unique()
     train_subjects = subjects[:int(len(subjects) * p_train)]
@@ -197,12 +197,8 @@ def dl_split_data(
     X_test, y_test = X[~train_mask], y.loc[~train_mask, :]
     X_train, y_train = X[train_mask], y.loc[train_mask, :]
 
-    del X
-
     y_train = y_train[label_col].values
     y_test = y_test[label_col].values
-    y_train = y_train.astype(np.float32)
-    y_test = y_test.astype(np.float32)
     return X_train, y_train, X_test, y_test
 
 

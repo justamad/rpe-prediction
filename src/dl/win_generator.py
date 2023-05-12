@@ -39,7 +39,7 @@ class WinDataGen(tf.keras.utils.Sequence):
         indices = []
         for file_counter, (input_arr, label) in enumerate(zip(self._X, self._y)):
             n_windows = math.floor((len(input_arr) - self._win_size) / self._stride) + 1
-            indices.extend([(file_counter, i, label) for i in range(n_windows)])
+            indices.extend([(file_counter, i, label) for i in range(0, n_windows, self._stride)])
 
         self._index = np.array(indices)
 

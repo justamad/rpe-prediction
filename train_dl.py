@@ -13,7 +13,6 @@ from argparse import ArgumentParser
 from os.path import join, exists
 from os import makedirs
 from tensorflow import keras
-from src.ml import MLOptimization
 from src.dl import instantiate_best_dl_model, build_conv1d_model, build_cnn_lstm_model, WinDataGen
 from src.dataset import dl_split_data
 # from src.plot import (plot_sample_predictions)
@@ -21,59 +20,38 @@ from src.dataset import dl_split_data
 
 def train_time_series_model(
         X: np.ndarray,
-        y: np.ndarray,
+        y: pd.DataFrame,
         epochs: int,
         ground_truth: Union[List[str], str],
         win_size: int
-        # search: str,
-        # balancing: bool,
-        # normalization_labels: str,
-        # task: str,
-        # n_splits: int,
 ):
     input_shape = (None, win_size, *X[0].shape[-2:])
     meta = {"X_shape_": input_shape, "n_outputs_": (None, 1)}
     model = build_cnn_lstm_model(meta=meta, kernel_size=(11, 3), n_filters=32, n_layers=3, dropout=0.5, lstm_units=32)
     model.summary()
 
-    y = y[ground_truth].values
-    train_dataset = WinDataGen(X, y, win_size, 0.5, 4, True)
+    X_train, y_train, X_test, y_test = dl_split_data(X, y, ground_truth, 0.9)
+
+    train_dataset = WinDataGen(X_train, y_train, win_size, 0.5, 4, True)
+    test_dataset = WinDataGen(X_test, y_test, win_size, 0.5, 4, False)
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     log_dir = "logs/fit/" + timestamp
     tb_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
     # es_callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3)
-    model.fit(train_dataset, epochs=epochs, callbacks=[tb_callback])
+    model.fit(train_dataset, epochs=epochs, validation_data=test_dataset, callbacks=[tb_callback])
     model.save(f"models/{timestamp}/model")
-
-    # with open(join(log_path, "config.yml"), "w") as f:
-    #     yaml.dump({
-    #             "task": task,
-    #             "search": search,
-    #             "balancing": balancing,
-    #             "normalization_labels": normalization_labels,
-    #             "n_splits": n_splits,
-    #         }, f)
-
-    # MLOptimization(
-    #     X=X,
-    #     y=y,
-    #     balance=False,
-    #     task=task,
-    #     mode=search,
-    #     ground_truth=ground_truth,
-    #     n_splits=n_splits,
-    # ).perform_grid_search_with_cv(regression_models, log_path=log_path, n_jobs=1)
 
 
 def train_single_model(
-        X_train: np.ndarray,
-        y_train: np.ndarray,
-        X_test: np.ndarray,
-        y_test: np.ndarray,
+        X: np.ndarray,
+        y: pd.DataFrame,
+        labels: str,
         epochs: int,
         batch_size: int,
 ):
+    X_train, y_train, X_test, y_test = dl_split_data(X, y, label_col=labels, p_train=0.9)
+
     meta = {"X_shape_": X_train.shape, "n_outputs_": y_train.shape}
     # model = build_cnn_lstm_model(meta=meta, kernel_size=(11, 3), n_filters=32, n_layers=3, dropout=0.5, lstm_units=32)
     model = build_conv1d_model(meta=meta, kernel_size=3, n_filters=32, n_layers=3, dropout=0.5, n_units=128)
@@ -149,30 +127,5 @@ if __name__ == "__main__":
         else:
             X = np.load(join(args.src_path, cfg["X_file"]))
             y = pd.read_csv(join(args.src_path, cfg["y_file"]))
-
-        if args.single:
-            X_train, y_train, X_test, y_test = dl_split_data(X, y, label_col=cfg["labels"], p_train=0.9)
-            train_single_model(X_train, y_train, X_test, y_test, epochs=cfg["epochs"], batch_size=cfg["batch_size"])
+            train_single_model(X, y, labels=cfg["labels"], epochs=cfg["epochs"], batch_size=cfg["batch_size"])
             # evaluate_single_model(X_train, y_train, X_test, y_test, src_path="models/20230511-100550/model")
-
-        # else:
-        #     for exp_name in os.listdir(args.exp_path):
-        #         exp_path = join(args.exp_path, exp_name)
-        #         for config_file in filter(lambda f: not f.startswith("_"), os.listdir(exp_path)):
-        #             exp_config = yaml.load(open(join(exp_path, config_file), "r"), Loader=yaml.FullLoader)
-        #             training_file = exp_config["training_file"]
-        #             df = pd.read_csv(join(args.src_path, training_file), index_col=0, dtype={"subject": str})
-        #             del exp_config["training_file"]
-        #             seq_len = int(training_file.split("_")[0])
-        #             log_path = join(args.log_path, f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}")
-        #
-        #             if not exists(log_path):
-        #                 makedirs(log_path)
-        #
-        #             train_model(df, log_path, seq_len, **exp_config)
-
-    # if args.eval:
-    #     if not exists(args.dst_path):
-    #         makedirs(args.dst_path)
-    #
-    #     evaluate_ml_model(join(args.log_path, "2023-04-20-16-33-17"), args.dst_path)
