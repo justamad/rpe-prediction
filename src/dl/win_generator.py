@@ -2,6 +2,9 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import math
+import logging
+
+from imblearn.over_sampling import RandomOverSampler
 
 
 class WinDataGen(tf.keras.utils.Sequence):
@@ -29,8 +32,6 @@ class WinDataGen(tf.keras.utils.Sequence):
         self._n_samples = len(self._index)
         print("Got samples: ", self._n_samples)
         print(f"Number of batches: {len(self)}")
-        # self.n_name = df[y_col['name']].nunique()
-        # self.n_type = df[y_col['type']].nunique()
 
     def on_epoch_end(self):
         self._build_index()
@@ -43,11 +44,14 @@ class WinDataGen(tf.keras.utils.Sequence):
 
         self._index = np.array(indices)
 
+        if self._balance:
+            indices, labels = self._index[:, :-1], self._index[:, -1]
+            ros = RandomOverSampler()
+            indices, labels = ros.fit_resample(indices, labels)
+            self._index = np.hstack((indices, labels.reshape(-1, 1)))
+
         if self._shuffle:
             np.random.shuffle(self._index)
-
-        if self._balance:
-            raise NotImplementedError("Balancing is not implemented yet")
 
     def __getitem__(self, idx: int):
         X, y = [], []

@@ -23,23 +23,24 @@ def train_time_series_model(
         y: pd.DataFrame,
         epochs: int,
         ground_truth: Union[List[str], str],
-        win_size: int
+        win_size: int,
+        batch_size: int,
 ):
     input_shape = (None, win_size, *X[0].shape[-2:])
     meta = {"X_shape_": input_shape, "n_outputs_": (None, 1)}
-    model = build_cnn_lstm_model(meta=meta, kernel_size=(11, 3), n_filters=32, n_layers=3, dropout=0.5, lstm_units=32)
+    model = build_cnn_lstm_model(meta=meta, kernel_size=11, n_filters=32, n_layers=3, dropout=0.5, lstm_units=32)
     model.summary()
 
-    X_train, y_train, X_test, y_test = dl_split_data(X, y, ground_truth, 0.9)
+    X_train, y_train, X_test, y_test = dl_split_data(X, y, ground_truth, 0.8)
 
-    train_dataset = WinDataGen(X_train, y_train, win_size, 0.5, 4, True)
-    test_dataset = WinDataGen(X_test, y_test, win_size, 0.5, 4, False)
+    train_dataset = WinDataGen(X_train, y_train, win_size, 0.9, batch_size=batch_size, shuffle=True, balance=True)
+    test_dataset = WinDataGen(X_test, y_test, win_size, 0.9, batch_size=1, shuffle=False, balance=False)
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     log_dir = "logs/fit/" + timestamp
     tb_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
     # es_callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3)
-    model.fit(train_dataset, epochs=epochs, validation_data=test_dataset, callbacks=[tb_callback])
+    model.fit(train_dataset, epochs=epochs, validation_data=test_dataset, callbacks=[tb_callback], verbose=1)
     model.save(f"models/{timestamp}/model")
 
 
@@ -123,7 +124,7 @@ if __name__ == "__main__":
         if cfg["lstm"]:
             X = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"]
             y = pd.read_csv(join(args.src_path, cfg["y_file"]), index_col=0)
-            train_time_series_model(X, y, cfg["epochs"], cfg["labels"], win_size=30)
+            train_time_series_model(X, y, cfg["epochs"], cfg["labels"], win_size=30, batch_size=cfg["batch_size"])
         else:
             X = np.load(join(args.src_path, cfg["X_file"]))
             y = pd.read_csv(join(args.src_path, cfg["y_file"]))
