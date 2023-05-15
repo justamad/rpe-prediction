@@ -319,7 +319,6 @@ def prepare_segmented_data_for_dl(src_path: str, dst_path: str, plot: bool, plot
 def prepare_data_for_dl_sliding_window(src_path: str, dst_path: str, plot: bool, plot_path: str):
     skeleton_images = []
     labels = []
-    i = 0
     for trial in iterate_segmented_data(src_path, mode="full", plot=plot, plot_path=plot_path):
         meta_dict, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
 
@@ -328,9 +327,6 @@ def prepare_data_for_dl_sliding_window(src_path: str, dst_path: str, plot: bool,
         skeleton_img = calculate_skeleton_images(pos_df, ori_df)
         skeleton_images.append(skeleton_img)
         labels.append(meta_dict)
-        i += 1
-        if i > 15:
-            break
 
     y = pd.DataFrame(labels)
     y.to_csv(join(dst_path, "y_lstm.csv"))
