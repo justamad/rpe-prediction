@@ -85,52 +85,66 @@ def train_model_own_routine(
 ):
     X_train, y_train, X_test, y_test = dl_split_data(X, y, label_col=labels, p_train=0.8)
     meta = {"X_shape_": X_train.shape, "n_outputs_": y_train.shape}
-    model = build_conv1d_model(meta=meta, kernel_size=5, n_filters=32, n_layers=2, dropout=0.5, n_units=128)
+    model = build_conv1d_model(meta=meta, kernel_size=3, n_filters=128, n_layers=2, dropout=0.5, n_units=128)
     model.summary()
 
     train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
     train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
 
     train_loss_results = []
-    train_accuracy_results = []
     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
     folder = datetime.now().strftime("%Y%m%d-%H%M%S")
+    makedirs(folder, exist_ok=True)
+
+    r2_train_array = []
+    r2_test_array = []
+    mae_train_array = []
+    mae_test_array = []
 
     for epoch in range(epochs):
         logging.info(f"Epoch {epoch}")
         epoch_loss_avg = tf.keras.metrics.Mean()
-        epoch_mae = tf.keras.metrics.MeanAbsoluteError()
 
         for x, y in tqdm(train_dataset):
             loss_value, grads = grad(model, x, y)
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
             epoch_loss_avg.update_state(loss_value)
-            epoch_mae.update_state(y, model(x, training=True))
 
         train_loss_results.append(epoch_loss_avg.result())
-        train_accuracy_results.append(epoch_mae.result())
-        print("Epoch {:03d}: MSE: {:.3f}, MAE: {:.3%}".format(epoch, epoch_loss_avg.result(), epoch_mae.result()))
 
         fig, axs = plt.subplots(2, 1)
         y_pred = model(X_train[:600], training=False)
         y_true = y_train[:600]
+        r2_train = r2_score(y_pred, y_true)
+        mae_train = mean_absolute_error(y_pred, y_true)
         axs[0].plot(y_true, label="True")
         axs[0].plot(y_pred, label="Predicted")
         axs[0].legend()
-        axs[0].set_title(f"Train Loss: {mean_squared_error(y_pred, y_true):.3f}, MAE: {mean_absolute_error(y_pred, y_true):.3f}, r2: {r2_score(y_pred, y_true):.3f}")
+        axs[0].set_title(f"Train Loss: {mean_squared_error(y_pred, y_true):.3f}, MAE: {mae_train:.3f}, r2: {r2_train:.3f}")
 
         y_pred = model(X_test, training=False)
         y_true = y_test
+        r2_test = r2_score(y_pred, y_true)
+        mae_test = mean_absolute_error(y_pred, y_true)
         axs[1].plot(y_true, label="True")
         axs[1].plot(y_pred, label="Predicted")
         axs[1].legend()
-        axs[1].set_title(f"Test Loss: {mean_squared_error(y_pred, y_true):.3f}, MAE: {mean_absolute_error(y_pred, y_true):.3f}, r2: {r2_score(y_pred, y_true):.3f}")
+        axs[1].set_title(f"Test Loss: {mean_squared_error(y_pred, y_true):.3f}, MAE: {mae_test:.3f}, r2: {r2_test:.3f}")
 
         plt.tight_layout()
-        makedirs(folder, exist_ok=True)
         plt.savefig(join(folder, f"{epoch:03d}.png"))
         plt.close()
+        r2_train_array.append(r2_train)
+        r2_test_array.append(r2_test)
+        mae_train_array.append(mae_train)
+        mae_test_array.append(mae_test)
+
+    plt.plot(r2_train_array, label="Train")
+    plt.plot(r2_test_array, label="Test")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(join(folder, "r2.png"))
 
 
 loss_object = tf.keras.losses.MeanSquaredError()
@@ -143,8 +157,6 @@ def grad(model, inputs, targets):
 
 
 def loss(model, x, y, training):
-    # training=training is needed only if there are layers with different
-    # behavior during training versus inference (e.g. Dropout).
     y_ = model(x, training=training)
     return loss_object(y_true=y, y_pred=y_)
 
@@ -218,6 +230,6 @@ if __name__ == "__main__":
             X = np.nan_to_num(X)
             X, y = filter_labels_outliers_per_subject(X, y, cfg["labels"], sigma=3.0)
 
-            # train_single_model(X, y, labels=cfg["labels"], epochs=cfg["epochs"], batch_size=cfg["batch_size"])
             train_model_own_routine(X, y, labels=cfg["labels"], epochs=cfg["epochs"], batch_size=cfg["batch_size"], learning_rate=cfg["learning_rate"])
+            # train_single_model(X, y, labels=cfg["labels"], epochs=cfg["epochs"], batch_size=cfg["batch_size"])
             # evaluate_single_model(X_train, y_train, X_test, y_test, src_path="models/20230511-100550/model")

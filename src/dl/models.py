@@ -1,6 +1,6 @@
 from typing import Dict, Any, Tuple
 from tensorflow import keras
-from keras.layers import Input, Conv1D, Conv2D, BatchNormalization, GRU, Dropout, MaxPooling2D, Flatten, Dense, Reshape, GlobalMaxPooling2D, GlobalAveragePooling1D, Masking, GlobalAveragePooling2D
+from keras.layers import Input, Conv1D, Conv2D, BatchNormalization, GRU, Dropout, MaxPooling2D, Flatten, Dense, Reshape, GlobalMaxPooling2D, GlobalAveragePooling1D, Masking, GlobalAveragePooling2D, MaxPooling1D
 from tensorflow_addons.metrics import RSquare
 from keras.regularizers import l2
 
@@ -20,14 +20,14 @@ def build_conv1d_model(
     model.add(Masking(mask_value=0.0))
 
     for i in range(n_layers):
-        model.add(Conv1D(filters=n_filters * 2 ** i, kernel_size=kernel_size, padding="same", activation="relu", kernel_regularizer=l2(0.01)))
+        model.add(Conv1D(filters=n_filters // (2 ** i), kernel_size=kernel_size, padding="same", activation="relu", kernel_regularizer=l2(0.01)))
         model.add(BatchNormalization())
         model.add(Dropout(dropout))
-        # model.add(MaxPooling2D(pool_size=(2, 2)))
+        model.add(MaxPooling2D(pool_size=(2, 2)))
 
     # model.add(GlobalMaxPooling2D())
-    model.add(GlobalAveragePooling2D())
-    # model.add(Flatten())
+    # model.add(GlobalAveragePooling2D())
+    model.add(Flatten())
     model.add(Dense(n_units, activation="relu"))
     model.add(Dense(n_outputs))
     # model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-4), loss="mse", metrics=["mse", "mae", "mape", RSquare()], )
