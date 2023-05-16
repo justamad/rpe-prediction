@@ -1,10 +1,11 @@
-X_file: 170.npy
-y_file: 170.csv
+X_file: X_seg.npz
+y_file: y_seg.csv
 labels: [FLYWHEEL_powerCon]
 lstm: False
 search: grid
 task: regression
 balancing: False
 n_splits: 16
-batch_size: 8
-epochs: 200
+batch_size: 32
+epochs: 300
+learning_rate: 0.001

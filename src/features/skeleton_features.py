@@ -23,7 +23,20 @@ def calculate_linear_joint_positions(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def calculate_relative_joint_positions(df: pd.DataFrame, joint: str = "PELVIS"):
+def calculate_skeleton_images(pos_df: pd.DataFrame, ori_df) -> np.ndarray:
+    unused_joints = ["WRIST", "FOOT"]
+    pos_df.drop("Repetition", axis=1, inplace=True)
+    ori_df.drop("Repetition", axis=1, inplace=True)
+    pos_df = pos_df.loc[:, [c for c in pos_df.columns if not any([j in c for j in unused_joints])]]
+    ori_df = ori_df.loc[:, [c for c in ori_df.columns if not any([j in c for j in unused_joints])]]
+    pos_df = calculate_relative_joint_positions(pos_df)
+    disp_df = calculate_displacement(pos_df)
+    ori_df = ori_df.loc[:, [c for c in ori_df.columns if "PELVIS" not in c]]
+    image = np.stack([pos_df.values, disp_df.values, ori_df.values], axis=2)
+    return image
+
+
+def calculate_relative_joint_positions(df: pd.DataFrame, joint: str = "PELVIS") -> pd.DataFrame:
     pelvis = df.loc[:, [c for c in df.columns if joint in c]]
     other = df.loc[:, [c for c in df.columns if joint not in c]]
     n_joints = other.shape[1] // 3
@@ -33,17 +46,6 @@ def calculate_relative_joint_positions(df: pd.DataFrame, joint: str = "PELVIS"):
     return other
 
 
-def calculate_displacement(df: pd.DataFrame):
+def calculate_displacement(df: pd.DataFrame) -> pd.DataFrame:
     df = df.diff().fillna(0)
     return df
-
-
-def calculate_skeleton_images(pos_df: pd.DataFrame, ori_df):
-    unused_joints = ["WRIST", "FOOT"]
-    pos_df = pos_df.loc[:, [c for c in pos_df.columns if not any([j in c for j in unused_joints])]]
-    ori_df = ori_df.loc[:, [c for c in ori_df.columns if not any([j in c for j in unused_joints])]]
-    pos_df = calculate_relative_joint_positions(pos_df)
-    disp_df = calculate_displacement(pos_df)
-    ori_df = ori_df.loc[:, [c for c in ori_df.columns if "PELVIS" not in c]]
-    image = np.stack([pos_df.values, disp_df.values, ori_df.values], axis=2)
-    return image

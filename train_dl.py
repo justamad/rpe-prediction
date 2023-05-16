@@ -16,7 +16,7 @@ from os import makedirs
 from tensorflow import keras
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from src.dl import build_conv1d_model, build_cnn_lstm_model, WinDataGen
-from src.dataset import dl_split_data, filter_labels_outliers_per_subject
+from src.dataset import dl_split_data, filter_labels_outliers_per_subject, zero_pad_array
 
 
 def train_time_series_model(
@@ -81,22 +81,21 @@ def train_model_own_routine(
         labels: str,
         epochs: int,
         batch_size: int,
+        learning_rate: float,
 ):
     X_train, y_train, X_test, y_test = dl_split_data(X, y, label_col=labels, p_train=0.8)
     meta = {"X_shape_": X_train.shape, "n_outputs_": y_train.shape}
-    model = build_conv1d_model(meta=meta, kernel_size=3, n_filters=32, n_layers=3, dropout=0.5, n_units=128)
+    model = build_conv1d_model(meta=meta, kernel_size=5, n_filters=32, n_layers=2, dropout=0.5, n_units=128)
     model.summary()
 
     train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
     train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
 
-    # Keep results for plotting
     train_loss_results = []
     train_accuracy_results = []
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
     folder = datetime.now().strftime("%Y%m%d-%H%M%S")
-    makedirs(f"{folder}", exist_ok=True)
 
     for epoch in range(epochs):
         logging.info(f"Epoch {epoch}")
@@ -111,18 +110,27 @@ def train_model_own_routine(
 
         train_loss_results.append(epoch_loss_avg.result())
         train_accuracy_results.append(epoch_mae.result())
-
-        pred = model(X_test, training=False)
-        rmse = mean_squared_error(y_test, pred, squared=False)
-        mae = mean_absolute_error(y_test, pred)
-        r2 = r2_score(y_test, pred)
-        plt.plot(y_test, label="True")
-        plt.plot(pred, label="Predicted")
-        plt.legend()
-        plt.title(f"RMSE: {rmse:.3f}, MAE: {mae:.3f}, R2: {r2:.3f}")
-        plt.savefig(join(folder, f"{epoch:03d}_validation.png"))
-        plt.close()
         print("Epoch {:03d}: MSE: {:.3f}, MAE: {:.3%}".format(epoch, epoch_loss_avg.result(), epoch_mae.result()))
+
+        fig, axs = plt.subplots(2, 1)
+        y_pred = model(X_train[:600], training=False)
+        y_true = y_train[:600]
+        axs[0].plot(y_true, label="True")
+        axs[0].plot(y_pred, label="Predicted")
+        axs[0].legend()
+        axs[0].set_title(f"Train Loss: {mean_squared_error(y_pred, y_true):.3f}, MAE: {mean_absolute_error(y_pred, y_true):.3f}, r2: {r2_score(y_pred, y_true):.3f}")
+
+        y_pred = model(X_test, training=False)
+        y_true = y_test
+        axs[1].plot(y_true, label="True")
+        axs[1].plot(y_pred, label="Predicted")
+        axs[1].legend()
+        axs[1].set_title(f"Test Loss: {mean_squared_error(y_pred, y_true):.3f}, MAE: {mean_absolute_error(y_pred, y_true):.3f}, r2: {r2_score(y_pred, y_true):.3f}")
+
+        plt.tight_layout()
+        makedirs(folder, exist_ok=True)
+        plt.savefig(join(folder, f"{epoch:03d}.png"))
+        plt.close()
 
 
 loss_object = tf.keras.losses.MeanSquaredError()
@@ -193,9 +201,23 @@ if __name__ == "__main__":
             y = pd.read_csv(join(args.src_path, cfg["y_file"]), index_col=0)
             train_time_series_model(X, y, cfg["epochs"], cfg["labels"], win_size=30, batch_size=cfg["batch_size"])
         else:
-            X = np.load(join(args.src_path, cfg["X_file"]))
+            data = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)
+            X = data["X"]
             y = pd.read_csv(join(args.src_path, cfg["y_file"]))
+
+            arr = np.vstack(X)
+            mean = np.mean(arr, axis=0)
+            std = np.std(arr, axis=0)
+
+            X = list(X)
+            for skeleton in range(len(X)):
+                skel = (X[skeleton] - mean) / std
+                X[skeleton] = zero_pad_array(skel, 170)
+
+            X = np.array(X)
+            X = np.nan_to_num(X)
             X, y = filter_labels_outliers_per_subject(X, y, cfg["labels"], sigma=3.0)
+
             # train_single_model(X, y, labels=cfg["labels"], epochs=cfg["epochs"], batch_size=cfg["batch_size"])
-            train_model_own_routine(X, y, labels=cfg["labels"], epochs=cfg["epochs"], batch_size=cfg["batch_size"])
+            train_model_own_routine(X, y, labels=cfg["labels"], epochs=cfg["epochs"], batch_size=cfg["batch_size"], learning_rate=cfg["learning_rate"])
             # evaluate_single_model(X_train, y_train, X_test, y_test, src_path="models/20230511-100550/model")

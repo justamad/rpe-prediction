@@ -6,5 +6,5 @@ search: grid
 task: regression
 balancing: False
 n_splits: 16
-batch_size: 4
+batch_size: 16
 epochs: 200

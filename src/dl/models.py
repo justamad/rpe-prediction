@@ -30,7 +30,7 @@ def build_conv1d_model(
     # model.add(Flatten())
     model.add(Dense(n_units, activation="relu"))
     model.add(Dense(n_outputs))
-    model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-4), loss="mse", metrics=["mse", "mae", "mape", RSquare()], )
+    # model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-4), loss="mse", metrics=["mse", "mae", "mape", RSquare()], )
     return model
 
 
@@ -64,7 +64,7 @@ def build_conv2d_model(
 def build_cnn_lstm_model(
         meta: Dict[str, Any],
         n_filters: int = 32,
-        kernel_size: Tuple[int, int] = (10, 3),
+        kernel_size: int = 10,
         n_layers: int = 3,
         dropout: float = 0.3,
         lstm_units: int = 32,
@@ -75,11 +75,12 @@ def build_cnn_lstm_model(
     model.add(Input(shape=(n_samples, n_features, n_channels)))
 
     for i in range(n_layers):
-        model.add(Conv2D(filters=n_filters * 2 ** i, kernel_size=kernel_size, padding="same", activation="relu"))
+        model.add(Conv1D(filters=n_filters * 2 ** i, kernel_size=kernel_size, padding="same", activation="relu"))
         model.add(BatchNormalization())
         model.add(Dropout(dropout))
         # model.add(MaxPooling2D(pool_size=(2, 2)))
 
+    # model.add(GlobalAveragePooling2D())
     model.add(Reshape((model.output_shape[1], -1)))
     model.add(GRU(lstm_units, activation="relu"))
     model.add(Dense(n_outputs))
