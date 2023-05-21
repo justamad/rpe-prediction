@@ -1,3 +1,7 @@
+import pandas as pd
+import numpy as np
+import logging
+
 from .ml_model_config import LearningModelBase
 from imblearn.pipeline import Pipeline
 from imblearn.over_sampling import RandomOverSampler
@@ -18,9 +22,6 @@ from sklearn.metrics import (
     mean_absolute_percentage_error,
 )
 
-import pandas as pd
-import numpy as np
-import logging
 
 metrics = {
     "regression": {
@@ -55,9 +56,9 @@ class MLOptimization(object):
             X: Union[pd.DataFrame, np.ndarray],
             y: pd.DataFrame,
             balance: bool,
-            task: str,
-            mode: str,
-            ground_truth: Union[str, List[str]],
+            labels: Union[str, List[str]],
+            task: str = "regression",
+            mode: str = "grid",
             n_splits: int = None,
     ):
         if task not in ["regression", "classification"]:
@@ -65,6 +66,9 @@ class MLOptimization(object):
 
         if mode not in ["grid", "random"]:
             raise AttributeError(f"Unknown ML mode given: {mode}")
+
+        if "subject" not in y.columns:
+            raise AttributeError("No subject column found in y")
 
         subjects = y["subject"].unique()
         y["group"] = y["subject"].replace(dict(zip(subjects, range(len(subjects)))))
@@ -78,19 +82,22 @@ class MLOptimization(object):
         self._task = task
         self._mode = mode
         self._balance = balance
-        self._ground_truth = ground_truth
+        self._ground_truth = labels
 
     def perform_grid_search_with_cv(
-            self, models: List[LearningModelBase],
+            self, models: Union[LearningModelBase, List[LearningModelBase]],
             log_path: str,
             n_jobs: int = -1,
-            verbose: int = 1,
+            verbose: int = 10,
     ):
         X = self._X
         if isinstance(X, pd.DataFrame):
             X = X.values
         y = self._y[self._ground_truth].values
         groups = self._y["group"].values
+
+        if not isinstance(models, list):
+            models = [models]
 
         for model_config in models:
             steps = [
@@ -105,7 +112,7 @@ class MLOptimization(object):
 
             if self._mode == "grid":
                 ml_search = GridSearchCV(
-                    estimator=pipe,
+                    estimator=model_config.model,
                     param_grid=model_config.parameters,
                     cv=group_k_fold.split(X, y, groups),
                     n_jobs=n_jobs,
@@ -128,7 +135,7 @@ class MLOptimization(object):
             logging.info(ml_search)
             logging.info(f"Input shape: {self._X.shape}")
 
-            ml_search.fit(X, y)
+            ml_search.fit(X, y, X_val=X, y_val=y)
             r_df = pd.DataFrame(ml_search.cv_results_)
             r_df = r_df.drop(["params"], axis=1)
 

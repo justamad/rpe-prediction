@@ -122,7 +122,7 @@ def train_model(
         task=task,
         mode=search,
         balance=balancing,
-        ground_truth=ground_truth,
+        labels=ground_truth,
         n_splits=n_splits,
     ).perform_grid_search_with_cv(models=regression_models, log_path=log_path, verbose=2)
 
@@ -238,7 +238,7 @@ def retrain_model(result_path: str, model_file: str, dst_path: str, filter_exp: 
         task=config["task"],
         mode=config["search"],
         balance=config["balancing"],
-        ground_truth=config["ground_truth"],
+        labels=config["ground_truth"],
         n_splits=config["n_splits"],
     )
     res_df = opt.evaluate_model(model, config["normalization_labels"], config["label_mean"], config["label_std"])

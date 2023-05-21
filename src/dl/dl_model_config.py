@@ -1,33 +1,34 @@
+import pandas as pd
+
+from .custom_regressor import CustomKerasRegressor
 from .models import build_conv2d_model, build_cnn_lstm_model
 from src.ml.ml_model_config import LearningModelBase, parse_report_file_to_model_parameters
 from scikeras.wrappers import KerasRegressor
-
-import pandas as pd
 
 
 class ConvModelConfig(LearningModelBase):
 
     def __init__(self):
-        model = KerasRegressor(
-            model=build_conv2d_model,
-            n_layers=3, n_filters=32, kernel_size=(10,3), dropout=0.3, n_units=128,
-            verbose=False,
+        regressor = CustomKerasRegressor(
+            build_fn=build_conv2d_model,
+            n_layers=3, n_filters=128, kernel_size=(3,3), dropout=0.5, n_units=128, verbose=10, learning_rate=1e-4,
         )
 
         tunable_parameters = {
-            f"{str(self)}__batch_size": [64],
-            f"{str(self)}__epochs": [200],
-            f"{str(self)}__n_filters": [16],
-            f"{str(self)}__n_layers": [2, 3],
-            f"{str(self)}__kernel_size": [(10, 3)],
-            f"{str(self)}__dropout": [0.3],
-            f"{str(self)}__n_units": [128, 256],
+            f"batch_size": [16],
+            f"learning_rate": [1e-4],
+            f"epochs": [1],
+            f"n_filters": [128],
+            f"n_layers": [3],
+            f"kernel_size": [(3, 3)],
+            f"dropout": [0.5],
+            f"n_units": [128],
         }
 
-        super().__init__(model=model, grid_search_params=tunable_parameters)
+        super().__init__(model=regressor, grid_search_params=tunable_parameters)
 
     def __repr__(self):
-        return "conv"
+        return "Conv2D"
 
 
 class CNNLSTMModelConfig(LearningModelBase):
@@ -40,10 +41,10 @@ class CNNLSTMModelConfig(LearningModelBase):
         )
 
         tunable_parameters = {
-            f"{str(self)}__batch_size": [64],
+            f"{str(self)}__batch_size": [],
             f"{str(self)}__epochs": [200],
             f"{str(self)}__n_filters": [16],
-            f"{str(self)}__n_layers": [2, 3],
+            f"{str(self)}__n_layers": [3],
             f"{str(self)}__kernel_size": [(10, 3)],
             f"{str(self)}__dropout": [0.3],
             f"{str(self)}__lstm_units": [8, 16],
@@ -52,11 +53,11 @@ class CNNLSTMModelConfig(LearningModelBase):
         super().__init__(model=model, grid_search_params=tunable_parameters)
 
     def __repr__(self):
-        return "cnnlstm"
+        return "CNNLSTM"
 
 
-regression_models = [ConvModelConfig(), CNNLSTMModelConfig()]
-models = {str(model): model for model in regression_models}
+# regression_models = [ConvModelConfig()]
+# models = {str(model): model for model in regression_models}
 
 
 def instantiate_best_dl_model(result_df: pd.DataFrame, model_name: str, task: str):

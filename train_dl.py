@@ -10,12 +10,13 @@ import matplotlib.pyplot as plt
 from typing import List, Union
 from datetime import datetime
 from argparse import ArgumentParser
-from os.path import join, exists
+from os.path import join
 from tqdm import tqdm
 from os import makedirs
 from tensorflow import keras
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
-from src.dl import build_conv1d_model, build_cnn_lstm_model, WinDataGen
+from src.dl import build_cnn_lstm_model, WinDataGen, build_conv2d_model, ConvModelConfig
+from src.ml import MLOptimization
 from src.dataset import dl_split_data, filter_labels_outliers_per_subject, zero_pad_array
 
 
@@ -45,33 +46,38 @@ def train_time_series_model(
     model.save(f"models/{timestamp}/model")
 
 
+def train_model_grid_search(X, y, log_path, labels, n_splits: int):
+    log_path = join(log_path, "power", f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}")
+    makedirs(log_path, exist_ok=True)
+    model = ConvModelConfig()
+    opt = MLOptimization(X, y, balance=False, labels=labels, task="regression", mode="grid", n_splits=n_splits)
+    opt.perform_grid_search_with_cv(model, log_path, n_jobs=1)
+
+
 def train_single_model(
         X: np.ndarray,
         y: pd.DataFrame,
         labels: str,
         epochs: int,
         batch_size: int,
+        learning_rate: float,
 ):
     X_train, y_train, X_test, y_test = dl_split_data(X, y, label_col=labels, p_train=0.9)
-
     meta = {"X_shape_": X_train.shape, "n_outputs_": y_train.shape}
-    # model = build_cnn_lstm_model(meta=meta, kernel_size=(11, 3), n_filters=32, n_layers=3, dropout=0.5, lstm_units=32)
-    model = build_conv1d_model(meta=meta, kernel_size=3, n_filters=32, n_layers=3, dropout=0.5, n_units=128)
+    model = build_conv2d_model(meta=meta, kernel_size=(3, 3), n_filters=128, n_layers=3, dropout=0.5, n_units=128)
     model.summary()
 
-    # Prepare the training dataset
     train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
     train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
 
-    # Prepare the validation dataset
     val_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
     val_dataset = val_dataset.batch(batch_size)
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     log_dir = "logs/fit/" + timestamp
     tb_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-    # es_callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3)
-    model.fit(train_dataset, epochs=epochs, validation_data=val_dataset, callbacks=[tb_callback])
+    es_callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3)
+    model.fit(train_dataset, epochs=epochs, validation_data=val_dataset, callbacks=[tb_callback, es_callback])
     model.save(f"models/{timestamp}/model")
 
 
@@ -85,7 +91,7 @@ def train_model_own_routine(
 ):
     X_train, y_train, X_test, y_test = dl_split_data(X, y, label_col=labels, p_train=0.8)
     meta = {"X_shape_": X_train.shape, "n_outputs_": y_train.shape}
-    model = build_conv1d_model(meta=meta, kernel_size=3, n_filters=128, n_layers=2, dropout=0.5, n_units=128)
+    model = build_conv2d_model(meta=meta, kernel_size=(3, 3), n_filters=128, n_layers=3, dropout=0.5, n_units=128)
     model.summary()
 
     train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
@@ -161,27 +167,27 @@ def loss(model, x, y, training):
     return loss_object(y_true=y, y_pred=y_)
 
 
-def evaluate_single_model(X_train, y_train, X_test, y_test, src_path: str):
-    model = keras.models.load_model(src_path)
-    pred_train = model.predict(X_train)
-    pred_test = model.predict(X_test)
+def evaluate_single_model(X, y, src_path: str):
+    X_train, y_train, X_test, y_test = dl_split_data(X, y, label_col="FLYWHEEL_powerAvg", p_train=0.8)
 
-    fig, axs = plt.subplots(2, y_train.shape[1])  # , figsize=(15, 10))
+    model = keras.models.load_model(src_path)
+    pred_train = model.predict(X_train).reshape(-1)
+    pred_test = model.predict(X_test).reshape(-1)
+
+    fig, axs = plt.subplots(2, 1)  # , figsize=(15, 10))
     matplotlib.rcParams.update(matplotlib.rcParamsDefault)
 
     # Plot Train
-    for i in range(pred_train.shape[1]):
-        axs[0, i].set_title("Train")
-        axs[0, i].plot(pred_train[:, i], label="Prediction")
-        axs[0, i].plot(y_train[:, i], label="Ground Truth")
-        axs[0, i].legend()
+    axs[0].set_title("Train")
+    axs[0].plot(pred_train, label="Prediction")
+    axs[0].plot(y_train, label="Ground Truth")
+    axs[0].legend()
 
     # Plot Test
-    for i in range(pred_test.shape[1]):
-        axs[1, i].set_title("Test")
-        axs[1, i].plot(pred_test[:, i], label="Prediction")
-        axs[1, i].plot(y_test[:, i], label="Ground Truth")
-        axs[1, i].legend()
+    axs[1].set_title("Test")
+    axs[1].plot(pred_test, label="Prediction")
+    axs[1].plot(y_test, label="Ground Truth")
+    axs[1].legend()
 
     plt.show()
 
@@ -213,15 +219,13 @@ if __name__ == "__main__":
             y = pd.read_csv(join(args.src_path, cfg["y_file"]), index_col=0)
             train_time_series_model(X, y, cfg["epochs"], cfg["labels"], win_size=30, batch_size=cfg["batch_size"])
         else:
-            data = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)
-            X = data["X"]
+            X = list(np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"])
             y = pd.read_csv(join(args.src_path, cfg["y_file"]))
 
             arr = np.vstack(X)
             mean = np.mean(arr, axis=0)
             std = np.std(arr, axis=0)
 
-            X = list(X)
             for skeleton in range(len(X)):
                 skel = (X[skeleton] - mean) / std
                 X[skeleton] = zero_pad_array(skel, 170)
@@ -230,6 +234,7 @@ if __name__ == "__main__":
             X = np.nan_to_num(X)
             X, y = filter_labels_outliers_per_subject(X, y, cfg["labels"], sigma=3.0)
 
-            train_model_own_routine(X, y, labels=cfg["labels"], epochs=cfg["epochs"], batch_size=cfg["batch_size"], learning_rate=cfg["learning_rate"])
-            # train_single_model(X, y, labels=cfg["labels"], epochs=cfg["epochs"], batch_size=cfg["batch_size"])
-            # evaluate_single_model(X_train, y_train, X_test, y_test, src_path="models/20230511-100550/model")
+            train_model_grid_search(X, y, log_path=args.log_path, labels=cfg["labels"], n_splits=cfg["n_splits"])
+            # train_model_own_routine(X, y, labels=cfg["labels"], epochs=cfg["epochs"], batch_size=cfg["batch_size"], learning_rate=cfg["learning_rate"])
+            # train_single_model(X, y, labels=cfg["labels"], epochs=cfg["epochs"], batch_size=cfg["batch_size"], learning_rate=cfg["learning_rate"])
+            # evaluate_single_model(X, y, src_path="models/20230519-115702/model")
