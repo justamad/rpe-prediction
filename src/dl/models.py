@@ -1,3 +1,5 @@
+import tensorflow as tf
+
 from typing import Dict, Any, Tuple
 from tensorflow import keras
 from keras.layers import Input, Conv1D, Conv2D, BatchNormalization, GRU, Dropout, MaxPooling2D, Flatten, Dense, Reshape, Masking, GlobalAveragePooling2D, MaxPooling1D
@@ -34,6 +36,7 @@ def build_conv2d_model(
         optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
         loss="mse", metrics=["mse", "mae", "mape", RSquare()],
     )
+    model.summary()
     return model
 
 

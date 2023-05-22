@@ -1,4 +1,4 @@
-from .ml_optimization import MLOptimization
+from .ml_optimization import MLOptimization, LearningModelBase
 
 from .ml_feature_extraction import (
     eliminate_features_with_xgboost_coefficients,

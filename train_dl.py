@@ -15,8 +15,7 @@ from tqdm import tqdm
 from os import makedirs
 from tensorflow import keras
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
-from src.dl import build_cnn_lstm_model, WinDataGen, build_conv2d_model, ConvModelConfig
-from src.ml import MLOptimization
+from src.dl import build_cnn_lstm_model, WinDataGen, build_conv2d_model, ConvModelConfig, DLOptimization
 from src.dataset import dl_split_data, filter_labels_outliers_per_subject, zero_pad_array
 
 
@@ -46,39 +45,9 @@ def train_time_series_model(
     model.save(f"models/{timestamp}/model")
 
 
-def train_model_grid_search(X, y, log_path, labels, n_splits: int):
-    log_path = join(log_path, "power", f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}")
-    makedirs(log_path, exist_ok=True)
-    model = ConvModelConfig()
-    opt = MLOptimization(X, y, balance=False, labels=labels, task="regression", mode="grid", n_splits=n_splits)
-    opt.perform_grid_search_with_cv(model, log_path, n_jobs=1)
-
-
-def train_single_model(
-        X: np.ndarray,
-        y: pd.DataFrame,
-        labels: str,
-        epochs: int,
-        batch_size: int,
-        learning_rate: float,
-):
-    X_train, y_train, X_test, y_test = dl_split_data(X, y, label_col=labels, p_train=0.9)
-    meta = {"X_shape_": X_train.shape, "n_outputs_": y_train.shape}
-    model = build_conv2d_model(meta=meta, kernel_size=(3, 3), n_filters=128, n_layers=3, dropout=0.5, n_units=128)
-    model.summary()
-
-    train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
-    train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
-
-    val_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test))
-    val_dataset = val_dataset.batch(batch_size)
-
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    log_dir = "logs/fit/" + timestamp
-    tb_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-    es_callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3)
-    model.fit(train_dataset, epochs=epochs, validation_data=val_dataset, callbacks=[tb_callback, es_callback])
-    model.save(f"models/{timestamp}/model")
+def train_grid_search(X, y, labels):
+    opt = DLOptimization(X, y, balance=False, task="regression", mode="grid", n_splits=5, ground_truth=labels)
+    opt.perform_grid_search_with_cv(ConvModelConfig(), "results_dl/power")
 
 
 def train_model_own_routine(
@@ -234,7 +203,7 @@ if __name__ == "__main__":
             X = np.nan_to_num(X)
             X, y = filter_labels_outliers_per_subject(X, y, cfg["labels"], sigma=3.0)
 
-            train_model_grid_search(X, y, log_path=args.log_path, labels=cfg["labels"], n_splits=cfg["n_splits"])
+            train_grid_search(X, y, labels=cfg["labels"])
             # train_model_own_routine(X, y, labels=cfg["labels"], epochs=cfg["epochs"], batch_size=cfg["batch_size"], learning_rate=cfg["learning_rate"])
             # train_single_model(X, y, labels=cfg["labels"], epochs=cfg["epochs"], batch_size=cfg["batch_size"], learning_rate=cfg["learning_rate"])
             # evaluate_single_model(X, y, src_path="models/20230519-115702/model")

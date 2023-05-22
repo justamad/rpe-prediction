@@ -1,6 +1,5 @@
 import pandas as pd
 
-from .custom_regressor import CustomKerasRegressor
 from .models import build_conv2d_model, build_cnn_lstm_model
 from src.ml.ml_model_config import LearningModelBase, parse_report_file_to_model_parameters
 from scikeras.wrappers import KerasRegressor
@@ -9,10 +8,7 @@ from scikeras.wrappers import KerasRegressor
 class ConvModelConfig(LearningModelBase):
 
     def __init__(self):
-        regressor = CustomKerasRegressor(
-            build_fn=build_conv2d_model,
-            n_layers=3, n_filters=128, kernel_size=(3,3), dropout=0.5, n_units=128, verbose=10, learning_rate=1e-4,
-        )
+        regressor = build_conv2d_model
 
         tunable_parameters = {
             f"batch_size": [16],
