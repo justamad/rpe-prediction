@@ -36,7 +36,7 @@ def build_conv2d_model(
         optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
         loss="mse", metrics=["mse", "mae", "mape", RSquare()],
     )
-    model.summary()
+    # model.summary()
     return model
 
 

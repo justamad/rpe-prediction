@@ -46,7 +46,7 @@ def train_time_series_model(
 
 
 def train_grid_search(X, y, labels):
-    opt = DLOptimization(X, y, balance=False, task="regression", mode="grid", n_splits=5, ground_truth=labels)
+    opt = DLOptimization(X, y, balance=False, task="regression", mode="grid", n_splits=16, ground_truth=labels)
     opt.perform_grid_search_with_cv(ConvModelConfig(), "results_dl/power")
 
 
@@ -205,5 +205,4 @@ if __name__ == "__main__":
 
             train_grid_search(X, y, labels=cfg["labels"])
             # train_model_own_routine(X, y, labels=cfg["labels"], epochs=cfg["epochs"], batch_size=cfg["batch_size"], learning_rate=cfg["learning_rate"])
-            # train_single_model(X, y, labels=cfg["labels"], epochs=cfg["epochs"], batch_size=cfg["batch_size"], learning_rate=cfg["learning_rate"])
             # evaluate_single_model(X, y, src_path="models/20230519-115702/model")

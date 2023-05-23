@@ -11,11 +11,11 @@ class ConvModelConfig(LearningModelBase):
         regressor = build_conv2d_model
 
         tunable_parameters = {
-            f"batch_size": [16],
+            f"batch_size": [16, 32],
             f"learning_rate": [1e-4],
-            f"epochs": [1],
-            f"n_filters": [128],
-            f"n_layers": [3],
+            f"epochs": [500],
+            f"n_filters": [64, 128],
+            f"n_layers": [2, 3],
             f"kernel_size": [(3, 3)],
             f"dropout": [0.5],
             f"n_units": [128],
