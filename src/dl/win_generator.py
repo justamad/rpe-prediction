@@ -15,7 +15,7 @@ class WinDataGen(tf.keras.utils.Sequence):
             y: np.ndarray,
             win_size: int,
             overlap: float,
-            batch_size: int,
+            batch_size: int = None,
             shuffle: bool = True,
             balance: bool = False
     ):
@@ -24,11 +24,14 @@ class WinDataGen(tf.keras.utils.Sequence):
         self._y = y
         self._win_size = win_size
         self._stride = int(self._win_size - (self._win_size * overlap))
-        self._batch_size = batch_size
         self._shuffle = shuffle
         self._balance = balance
         self._index = []
         self._build_index()
+        if batch_size is None:
+            batch_size = len(self._index)
+
+        self._batch_size = batch_size
         self._n_samples = len(self._index)
         print("Got samples: ", self._n_samples)
         print(f"Number of batches: {len(self)}")

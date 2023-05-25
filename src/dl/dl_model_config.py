@@ -14,8 +14,8 @@ class ConvModelConfig(LearningModelBase):
             f"batch_size": [16, 32],
             f"learning_rate": [1e-4],
             f"epochs": [500],
-            f"n_filters": [64, 128],
-            f"n_layers": [2, 3],
+            f"n_filters": [32, 64, 128],
+            f"n_layers": [1, 2, 3],
             f"kernel_size": [(3, 3)],
             f"dropout": [0.5],
             f"n_units": [128],
@@ -30,19 +30,20 @@ class ConvModelConfig(LearningModelBase):
 class CNNLSTMModelConfig(LearningModelBase):
 
     def __init__(self):
-        model = KerasRegressor(
-            model=build_cnn_lstm_model,
-            n_filters=32, kernel_size=(10, 3), n_layers=3, dropout=0.3, lstm_units=50,
-            verbose=False,
-        )
+        model = build_cnn_lstm_model
+        #     KerasRegressor(
+        #     model=build_cnn_lstm_model,
+        #     n_filters=32, kernel_size=(10, 3), n_layers=3, dropout=0.3, lstm_units=50,
+        #     verbose=False,
+        # )
 
         tunable_parameters = {
-            f"{str(self)}__batch_size": [],
-            f"{str(self)}__epochs": [200],
+            f"{str(self)}__batch_size": [16],
+            f"{str(self)}__epochs": [500],
             f"{str(self)}__n_filters": [16],
-            f"{str(self)}__n_layers": [3],
-            f"{str(self)}__kernel_size": [(10, 3)],
-            f"{str(self)}__dropout": [0.3],
+            f"{str(self)}__n_layers": [2, 3],
+            f"{str(self)}__kernel_size": [(3, 3)],
+            f"{str(self)}__dropout": [0.5],
             f"{str(self)}__lstm_units": [8, 16],
         }
 

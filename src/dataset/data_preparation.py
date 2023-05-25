@@ -206,11 +206,18 @@ def dl_normalize_data_3d_subject(X: np.ndarray, y: pd.DataFrame, method="min_max
     for subject in y["subject"].unique():
         mask = y["subject"] == subject
         data = X[mask]
+
         if method == "min_max":
-            min_, max_ = data.min(axis=0), data.max(axis=0)
-            X[mask] = (data - min_) / (max_ - min_)
+            raise NotImplementedError("Min max normalization not implemented for 3D data.")
+        elif method == "std":
+            arr = np.vstack(data)
+            mean = np.mean(arr, axis=0)
+            std = np.std(arr, axis=0)
+
+            for trial in range(len(data)):
+                X[mask][trial] = np.clip((data[trial] - mean) / std, -3, 3)
+
         else:
-            mean, std = data.mean(axis=0), data.std(axis=0)
-            X[mask] = (data - mean) / std
+            raise ValueError(f"Unknown normalization method: {method}")
 
     return X

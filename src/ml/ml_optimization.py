@@ -112,7 +112,7 @@ class MLOptimization(object):
 
             if self._mode == "grid":
                 ml_search = GridSearchCV(
-                    estimator=model_config.model,
+                    estimator=pipe,
                     param_grid=model_config.parameters,
                     cv=group_k_fold.split(X, y, groups),
                     n_jobs=n_jobs,
@@ -135,7 +135,7 @@ class MLOptimization(object):
             logging.info(ml_search)
             logging.info(f"Input shape: {self._X.shape}")
 
-            ml_search.fit(X, y, X_val=X, y_val=y)
+            ml_search.fit(X, y)
             r_df = pd.DataFrame(ml_search.cv_results_)
             r_df = r_df.drop(["params"], axis=1)
 

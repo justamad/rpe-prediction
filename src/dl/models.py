@@ -43,7 +43,7 @@ def build_conv2d_model(
 def build_cnn_lstm_model(
         meta: Dict[str, Any],
         n_filters: int = 32,
-        kernel_size: int = 10,
+        kernel_size: Tuple[int, int] = (11, 3),
         n_layers: int = 3,
         dropout: float = 0.3,
         lstm_units: int = 32,
@@ -54,7 +54,7 @@ def build_cnn_lstm_model(
     model.add(Input(shape=(n_samples, n_features, n_channels)))
 
     for i in range(n_layers):
-        model.add(Conv1D(filters=n_filters // (2 ** i), kernel_size=kernel_size, padding="same", activation="relu"))
+        model.add(Conv2D(filters=n_filters * (2 ** i), kernel_size=kernel_size, padding="same", activation="relu", kernel_regularizer=l2(0.01)))
         model.add(BatchNormalization())
         model.add(Dropout(dropout))
         model.add(MaxPooling2D(pool_size=(2, 2)))

@@ -1,3 +1,11 @@
+import pandas as pd
+import numpy as np
+import itertools
+import logging
+import os
+import yaml
+import matplotlib
+
 from src.ml import MLOptimization, eliminate_features_with_rfe, regression_models, instantiate_best_model
 from typing import List, Union
 from datetime import datetime
@@ -25,17 +33,8 @@ from src.dataset import (
     add_rolling_statistics,
 )
 
-import pandas as pd
-import numpy as np
-import itertools
-import logging
-import os
-import yaml
-import matplotlib
-matplotlib.use("WebAgg")
 
-
-def train_model(
+def train_models_with_grid_search(
         df: pd.DataFrame,
         log_path: str,
         task: str,
@@ -247,6 +246,15 @@ def retrain_model(result_path: str, model_file: str, dst_path: str, filter_exp: 
 
 
 if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
+    parser.add_argument("--result_path", type=str, dest="result_path", default="data/ml_results")
+    parser.add_argument("--exp_path", type=str, dest="exp_path", default="data/ml_experiments")
+    parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation")
+    parser.add_argument("--train", type=bool, dest="train", default=True)
+    parser.add_argument("--eval", type=bool, dest="eval", default=False)
+    args = parser.parse_args()
+
     logging.basicConfig(
         level=logging.DEBUG,
         format="%(asctime)s %(name)-8s %(levelname)-8s %(message)s",
@@ -258,14 +266,7 @@ if __name__ == "__main__":
     logging.getLogger('matplotlib').setLevel(logging.WARNING)
     logging.getLogger("my_logger").addHandler(console)
 
-    parser = ArgumentParser()
-    parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
-    parser.add_argument("--result_path", type=str, dest="result_path", default="results")
-    parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments_ml")
-    parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation")
-    parser.add_argument("--train", type=bool, dest="train", default=False)
-    parser.add_argument("--eval", type=bool, dest="eval", default=True)
-    args = parser.parse_args()
+    # matplotlib.use("WebAgg")
 
     if args.train:
         experiments = list(filter(lambda x: os.path.isdir(join(args.exp_path, x)), os.listdir(args.exp_path)))
@@ -304,7 +305,7 @@ if __name__ == "__main__":
                     if not exists(log_path):
                         os.makedirs(log_path)
 
-                    train_model(df, log_path, **exp_cfg)
+                    train_models_with_grid_search(df, log_path, **exp_cfg)
 
     if args.eval:
 
