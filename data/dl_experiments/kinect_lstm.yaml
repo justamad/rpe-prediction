@@ -1,0 +1,11 @@
+X_file: X_lstm.npz
+y_file: y_lstm.csv
+labels: rpe
+lstm: True
+search: grid
+task: regression
+balancing: False
+n_splits: 16
+batch_size: 16
+epochs: 200
+win_size: 30
