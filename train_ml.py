@@ -28,8 +28,6 @@ from src.dataset import (
     filter_labels_outliers_per_subject,
     clip_outliers_z_scores,
     drop_highly_correlated_features,
-    normalize_labels_min_max,
-    calculate_trend_labels,
     add_rolling_statistics,
 )
 
@@ -45,7 +43,6 @@ def train_models_with_grid_search(
         ground_truth: str,
         n_splits: int,
         rolling_statistics: Union[int, bool],
-        label_processing: Union[str, bool],
         balancing: bool = False,
         drop_columns: List = None,
         drop_prefixes: List = None,
@@ -72,7 +69,7 @@ def train_models_with_grid_search(
 
     # Impute dataframe, remove highly correlated features, and eliminate useless features
     X.fillna(0, inplace=True)
-    X = drop_highly_correlated_features(X, threshold=0.95)
+    X = drop_highly_correlated_features(X, threshold=0.90)
     X, y = filter_labels_outliers_per_subject(X, y, ground_truth, sigma=3.0)
     X = clip_outliers_z_scores(X, sigma=3.0)
 
@@ -81,10 +78,6 @@ def train_models_with_grid_search(
         values = y.loc[:, ground_truth].values
         label_mean, label_std = values.mean(), values.std()
         y.loc[:, ground_truth] = (values - label_mean) / label_std
-    elif label_processing == "min_max":
-        y = normalize_labels_min_max(y, ground_truth)
-    elif label_processing == "trend":
-        y = calculate_trend_labels(y, ground_truth)
 
     X, _report_df = eliminate_features_with_rfe(X_train=X, y_train=y[ground_truth], step=25, n_features=n_features)
     _report_df.to_csv(join(log_path, "rfe_report.csv"))
@@ -251,8 +244,8 @@ if __name__ == "__main__":
     parser.add_argument("--result_path", type=str, dest="result_path", default="data/ml_results")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="data/ml_experiments")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation")
-    parser.add_argument("--train", type=bool, dest="train", default=True)
-    parser.add_argument("--eval", type=bool, dest="eval", default=False)
+    parser.add_argument("--train", type=bool, dest="train", default=False)
+    parser.add_argument("--eval", type=bool, dest="eval", default=True)
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -266,7 +259,7 @@ if __name__ == "__main__":
     logging.getLogger('matplotlib').setLevel(logging.WARNING)
     logging.getLogger("my_logger").addHandler(console)
 
-    # matplotlib.use("WebAgg")
+    matplotlib.use("WebAgg")
 
     if args.train:
         experiments = list(filter(lambda x: os.path.isdir(join(args.exp_path, x)), os.listdir(args.exp_path)))
@@ -309,18 +302,18 @@ if __name__ == "__main__":
 
     if args.eval:
 
-        def merge_experiments(exp_name: str, aggregate: bool):
-            full_df = evaluate_entire_experiment_path(exp_name, args.dst_path, "full", aggregate)
-            full_df.columns = [(c, "Full Rep") for c in full_df.columns]
-            ecc_con_df = evaluate_entire_experiment_path(exp_name, args.dst_path, "con_ecc", aggregate)
-            ecc_con_df.columns = [(c, "Con / Ecc") for c in ecc_con_df.columns]
-            merge_df = pd.concat([full_df, ecc_con_df], axis=1)
-            merge_df.columns = pd.MultiIndex.from_tuples(merge_df.columns, names=['Model', 'Mode'])
-            merge_df.sort_index(axis=1, level=[0, 1], ascending=[True, True], inplace=True)
-            merge_df.to_latex(
-                f"{exp_name.replace('/', '_')}.txt", escape=False,
-                column_format="l" + "r" * (len(merge_df.columns))
-            )
+        # def merge_experiments(exp_name: str, aggregate: bool):
+        #     full_df = evaluate_entire_experiment_path(exp_name, args.dst_path, "full", aggregate)
+        #     full_df.columns = [(c, "Full Rep") for c in full_df.columns]
+        #     ecc_con_df = evaluate_entire_experiment_path(exp_name, args.dst_path, "con_ecc", aggregate)
+        #     ecc_con_df.columns = [(c, "Con / Ecc") for c in ecc_con_df.columns]
+        #     merge_df = pd.concat([full_df, ecc_con_df], axis=1)
+        #     merge_df.columns = pd.MultiIndex.from_tuples(merge_df.columns, names=['Model', 'Mode'])
+        #     merge_df.sort_index(axis=1, level=[0, 1], ascending=[True, True], inplace=True)
+        #     merge_df.to_latex(
+        #         f"{exp_name.replace('/', '_')}.txt", escape=False,
+        #         column_format="l" + "r" * (len(merge_df.columns))
+        #     )
 
         # merge_experiments("results/rpe", aggregate=False)
         # con_df = evaluate_entire_experiment_path("results/powercon", args.dst_path, aggregate=False)
@@ -334,7 +327,7 @@ if __name__ == "__main__":
         #     f"power.txt", escape=False,
         #     column_format="l" + "r" * (len(merge_df.columns))
         # )
-        evaluate_entire_experiment_path("results/rpe", args.dst_path, "con_ecc", aggregate=False)
+        evaluate_entire_experiment_path("data/ml_results/hr", args.dst_path, "", aggregate=False)
         # evaluate_entire_experiment_path("results/hr", args.dst_path, "con_ecc", aggregate=False)
 
         # merge_experiments("results/hr", aggregate=False)

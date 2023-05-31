@@ -298,15 +298,6 @@ def prepare_segmented_data_for_dl(src_path: str, dst_path: str, plot: bool, plot
             new_data.update(hrv_df[hrv_df[s] == rep_idx].drop(columns=[s]).add_prefix("HRV_").mean().to_dict())
             repetition_data.append(new_data)
 
-    # lengths = [len(img) for img in skeleton_images]
-    # max_length = max(lengths)
-    # max_subject = repetition_data[np.argmax(lengths)]
-    # logging.info(f"Max Rep Length: {max_length} by subject {max_subject['subject']}, set {max_subject['set_id']}")
-
-    # skeleton_images = normalize_skeleton_images(skeleton_images, method="standard")
-    # for i in tqdm(range(len(skeleton_images))):
-        # skeleton_images[i] = zero_pad_array(skeleton_images[i], max_length)
-
     skeleton_images = np.array(skeleton_images, dtype=object)
     np.savez(join(dst_path, f"X_seg.npz"), X=skeleton_images)
 
@@ -314,46 +305,20 @@ def prepare_segmented_data_for_dl(src_path: str, dst_path: str, plot: bool, plot
     final_df.to_csv(join(dst_path, f"y_seg.csv"), index=False)
 
 
-def prepare_data_for_dl_sliding_window(src_path: str, dst_path: str, plot: bool, plot_path: str):
+def prepare_data_dl_entire_trials(src_path: str, dst_path: str, plot: bool, plot_path: str):
     skeleton_images = []
     labels = []
     for trial in iterate_segmented_data(src_path, mode="full", plot=plot, plot_path=plot_path):
         meta_dict, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
-
-        pos_df.drop("Repetition", axis=1, inplace=True)
-        ori_df.drop("Repetition", axis=1, inplace=True)
         skeleton_img = calculate_skeleton_images(pos_df, ori_df)
         skeleton_images.append(skeleton_img)
         labels.append(meta_dict)
 
-    y = pd.DataFrame(labels)
-    y.to_csv(join(dst_path, "y_lstm.csv"))
-
     X = np.array(skeleton_images, dtype=object)
-    for subject in y["subject"].unique():
-        mask = y["subject"] == subject
-        images = X[mask]
-        images = normalize_skeleton_images(images)
-        X[mask] = images
-
     np.savez(join(dst_path, "X_lstm.npz"), X=X)
 
-
-def normalize_skeleton_images(images, method: str = "minmax"):
-    if method == "minmax":
-        min_i = np.array([img.reshape((img.shape[0] * img.shape[1], 3)).min(axis=0) for img in images]).min(axis=0)
-        max_i = np.array([img.reshape((img.shape[0] * img.shape[1], 3)).max(axis=0) for img in images]).max(axis=0)
-
-        for i in range(len(images)):
-            images[i] = (images[i] - min_i) / (max_i - min_i)
-
-    elif method == "standard":
-        channel_means = np.array([img.mean(axis=(0, 1)) for img in images]).mean(axis=0)
-        channel_stds = np.array([img.std(axis=(0, 1)) for img in images]).mean(axis=0)
-        for i in range(len(images)):
-            images[i] = (images[i] - channel_means) / channel_stds
-
-    return images
+    y = pd.DataFrame(labels)
+    y.to_csv(join(dst_path, "y_lstm.csv"))
 
 
 if __name__ == "__main__":
@@ -388,5 +353,5 @@ if __name__ == "__main__":
     # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="eccentric", plot=args.show, plot_path=args.plot_path)
     # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="full", plot=args.show, plot_path=args.plot_path)
 
-    prepare_segmented_data_for_dl(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
-    # prepare_data_for_dl_sliding_window(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
+    # prepare_segmented_data_for_dl(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
+    prepare_data_dl_entire_trials(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
