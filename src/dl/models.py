@@ -9,6 +9,7 @@ from keras.regularizers import l2
 
 def build_conv2d_model(
         # meta: Dict[str, Any],
+        increase_layers: bool = True,
         n_layers: int = 3,
         n_filters: int = 32,
         kernel_size: Tuple[int, int] = (3, 3),
@@ -24,7 +25,8 @@ def build_conv2d_model(
     model.add(Input(shape=(n_samples, n_features, n_channels)))
 
     for i in range(n_layers):
-        model.add(Conv2D(filters=n_filters // 2 ** i, kernel_size=kernel_size, padding="valid", activation="relu", kernel_regularizer=l2(0.01)))
+        n_filters = n_filters * 2 ** i if increase_layers else n_filters // 2 ** i
+        model.add(Conv2D(filters=n_filters, kernel_size=kernel_size, padding="valid", activation="relu", kernel_regularizer=l2(0.01)))
         model.add(BatchNormalization())
         model.add(Dropout(dropout))
         model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -48,19 +50,23 @@ def build_cnn_lstm_model(
         dropout: float = 0.3,
         lstm_units: int = 32,
 ):
-    _, n_samples, n_features, n_channels = meta["X_shape_"]
+    _, n_samples, n_features = meta["X_shape_"]
     _, n_outputs = meta["n_outputs_"]
     model = keras.Sequential()
-    model.add(Input(shape=(n_samples, n_features, n_channels)))
+    model.add(Input(shape=(n_samples, n_features)))
 
     for i in range(n_layers):
-        model.add(Conv2D(filters=n_filters * (2 ** i), kernel_size=kernel_size, padding="same", activation="relu", kernel_regularizer=l2(0.01)))
-        model.add(BatchNormalization())
-        model.add(Dropout(dropout))
-        model.add(MaxPooling2D(pool_size=(2, 2)))
+        model.add(Conv1D(filters=n_filters * 2 ** i, kernel_size=3, padding="same", activation="relu", kernel_regularizer=l2(0.01)))
+        # model.add(BatchNormalization())
+        # model.add(Dropout(dropout))
+        # model.add(MaxPooling1D(pool_size=2))
+        # model.add(MaxPooling2D(pool_size=(2, 2)))
 
-    model.add(Reshape((model.output_shape[1], -1)))
-    model.add(GRU(lstm_units, activation="relu"))
-    model.add(Dense(n_outputs))
+    # model.add(Flatten())
+    # model.add(Reshape((model.output_shape[1], model.output_shape[2] * model.output_shape[3])))
+    # model.add(Dense(128))
+    model.add(GRU(lstm_units, activation="relu", return_sequences=False))
+    model.add(Dense(64, activation="linear"))
+    model.add(Dense(n_outputs, activation="linear"))
     model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3), loss="mse", metrics=["mse", "mae", "mape", RSquare()])
     return model

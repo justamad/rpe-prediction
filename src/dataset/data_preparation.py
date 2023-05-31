@@ -164,23 +164,6 @@ def add_rolling_statistics(X: pd.DataFrame, y: pd.DataFrame, win: int = 5, norma
     return X
 
 
-def dl_random_oversample(X: np.ndarray, y: pd.DataFrame, label_col: str) -> Tuple[np.ndarray, pd.DataFrame]:
-    labels = y[label_col].values
-    unique, counts = np.unique(labels, return_counts=True)
-    max_samples = np.max(counts)
-
-    minority_classes = {c: count for c, count in zip(unique, counts) if count < max_samples}
-    minority_indices = {c: np.where(labels == c)[0] for c in minority_classes.keys()}
-
-    new_indices = [np.random.choice(minority_indices[c], size=max_samples - num, replace=True) for c, num in minority_classes.items()]
-
-    X_resampled = np.vstack((X, *[X[i] for i in new_indices]))
-    y_resampled = np.concatenate((y.values, *[y.values[i] for i in new_indices]))
-    y_resampled = pd.DataFrame(y_resampled, columns=y.columns)
-
-    return X_resampled, pd.DataFrame(y_resampled, columns=y.columns)
-
-
 def dl_split_data(
         X: np.ndarray,
         y: pd.DataFrame,
@@ -203,21 +186,62 @@ def dl_split_data(
 
 
 def dl_normalize_data_3d_subject(X: np.ndarray, y: pd.DataFrame, method="min_max"):
+    if "subject" not in y.columns:
+        raise ValueError("Subject column not in dataframe.")
+
+    if method not in ["min_max", "std"]:
+        raise ValueError(f"Unknown normalization method: {method}")
+
     for subject in y["subject"].unique():
         mask = y["subject"] == subject
         data = X[mask]
+        arr = np.vstack(data)
 
         if method == "min_max":
-            raise NotImplementedError("Min max normalization not implemented for 3D data.")
-        elif method == "std":
-            arr = np.vstack(data)
+            minimum = np.min(arr.reshape(arr.shape[0] * arr.shape[1], arr.shape[2]), axis=0)
+            maximum = np.max(arr.reshape(arr.shape[0] * arr.shape[1], arr.shape[2]), axis=0)
+            for trial in range(len(data)):
+                cur_data = (data[trial] - minimum) / (maximum - minimum)
+                cur_data = np.clip(cur_data, 0, 1)
+                data[trial] = cur_data
+
+        else:
+            # mean = np.mean(arr.reshape(arr.shape[0] * arr.shape[1], arr.shape[2]), axis=0)
+            # std = np.std(arr.reshape(arr.shape[0] * arr.shape[1], arr.shape[2]), axis=0)
             mean = np.mean(arr, axis=0)
             std = np.std(arr, axis=0)
 
             for trial in range(len(data)):
-                X[mask][trial] = np.clip((data[trial] - mean) / std, -3, 3)
+                cur_data = (data[trial] - mean) / std
+                cur_data = np.clip(cur_data, -3, 3)
+                data[trial] = cur_data
 
-        else:
-            raise ValueError(f"Unknown normalization method: {method}")
+        X[mask] = data
+
+    return X
+
+
+def dl_normalize_data_3d_global(X: np.ndarray, method="min_max"):
+    if method not in ["min_max", "std"]:
+        raise ValueError(f"Unknown normalization method: {method}")
+
+    arr = np.vstack(X)
+
+    if method == "min_max":
+        minimum = np.min(arr, axis=0)
+        maximum = np.max(arr, axis=0)
+        for trial in range(len(X)):
+            cur_data = (X[trial] - minimum) / (maximum - minimum)
+            cur_data = np.clip(cur_data, 0, 1)
+            X[trial] = cur_data
+
+    else:
+        mean = np.mean(arr, axis=0)
+        std = np.std(arr, axis=0)
+
+        for trial in range(len(X)):
+            cur_data = (X[trial] - mean) / std
+            cur_data = np.clip(cur_data, -3, 3)
+            X[trial] = cur_data
 
     return X

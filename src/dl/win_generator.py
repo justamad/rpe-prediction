@@ -49,8 +49,7 @@ class WinDataGen(tf.keras.utils.Sequence):
 
         if self._balance:
             indices, labels = self._index[:, :-1], self._index[:, -1]
-            ros = RandomOverSampler()
-            indices, labels = ros.fit_resample(indices, labels)
+            indices, labels = RandomOverSampler().fit_resample(indices, labels)
             self._index = np.hstack((indices, labels.reshape(-1, 1)))
 
         if self._shuffle:

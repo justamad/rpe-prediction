@@ -12,9 +12,9 @@ from .data_preparation import (
     calculate_trend_labels,
     add_lag_feature,
     add_rolling_statistics,
-    dl_random_oversample,
     dl_split_data,
     dl_normalize_data_3d_subject,
+    dl_normalize_data_3d_global,
 )
 
 from .data_loaders import (

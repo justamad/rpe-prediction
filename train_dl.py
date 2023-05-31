@@ -16,7 +16,7 @@ from os import makedirs
 from tensorflow import keras
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from src.dl import build_cnn_lstm_model, WinDataGen, build_conv2d_model, ConvModelConfig, DLOptimization, CNNLSTMModelConfig
-from src.dataset import dl_split_data, filter_labels_outliers_per_subject, zero_pad_array, dl_normalize_data_3d_subject
+from src.dataset import dl_split_data, filter_labels_outliers_per_subject, zero_pad_array, dl_normalize_data_3d_subject, dl_normalize_data_3d_global
 
 
 def train_time_series_grid_search(X, y):
@@ -32,19 +32,19 @@ def train_time_series_model(
         win_size: int,
         batch_size: int,
 ):
-    input_shape = (None, win_size, *X[0].shape[-2:])
-    meta = {"X_shape_": input_shape, "n_outputs_": (None, 1)}
-    model = build_cnn_lstm_model(meta=meta, kernel_size=(11, 3), n_filters=128, n_layers=3, dropout=0.5, lstm_units=32)
+    # input_shape = (None, win_size, *X[0].shape[-2:])
+    meta = {"X_shape_": (None, win_size, 24), "n_outputs_": (None, 1)}
+    model = build_cnn_lstm_model(meta=meta, kernel_size=(7, 3), n_filters=128, n_layers=3, dropout=0.5, lstm_units=128)
     model.summary()
 
-    X_train, y_train, X_test, y_test = dl_split_data(X, y, ground_truth, 0.8)
+    X_train, y_train, X_test, y_test = dl_split_data(X, y, ground_truth, 0.7)
 
     train_dataset = WinDataGen(X_train, y_train, win_size, 0.9, batch_size=batch_size, shuffle=True, balance=True)
-    test_dataset = WinDataGen(X_test, y_test, win_size, 0.1, batch_size=None, shuffle=False, balance=False)
-    val_dataset = WinDataGen(X_train, y_train, win_size, 0.1, batch_size=1000, shuffle=False, balance=False)
+    test_dataset = WinDataGen(X_test, y_test, win_size, 0.5, batch_size=batch_size, shuffle=False, balance=False)
+    val_dataset = WinDataGen(X_train, y_train, win_size, 0.5, batch_size=batch_size, shuffle=False, balance=False)
 
     train_loss_results = []
-    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-4)
 
     folder = datetime.now().strftime("%Y%m%d-%H%M%S")
     makedirs(folder, exist_ok=True)
@@ -63,17 +63,34 @@ def train_time_series_model(
             loss_value, grads = grad(model, x, y)
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
             epoch_loss_avg.update_state(loss_value)
+            # print(f"Loss: {epoch_loss_avg.result():.3f}")
 
         train_loss_results.append(epoch_loss_avg.result())
+        val_dataset.on_epoch_end()
 
         fig, axs = plt.subplots(2, 1)
         axs[0].set_title("Train")
-        axs[0].plot(model(val_dataset[0][0], training=False), label="Predicted")
-        axs[0].plot(val_dataset[0][1], label="True")
+        predictions, labels = [], []
+        for i in tqdm(range(len(val_dataset))):
+            x, y = val_dataset[i]
+            pred = np.array(model(x, training=False)).reshape(-1)
+            predictions.extend(list(pred))
+            labels.extend(list(y.reshape(-1)))
+
+        # Plot the results
+        axs[0].plot(predictions, label="Predicted")
+        axs[0].plot(labels, label="True")
 
         axs[1].set_title("Test")
-        axs[1].plot(model(test_dataset[0][0], training=False), label="Predicted")
-        axs[1].plot(test_dataset[0][1], label="True")
+        predictions, labels = [], []
+        for i in tqdm(range(len(test_dataset))):
+            x, y = test_dataset[i]
+            pred = np.array(model(x, training=False)).reshape(-1)
+            predictions.extend(list(pred))
+            labels.extend(list(y.reshape(-1)))
+
+        axs[1].plot(predictions, label="Predicted")
+        axs[1].plot(labels, label="True")
 
         # y_pred = model(X_train[:600], training=False)
         # y_true = y_train[:600]
@@ -207,30 +224,6 @@ def loss(model, x, y, training):
     return loss_object(y_true=y, y_pred=y_)
 
 
-def evaluate_single_model(X, y, src_path: str):
-    X_train, y_train, X_test, y_test = dl_split_data(X, y, label_col="FLYWHEEL_powerAvg", p_train=0.8)
-
-    model = keras.models.load_model(src_path)
-    pred_train = model.predict(X_train).reshape(-1)
-    pred_test = model.predict(X_test).reshape(-1)
-
-    fig, axs = plt.subplots(2, 1)  # , figsize=(15, 10))
-    matplotlib.rcParams.update(matplotlib.rcParamsDefault)
-
-    # Plot Train
-    axs[0].set_title("Train")
-    axs[0].plot(pred_train, label="Prediction")
-    axs[0].plot(y_train, label="Ground Truth")
-    axs[0].legend()
-
-    # Plot Test
-    axs[1].set_title("Test")
-    axs[1].plot(pred_test, label="Prediction")
-    axs[1].plot(y_test, label="Ground Truth")
-    axs[1].legend()
-
-    plt.show()
-
 
 if __name__ == "__main__":
     parser = ArgumentParser()
@@ -258,10 +251,18 @@ if __name__ == "__main__":
         if cfg["lstm"]:
             X = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"]
             y = pd.read_csv(join(args.src_path, cfg["y_file"]), index_col=0)
-            X = dl_normalize_data_3d_subject(X, y, method="std")
-            X, y = filter_labels_outliers_per_subject(X, y, cfg["labels"], sigma=3.0)
+            # X = dl_normalize_data_3d_subject(X, y, method="std")
+            for c in range(len(X)):
+                d = X[c][:, :, 2]
+                non_zero_columns = np.any(d != 0, axis=0)
+                filtered_arr = d[:, non_zero_columns]
+                X[c] = filtered_arr
+
+            # X = dl_normalize_data_3d_subject(X, y, method="std")
+            X = dl_normalize_data_3d_global(X, method="min_max")
 
             train_time_series_model(X, y, cfg["epochs"], cfg["labels"], win_size=30, batch_size=cfg["batch_size"])
+
             # train_time_series_grid_search(X, y)
         else:
             X = list(np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"])
