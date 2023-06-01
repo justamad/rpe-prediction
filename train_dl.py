@@ -37,9 +37,9 @@ def train_time_series_model(
 
     X_train, y_train, X_test, y_test = dl_split_data(X, y, ground_truth, 0.7)
 
-    train_dataset = WinDataGen(X_train, y_train, win_size, 0.9, batch_size=batch_size, shuffle=True, balance=True)
-    test_dataset = WinDataGen(X_test, y_test, win_size, 0.5, batch_size=batch_size, shuffle=False, balance=False)
-    val_dataset = WinDataGen(X_train, y_train, win_size, 0.5, batch_size=batch_size, shuffle=False, balance=False)
+    train_dataset = WinDataGen(X_train, y_train, win_size, 0.95, batch_size=batch_size, shuffle=True, balance=True)
+    test_dataset = WinDataGen(X_test, y_test, win_size, 0.95, batch_size=batch_size, shuffle=False, balance=False)
+    val_dataset = WinDataGen(X_train, y_train, win_size, 0.95, batch_size=batch_size, shuffle=False, balance=False)
 
     performance_cb = PerformancePlotCallback(val_dataset, test_dataset, timestamp)
 
@@ -81,7 +81,7 @@ if __name__ == "__main__":
         if cfg["lstm"]:
             X = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"]
             y = pd.read_csv(join(args.src_path, cfg["y_file"]), index_col=0)
-            X = dl_normalize_data_3d_subject(X, y, method="std")
+            X = dl_normalize_data_3d_subject(X, y, method="min_max")
 
             # for c in range(len(X)):
             #     d = X[c][:, :, 2]

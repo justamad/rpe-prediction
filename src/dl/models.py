@@ -54,16 +54,25 @@ def build_cnn_lstm_model(
     model = keras.Sequential()
     model.add(Input(shape=(n_samples, n_features, n_channel)))
 
-    for i in range(n_layers):
-        model.add(Conv2D(filters=n_filters * 2 ** i, kernel_size=kernel_size, padding="same", activation="relu", kernel_regularizer=l2(0.01)))
-        model.add(BatchNormalization())
-        # model.add(Dropout(dropout))
-        model.add(MaxPooling2D(pool_size=(2, 2)))
+    # for i in range(n_layers):
+    #     model.add(Conv2D(filters=n_filters * 2 ** i, kernel_size=kernel_size, padding="same", activation="relu", kernel_regularizer=l2(0.01)))
+    #     model.add(BatchNormalization())
+    #     # model.add(Dropout(dropout))
+    #     model.add(MaxPooling2D(pool_size=(2, 2)))
 
-    model.add(Flatten())
-    # model.add(Reshape((model.output_shape[1], model.output_shape[2] * model.output_shape[3])))
-    # model.add(GRU(lstm_units, activation="relu", return_sequences=False))
-    model.add(Dense(64, activation="relu"))
+    model.add(Conv2D(filters=64, kernel_size=kernel_size, padding="same", activation="relu", kernel_regularizer=l2(0.01)))
+    model.add(BatchNormalization())
+    model.add(Dropout(dropout))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(filters=128, kernel_size=kernel_size, padding="same", activation="relu", kernel_regularizer=l2(0.01)))
+    model.add(BatchNormalization())
+    model.add(Dropout(dropout))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+
+    # model.add(Flatten())
+    model.add(Reshape((model.output_shape[1], model.output_shape[2] * model.output_shape[3])))
+    model.add(GRU(lstm_units, activation="relu", return_sequences=False))
+    # model.add(Dense(64, activation="relu"))
     model.add(Dense(1, activation="linear"))
     model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3), loss="mse", metrics=["mse", "mae", "mape", RSquare()])
     return model

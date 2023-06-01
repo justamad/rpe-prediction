@@ -203,11 +203,10 @@ def dl_normalize_data_3d_subject(X: np.ndarray, y: pd.DataFrame, method="min_max
             for trial in range(len(data)):
                 cur_data = (data[trial] - minimum) / (maximum - minimum)
                 cur_data = np.clip(cur_data, 0, 1)
+                cur_data = np.nan_to_num(cur_data)
                 data[trial] = cur_data
 
         else:
-            # mean = np.mean(arr.reshape(arr.shape[0] * arr.shape[1], arr.shape[2]), axis=0)
-            # std = np.std(arr.reshape(arr.shape[0] * arr.shape[1], arr.shape[2]), axis=0)
             mean = np.mean(arr, axis=0)
             std = np.std(arr, axis=0)
 

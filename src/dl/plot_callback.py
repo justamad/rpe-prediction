@@ -54,6 +54,6 @@ class PerformancePlotCallback(keras.callbacks.Callback):
             "r2": r2_score,
         }
 
-        results = [f"{metric}: {metrics[metric](labels, predictions):.2f}" for metric in metrics.keys()]
-        results = ",".join(results)
+        results = [f"{metric.upper()}: {metrics[metric](labels, predictions):.2f}" for metric in metrics.keys()]
+        results = ", ".join(results)
         return predictions, labels, results

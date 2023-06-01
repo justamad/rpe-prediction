@@ -8,4 +8,4 @@ balancing: False
 n_splits: 16
 batch_size: 16
 epochs: 200
-win_size: 30
+win_size: 120
