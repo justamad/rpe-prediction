@@ -198,8 +198,8 @@ def dl_normalize_data_3d_subject(X: np.ndarray, y: pd.DataFrame, method="min_max
         arr = np.vstack(data)
 
         if method == "min_max":
-            minimum = np.min(arr.reshape(arr.shape[0] * arr.shape[1], arr.shape[2]), axis=0)
-            maximum = np.max(arr.reshape(arr.shape[0] * arr.shape[1], arr.shape[2]), axis=0)
+            minimum = np.min(arr, axis=0)
+            maximum = np.max(arr, axis=0)
             for trial in range(len(data)):
                 cur_data = (data[trial] - minimum) / (maximum - minimum)
                 cur_data = np.clip(cur_data, 0, 1)
@@ -214,6 +214,7 @@ def dl_normalize_data_3d_subject(X: np.ndarray, y: pd.DataFrame, method="min_max
             for trial in range(len(data)):
                 cur_data = (data[trial] - mean) / std
                 cur_data = np.clip(cur_data, -3, 3)
+                cur_data = np.nan_to_num(cur_data)
                 data[trial] = cur_data
 
         X[mask] = data

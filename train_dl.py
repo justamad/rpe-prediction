@@ -5,17 +5,13 @@ import logging
 import yaml
 import os
 import matplotlib
-import matplotlib.pyplot as plt
 
 from typing import List, Union
 from datetime import datetime
 from argparse import ArgumentParser
 from os.path import join
-from tqdm import tqdm
 from os import makedirs
-from tensorflow import keras
-from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
-from src.dl import build_cnn_lstm_model, WinDataGen, build_conv2d_model, ConvModelConfig, DLOptimization, CNNLSTMModelConfig
+from src.dl import build_cnn_lstm_model, WinDataGen, build_conv2d_model, ConvModelConfig, DLOptimization, CNNLSTMModelConfig, PerformancePlotCallback
 from src.dataset import dl_split_data, filter_labels_outliers_per_subject, zero_pad_array, dl_normalize_data_3d_subject, dl_normalize_data_3d_global
 
 
@@ -32,9 +28,11 @@ def train_time_series_model(
         win_size: int,
         batch_size: int,
 ):
-    # input_shape = (None, win_size, *X[0].shape[-2:])
-    meta = {"X_shape_": (None, win_size, 24), "n_outputs_": (None, 1)}
-    model = build_cnn_lstm_model(meta=meta, kernel_size=(7, 3), n_filters=128, n_layers=3, dropout=0.5, lstm_units=128)
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    makedirs(timestamp, exist_ok=True)
+
+    meta = {"X_shape_": (None, win_size, 39, 3), "n_outputs_": (None, 1)}
+    model = build_cnn_lstm_model(meta=meta, kernel_size=(3, 3), n_filters=64, n_layers=3, dropout=0.5, lstm_units=128)
     model.summary()
 
     X_train, y_train, X_test, y_test = dl_split_data(X, y, ground_truth, 0.7)
@@ -43,186 +41,18 @@ def train_time_series_model(
     test_dataset = WinDataGen(X_test, y_test, win_size, 0.5, batch_size=batch_size, shuffle=False, balance=False)
     val_dataset = WinDataGen(X_train, y_train, win_size, 0.5, batch_size=batch_size, shuffle=False, balance=False)
 
-    train_loss_results = []
-    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-4)
+    performance_cb = PerformancePlotCallback(val_dataset, test_dataset, timestamp)
 
-    folder = datetime.now().strftime("%Y%m%d-%H%M%S")
-    makedirs(folder, exist_ok=True)
-
-    r2_train_array = []
-    r2_test_array = []
-    mae_train_array = []
-    mae_test_array = []
-
-    for epoch in range(epochs):
-        logging.info(f"Epoch {epoch}")
-        epoch_loss_avg = tf.keras.metrics.Mean()
-
-        for i in tqdm(range(len(train_dataset))):
-            x, y = train_dataset[i]
-            loss_value, grads = grad(model, x, y)
-            optimizer.apply_gradients(zip(grads, model.trainable_variables))
-            epoch_loss_avg.update_state(loss_value)
-            # print(f"Loss: {epoch_loss_avg.result():.3f}")
-
-        train_loss_results.append(epoch_loss_avg.result())
-        val_dataset.on_epoch_end()
-
-        fig, axs = plt.subplots(2, 1)
-        axs[0].set_title("Train")
-        predictions, labels = [], []
-        for i in tqdm(range(len(val_dataset))):
-            x, y = val_dataset[i]
-            pred = np.array(model(x, training=False)).reshape(-1)
-            predictions.extend(list(pred))
-            labels.extend(list(y.reshape(-1)))
-
-        # Plot the results
-        axs[0].plot(predictions, label="Predicted")
-        axs[0].plot(labels, label="True")
-
-        axs[1].set_title("Test")
-        predictions, labels = [], []
-        for i in tqdm(range(len(test_dataset))):
-            x, y = test_dataset[i]
-            pred = np.array(model(x, training=False)).reshape(-1)
-            predictions.extend(list(pred))
-            labels.extend(list(y.reshape(-1)))
-
-        axs[1].plot(predictions, label="Predicted")
-        axs[1].plot(labels, label="True")
-
-        # y_pred = model(X_train[:600], training=False)
-        # y_true = y_train[:600]
-        # r2_train = r2_score(y_pred, y_true)
-        # mae_train = mean_absolute_error(y_pred, y_true)
-        # axs[0].plot(y_true, label="True")
-        # axs[0].plot(y_pred, label="Predicted")
-        # axs[0].legend()
-        # axs[0].set_title(f"Train Loss: {mean_squared_error(y_pred, y_true):.3f}, MAE: {mae_train:.3f}, r2: {r2_train:.3f}")
-
-        # y_pred = model(X_test, training=False)
-        # y_true = y_test
-        # r2_test = r2_score(y_pred, y_true)
-        # mae_test = mean_absolute_error(y_pred, y_true)
-        # axs[1].plot(y_true, label="True")
-        # axs[1].plot(y_pred, label="Predicted")
-        # axs[1].legend()
-        # axs[1].set_title(f"Test Loss: {mean_squared_error(y_pred, y_true):.3f}, MAE: {mae_test:.3f}, r2: {r2_test:.3f}")
-
-        plt.tight_layout()
-        # plt.show()
-        plt.savefig(join(folder, f"{epoch:03d}.png"))
-        plt.close()
-        # r2_train_array.append(r2_train)
-        # r2_test_array.append(r2_test)
-        # mae_train_array.append(mae_train)
-        # mae_test_array.append(mae_test)
-
-    plt.plot(r2_train_array, label="Train")
-    plt.plot(r2_test_array, label="Test")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(join(folder, "r2.png"))
-
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    log_dir = "logs/fit/" + timestamp
-    tb_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+    # log_dir = "logs/fit/" + timestamp
+    # tb_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
     # es_callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3)
-    model.fit(train_dataset, epochs=epochs, validation_data=test_dataset, callbacks=[tb_callback], verbose=1)
-    model.save(f"models/{timestamp}/model")
+    model.fit(train_dataset, epochs=epochs, validation_data=test_dataset, callbacks=[performance_cb])
+    # model.save(f"models/{timestamp}/model")
 
 
 def train_grid_search(X, y, labels):
     opt = DLOptimization(X, y, balance=False, task="regression", mode="grid", n_splits=16, ground_truth=labels)
     opt.perform_grid_search_with_cv(ConvModelConfig(), "results_dl/power")
-
-
-def train_model_own_routine(
-        X: np.ndarray,
-        y: pd.DataFrame,
-        labels: str,
-        epochs: int,
-        batch_size: int,
-        learning_rate: float,
-):
-    X_train, y_train, X_test, y_test = dl_split_data(X, y, label_col=labels, p_train=0.8)
-    meta = {"X_shape_": X_train.shape, "n_outputs_": y_train.shape}
-    model = build_conv2d_model(meta=meta, kernel_size=(3, 3), n_filters=128, n_layers=3, dropout=0.5, n_units=128)
-    model.summary()
-
-    train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
-    train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
-
-    train_loss_results = []
-    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
-
-    folder = datetime.now().strftime("%Y%m%d-%H%M%S")
-    makedirs(folder, exist_ok=True)
-
-    r2_train_array = []
-    r2_test_array = []
-    mae_train_array = []
-    mae_test_array = []
-
-    for epoch in range(epochs):
-        logging.info(f"Epoch {epoch}")
-        epoch_loss_avg = tf.keras.metrics.Mean()
-
-        for x, y in tqdm(train_dataset):
-            loss_value, grads = grad(model, x, y)
-            optimizer.apply_gradients(zip(grads, model.trainable_variables))
-            epoch_loss_avg.update_state(loss_value)
-
-        train_loss_results.append(epoch_loss_avg.result())
-
-        fig, axs = plt.subplots(2, 1)
-        y_pred = model(X_train[:600], training=False)
-        y_true = y_train[:600]
-        r2_train = r2_score(y_pred, y_true)
-        mae_train = mean_absolute_error(y_pred, y_true)
-        axs[0].plot(y_true, label="True")
-        axs[0].plot(y_pred, label="Predicted")
-        axs[0].legend()
-        axs[0].set_title(f"Train Loss: {mean_squared_error(y_pred, y_true):.3f}, MAE: {mae_train:.3f}, r2: {r2_train:.3f}")
-
-        y_pred = model(X_test, training=False)
-        y_true = y_test
-        r2_test = r2_score(y_pred, y_true)
-        mae_test = mean_absolute_error(y_pred, y_true)
-        axs[1].plot(y_true, label="True")
-        axs[1].plot(y_pred, label="Predicted")
-        axs[1].legend()
-        axs[1].set_title(f"Test Loss: {mean_squared_error(y_pred, y_true):.3f}, MAE: {mae_test:.3f}, r2: {r2_test:.3f}")
-
-        plt.tight_layout()
-        plt.savefig(join(folder, f"{epoch:03d}.png"))
-        plt.close()
-        r2_train_array.append(r2_train)
-        r2_test_array.append(r2_test)
-        mae_train_array.append(mae_train)
-        mae_test_array.append(mae_test)
-
-    plt.plot(r2_train_array, label="Train")
-    plt.plot(r2_test_array, label="Test")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(join(folder, "r2.png"))
-
-
-loss_object = tf.keras.losses.MeanSquaredError()
-
-
-def grad(model, inputs, targets):
-    with tf.GradientTape() as tape:
-        loss_value = loss(model, inputs, targets, training=True)
-    return loss_value, tape.gradient(loss_value, model.trainable_variables)
-
-
-def loss(model, x, y, training):
-    y_ = model(x, training=training)
-    return loss_object(y_true=y, y_pred=y_)
-
 
 
 if __name__ == "__main__":
@@ -251,21 +81,21 @@ if __name__ == "__main__":
         if cfg["lstm"]:
             X = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"]
             y = pd.read_csv(join(args.src_path, cfg["y_file"]), index_col=0)
-            # X = dl_normalize_data_3d_subject(X, y, method="std")
-            for c in range(len(X)):
-                d = X[c][:, :, 2]
-                non_zero_columns = np.any(d != 0, axis=0)
-                filtered_arr = d[:, non_zero_columns]
-                X[c] = filtered_arr
+            X = dl_normalize_data_3d_subject(X, y, method="std")
+
+            # for c in range(len(X)):
+            #     d = X[c][:, :, 2]
+            #     non_zero_columns = np.any(d != 0, axis=0)
+            #     filtered_arr = d[:, non_zero_columns]
+            #     X[c] = filtered_arr
 
             # X = dl_normalize_data_3d_subject(X, y, method="std")
-            X = dl_normalize_data_3d_global(X, method="min_max")
+            # X = dl_normalize_data_3d_global(X, method="min_max")
 
-            train_time_series_model(X, y, cfg["epochs"], cfg["labels"], win_size=30, batch_size=cfg["batch_size"])
-
+            train_time_series_model(X, y, cfg["epochs"], cfg["labels"], win_size=cfg["win_size"], batch_size=cfg["batch_size"])
             # train_time_series_grid_search(X, y)
         else:
-            X = list(np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"])
+            X = list(np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"])  # TODO: check if list is necessary
             y = pd.read_csv(join(args.src_path, cfg["y_file"]))
 
             arr = np.vstack(X)

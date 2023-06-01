@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from typing import Dict, Any, Tuple
 from tensorflow import keras
-from keras.layers import Input, Conv1D, Conv2D, BatchNormalization, GRU, Dropout, MaxPooling2D, Flatten, Dense, Reshape, Masking, GlobalAveragePooling2D, MaxPooling1D
+from keras.layers import Input, Conv1D, Conv2D, BatchNormalization, Activation, GRU, Dropout, MaxPooling2D, Flatten, Dense, Reshape, Masking, GlobalAveragePooling2D, MaxPooling1D
 from tensorflow_addons.metrics import RSquare
 from keras.regularizers import l2
 
@@ -26,7 +26,7 @@ def build_conv2d_model(
 
     for i in range(n_layers):
         n_filters = n_filters * 2 ** i if increase_layers else n_filters // 2 ** i
-        model.add(Conv2D(filters=n_filters, kernel_size=kernel_size, padding="valid", activation="relu", kernel_regularizer=l2(0.01)))
+        model.add(Conv2D(filters=n_filters, kernel_size=kernel_size, padding="valid", activation="relu")) # , kernel_regularizer=l2(0.01)))
         model.add(BatchNormalization())
         model.add(Dropout(dropout))
         model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -44,29 +44,26 @@ def build_conv2d_model(
 
 def build_cnn_lstm_model(
         meta: Dict[str, Any],
-        n_filters: int = 32,
-        kernel_size: Tuple[int, int] = (11, 3),
-        n_layers: int = 3,
-        dropout: float = 0.3,
-        lstm_units: int = 32,
+        n_filters: int,
+        kernel_size: Tuple[int, int],
+        n_layers: int,
+        dropout: float,
+        lstm_units: int,
 ):
-    _, n_samples, n_features = meta["X_shape_"]
-    _, n_outputs = meta["n_outputs_"]
+    _, n_samples, n_features, n_channel = meta["X_shape_"]
     model = keras.Sequential()
-    model.add(Input(shape=(n_samples, n_features)))
+    model.add(Input(shape=(n_samples, n_features, n_channel)))
 
     for i in range(n_layers):
-        model.add(Conv1D(filters=n_filters * 2 ** i, kernel_size=3, padding="same", activation="relu", kernel_regularizer=l2(0.01)))
-        # model.add(BatchNormalization())
+        model.add(Conv2D(filters=n_filters * 2 ** i, kernel_size=kernel_size, padding="same", activation="relu", kernel_regularizer=l2(0.01)))
+        model.add(BatchNormalization())
         # model.add(Dropout(dropout))
-        # model.add(MaxPooling1D(pool_size=2))
-        # model.add(MaxPooling2D(pool_size=(2, 2)))
+        model.add(MaxPooling2D(pool_size=(2, 2)))
 
-    # model.add(Flatten())
+    model.add(Flatten())
     # model.add(Reshape((model.output_shape[1], model.output_shape[2] * model.output_shape[3])))
-    # model.add(Dense(128))
-    model.add(GRU(lstm_units, activation="relu", return_sequences=False))
-    model.add(Dense(64, activation="linear"))
-    model.add(Dense(n_outputs, activation="linear"))
+    # model.add(GRU(lstm_units, activation="relu", return_sequences=False))
+    model.add(Dense(64, activation="relu"))
+    model.add(Dense(1, activation="linear"))
     model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3), loss="mse", metrics=["mse", "mae", "mape", RSquare()])
     return model

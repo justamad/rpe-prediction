@@ -3,6 +3,8 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
+from .plot_callback import PerformancePlotCallback
+from .win_generator import WinDataGen
 from src.ml import MLOptimization, LearningModelBase
 from typing import Union, List, Dict
 from sklearn.model_selection import ParameterGrid
@@ -14,8 +16,16 @@ from os.path import join
 
 class DLOptimization(MLOptimization):
 
-    def __init__(self, X: Union[pd.DataFrame, np.ndarray], y: pd.DataFrame, balance: bool, task: str, mode: str,
-                 ground_truth: Union[str, List[str]], n_splits: int = None):
+    def __init__(
+            self,
+            X: Union[pd.DataFrame, np.ndarray],
+            y: pd.DataFrame,
+            balance: bool,
+            task: str,
+            mode: str,
+            ground_truth: Union[str, List[str]],
+            n_splits: int = None
+    ):
         super().__init__(X, y, balance, ground_truth, task, mode, n_splits)
 
     def perform_grid_search_with_cv(
@@ -25,12 +35,15 @@ class DLOptimization(MLOptimization):
             view_progress: int = 1,
             verbose: int = 1,
             patience: int = 3,
+            lstm: bool = True,
     ):
         es = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=3, restore_best_weights=True)
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         folder = join(log_path, str(model_config), timestamp)
         grid = ParameterGrid(model_config.parameters)
-        print(f"Starting grid search with {len(grid)} combinations for {self._n_splits} folds. Total {len(grid) * self._n_splits} fits.")
+
+        total_fits = len(grid) * self._n_splits
+        print(f"Grid search with {len(grid)} combinations for {self._n_splits} folds. Total {total_fits} fits.")
 
         avg_score = SubjectScoresAvg()
         for combination_idx, combination in enumerate(grid):
@@ -63,9 +76,13 @@ class DLOptimization(MLOptimization):
                 X_test = X[~train_mask]
                 y_test = y[~train_mask][self._ground_truth].values
 
-                train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
-                train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
-                test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test)).batch(batch_size)
+                if lstm:
+                    train_dataset = WinDataGen(X_train, y_train, win_size, overlap, batch_size, shuffle=True, balance=True)
+                    test_dataset = WinDataGen(X_test, y_test, win_size, overlap, batch_size, shuffle=False, balance=False)
+                else:
+                    train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
+                    train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
+                    test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test)).batch(batch_size)
 
                 model = model_config.model(**combination)
                 history = model.fit(
@@ -84,22 +101,6 @@ class DLOptimization(MLOptimization):
                 plt.tight_layout()
                 # plt.show()
                 plt.savefig(join(cur_log_path, f"{val_subject}_loss.png"))
-                plt.close()
-                plt.clf()
-
-                fig, axs = plt.subplots(3, 1)
-                axs[0].set_title("Train")
-                axs[0].plot(model.predict(X_train, verbose=0), label="Prediction")
-                axs[0].plot(y_train, label="Ground Truth")
-                axs[1].set_title("Test")
-                axs[1].plot(model.predict(X_test, verbose=0), label="Prediction")
-                axs[1].plot(y_test, label="Ground Truth")
-                axs[2].set_title("Validation")
-                axs[2].plot(model.predict(X_val, verbose=0), label="Prediction")
-                axs[2].plot(y_val[self._ground_truth].values, label="Ground Truth")
-                plt.legend()
-                plt.tight_layout()
-                plt.savefig(join(cur_log_path, f"{val_subject}_results.png"))
                 plt.close()
                 plt.clf()
 
