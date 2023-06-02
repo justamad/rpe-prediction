@@ -43,14 +43,13 @@ def build_conv2d_model(
 
 
 def build_cnn_lstm_model(
-        meta: Dict[str, Any],
         n_filters: int,
         kernel_size: Tuple[int, int],
         n_layers: int,
         dropout: float,
         lstm_units: int,
 ):
-    _, n_samples, n_features, n_channel = meta["X_shape_"]
+    _, n_samples, n_features, n_channel = (None, 30, 39, 3)
     model = keras.Sequential()
     model.add(Input(shape=(n_samples, n_features, n_channel)))
 
@@ -62,11 +61,11 @@ def build_cnn_lstm_model(
 
     model.add(Conv2D(filters=64, kernel_size=kernel_size, padding="same", activation="relu", kernel_regularizer=l2(0.01)))
     model.add(BatchNormalization())
-    model.add(Dropout(dropout))
+    # model.add(Dropout(dropout))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Conv2D(filters=128, kernel_size=kernel_size, padding="same", activation="relu", kernel_regularizer=l2(0.01)))
     model.add(BatchNormalization())
-    model.add(Dropout(dropout))
+    # model.add(Dropout(dropout))
     model.add(MaxPooling2D(pool_size=(2, 2)))
 
     # model.add(Flatten())
@@ -74,5 +73,5 @@ def build_cnn_lstm_model(
     model.add(GRU(lstm_units, activation="relu", return_sequences=False))
     # model.add(Dense(64, activation="relu"))
     model.add(Dense(1, activation="linear"))
-    model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3), loss="mse", metrics=["mse", "mae", "mape", RSquare()])
+    model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3), loss="mse", metrics=["mse", "mae", "mape", RSquare()], run_eagerly=True)
     return model

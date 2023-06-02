@@ -38,13 +38,15 @@ class CNNLSTMModelConfig(LearningModelBase):
         # )
 
         tunable_parameters = {
-            f"{str(self)}__batch_size": [16],
-            f"{str(self)}__epochs": [500],
-            f"{str(self)}__n_filters": [16],
-            f"{str(self)}__n_layers": [2, 3],
-            f"{str(self)}__kernel_size": [(3, 3)],
-            f"{str(self)}__dropout": [0.5],
-            f"{str(self)}__lstm_units": [8, 16],
+            "n_filters": [128],
+            "n_layers": [3],
+            "kernel_size": [(3, 3)],
+            "dropout": [0.5],
+            "lstm_units": [128],
+            "batch_size": [16],
+            "epochs": [500],
+            "win_size": [30, 60, 90, 120],
+            "overlap": [0.95],
         }
 
         super().__init__(model=model, grid_search_params=tunable_parameters)

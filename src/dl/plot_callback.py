@@ -1,5 +1,6 @@
 import numpy as np
 import logging
+import os
 import matplotlib.pyplot as plt
 
 from tensorflow import keras
@@ -9,11 +10,13 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, m
 
 class PerformancePlotCallback(keras.callbacks.Callback):
 
-    def __init__(self, train_gen, test_gen, log_path: str):
+    def __init__(self, train_gen, test_gen, val_gen, log_path: str):
         super().__init__()
         self._train_gen = train_gen
         self._test_gen = test_gen
+        self._val_gen = val_gen
         self._log_path = log_path
+        os.makedirs(self._log_path, exist_ok=True)
 
     def on_epoch_end(self, epoch, logs=None):
         logging.info(f"Plotting performance... for epoch {epoch}")
@@ -21,8 +24,9 @@ class PerformancePlotCallback(keras.callbacks.Callback):
         train_pred, train_labels, train_title = self.evaluate_for_generator(self._train_gen, training=True)
         train_n_pred, train_n_labels, train_n_title = self.evaluate_for_generator(self._train_gen)
         test_pred, test_labels, test_title = self.evaluate_for_generator(self._test_gen)
+        val_pred, val_labels, val_title = self.evaluate_for_generator(self._val_gen)
 
-        fig, axs = plt.subplots(3, 1, sharey=True, figsize=(10, 10))
+        fig, axs = plt.subplots(4, 1, sharey=True, figsize=(10, 10))
         axs[0].set_title("Train: " + train_title)
         axs[0].plot(train_pred, label="Predicted")
         axs[0].plot(train_labels, label="True")
@@ -34,6 +38,10 @@ class PerformancePlotCallback(keras.callbacks.Callback):
         axs[2].set_title("Test: " + test_title)
         axs[2].plot(test_pred, label="Predicted")
         axs[2].plot(test_labels, label="True")
+
+        axs[3].set_title("Validation: " + val_title)
+        axs[3].plot(val_pred, label="Predicted")
+        axs[3].plot(val_labels, label="True")
 
         plt.tight_layout()
         plt.savefig(join(self._log_path, f"{epoch:03d}.png"))

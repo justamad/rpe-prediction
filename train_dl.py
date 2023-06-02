@@ -16,8 +16,10 @@ from src.dataset import dl_split_data, filter_labels_outliers_per_subject, zero_
 
 
 def train_time_series_grid_search(X, y):
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    log_path = join("data/dl_results", timestamp)
     opt = DLOptimization(X, y, balance=True, task="regression", mode="grid", ground_truth="rpe")
-    opt.perform_grid_search_with_cv(CNNLSTMModelConfig(), "results_dl/rpe")
+    opt.perform_grid_search_with_cv(CNNLSTMModelConfig(), log_path, lstm=True)
 
 
 def train_time_series_model(
@@ -30,9 +32,7 @@ def train_time_series_model(
 ):
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     makedirs(timestamp, exist_ok=True)
-
-    meta = {"X_shape_": (None, win_size, 39, 3), "n_outputs_": (None, 1)}
-    model = build_cnn_lstm_model(meta=meta, kernel_size=(3, 3), n_filters=64, n_layers=3, dropout=0.5, lstm_units=128)
+    model = build_cnn_lstm_model(kernel_size=(3, 3), n_filters=64, n_layers=3, dropout=0.5, lstm_units=128)
     model.summary()
 
     X_train, y_train, X_test, y_test = dl_split_data(X, y, ground_truth, 0.7)
@@ -40,7 +40,7 @@ def train_time_series_model(
     train_dataset = WinDataGen(X_train, y_train, win_size, 0.95, batch_size=batch_size, shuffle=True, balance=True)
     test_dataset = WinDataGen(X_test, y_test, win_size, 0.95, batch_size=batch_size, shuffle=False, balance=False)
     val_dataset = WinDataGen(X_train, y_train, win_size, 0.95, batch_size=batch_size, shuffle=False, balance=False)
-
+    model.predict(val_dataset)
     performance_cb = PerformancePlotCallback(val_dataset, test_dataset, timestamp)
 
     # log_dir = "logs/fit/" + timestamp
@@ -92,8 +92,8 @@ if __name__ == "__main__":
             # X = dl_normalize_data_3d_subject(X, y, method="std")
             # X = dl_normalize_data_3d_global(X, method="min_max")
 
-            train_time_series_model(X, y, cfg["epochs"], cfg["labels"], win_size=cfg["win_size"], batch_size=cfg["batch_size"])
-            # train_time_series_grid_search(X, y)
+            # train_time_series_model(X, y, cfg["epochs"], cfg["labels"], 30, batch_size=cfg["batch_size"])
+            train_time_series_grid_search(X, y)
         else:
             X = list(np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"])  # TODO: check if list is necessary
             y = pd.read_csv(join(args.src_path, cfg["y_file"]))

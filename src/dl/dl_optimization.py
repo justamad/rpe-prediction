@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
+import random
 
 from .plot_callback import PerformancePlotCallback
 from .win_generator import WinDataGen
@@ -27,6 +28,7 @@ class DLOptimization(MLOptimization):
             n_splits: int = None
     ):
         super().__init__(X, y, balance, ground_truth, task, mode, n_splits)
+        self._subjects = self._y["subject"].unique()
 
     def perform_grid_search_with_cv(
             self,
@@ -48,50 +50,45 @@ class DLOptimization(MLOptimization):
         avg_score = SubjectScoresAvg()
         for combination_idx, combination in enumerate(grid):
             avg_score.set_new_combination(combination)
-            cur_log_path = join(folder, str(combination_idx))
-            makedirs(cur_log_path, exist_ok=True)
 
             batch_size = combination["batch_size"]
             epochs = combination["epochs"]
-            del combination["batch_size"]
-            del combination["epochs"]
+            win_size = combination["win_size"]
+            overlap = combination["overlap"]
+            for key in ["batch_size", "epochs", "win_size", "overlap"]:
+                del combination[key]
 
-            validation_subjects = self._y["subject"].unique()
-            for sub_idx, val_subject in enumerate(validation_subjects):
-                print(f"Start [{combination_idx}/{len(grid) - 1}] - [{sub_idx}/{len(validation_subjects) - 1}]")
+            for sub_idx, val_subject in enumerate(self._subjects):
+                print(f"Start [{combination_idx}/{len(grid) - 1}] - [{sub_idx}/{len(self._subjects) - 1}]")
+                subjects = list(self._subjects)
+                subjects.remove(val_subject)
+                test_subjects = random.sample(subjects, 3)
+                train_subjects = [s for s in subjects if s not in test_subjects]
 
-                val_mask = self._y["subject"] == val_subject
-                X_val = self._X[val_mask]
-                y_val = self._y[val_mask]
-
-                X = self._X[~val_mask]
-                y = self._y[~val_mask]
-
-                train_subjects = y["subject"].unique()
-                train_subjects = train_subjects[:int(0.8 * len(train_subjects))]
-                train_mask = y["subject"].isin(train_subjects)
-
-                X_train = X[train_mask]
-                y_train = y[train_mask][self._ground_truth].values
-                X_test = X[~train_mask]
-                y_test = y[~train_mask][self._ground_truth].values
+                X_val, y_val = self._X[self._y["subject"] == val_subject], self._y[self._y["subject"] == val_subject]
+                X_test, y_test = self._X[self._y["subject"].isin(test_subjects)], self._y[self._y["subject"].isin(test_subjects)]
+                X_train, y_train = self._X[self._y["subject"].isin(train_subjects)], self._y[self._y["subject"].isin(train_subjects)]
 
                 if lstm:
-                    train_dataset = WinDataGen(X_train, y_train, win_size, overlap, batch_size, shuffle=True, balance=True)
-                    test_dataset = WinDataGen(X_test, y_test, win_size, overlap, batch_size, shuffle=False, balance=False)
+                    train_dataset = WinDataGen(X_train, y_train[self._ground_truth].values, win_size, overlap, batch_size, shuffle=True, balance=True)
+                    test_dataset = WinDataGen(X_test, y_test[self._ground_truth].values, win_size, overlap, batch_size, shuffle=False, balance=False)
+                    train_view_dataset = WinDataGen(X_train, y_train[self._ground_truth].values, win_size, overlap, batch_size, shuffle=False, balance=False)
+                    val_dataset = WinDataGen(X_val, y_val[self._ground_truth].values, win_size, overlap, 2, shuffle=False, balance=False)
                 else:
                     train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
                     train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
                     test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test)).batch(batch_size)
+                    train_view_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
+                    val_dataset = tf.data.Dataset.from_tensor_slices((X_val, y_val))
 
+                plot_cb = PerformancePlotCallback(train_view_dataset, test_dataset, val_dataset, join(log_path, f"combi_{combination_idx}", val_subject))
                 model = model_config.model(**combination)
                 history = model.fit(
                     train_dataset,
                     epochs=epochs,
                     validation_data=test_dataset,
                     batch_size=batch_size,
-                    callbacks=[es],
-                    verbose=0,
+                    callbacks=[es, plot_cb],
                 )
 
                 plt.plot(history.history["loss"], label="train")
@@ -99,12 +96,11 @@ class DLOptimization(MLOptimization):
                 plt.title(f"Model Loss for {val_subject}")
                 plt.legend()
                 plt.tight_layout()
-                # plt.show()
-                plt.savefig(join(cur_log_path, f"{val_subject}_loss.png"))
+                plt.savefig(join(log_path, f"combi_{combination_idx}", f"{val_subject}_loss.png"))
                 plt.close()
                 plt.clf()
 
-                avg_score.add_subject_results(val_subject, y_val[self._ground_truth].values, model.predict(X_val))
+                avg_score.add_subject_results(val_subject, val_dataset, model)
                 # model.save(join(cur_log_path, "model", "model.h5"))
 
         df = avg_score.get_final_results()
@@ -131,7 +127,12 @@ class SubjectScoresAvg(object):
         df = pd.DataFrame(data={k: str(v) if isinstance(v, tuple) else v for k, v in self._cur_row.items()}, index=[0])
         self._df = pd.concat([self._df, df], axis=0, ignore_index=True)
 
-    def add_subject_results(self, name: str, ground_truth: np.ndarray, prediction: np.ndarray):
+    def add_subject_results(self, name: str, val_generator, model):
+        prediction, ground_truth = [], []
+        for X, y in val_generator:
+            prediction.extend(model.predict(X).reshape(-1))
+            ground_truth.extend(y.reshape(-1))
+
         mse = mean_squared_error(ground_truth, prediction)
         mae = mean_absolute_error(ground_truth, prediction)
         mape = mean_absolute_percentage_error(ground_truth, prediction)
