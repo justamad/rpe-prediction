@@ -38,15 +38,15 @@ class CNNLSTMModelConfig(LearningModelBase):
         # )
 
         tunable_parameters = {
-            "n_filters": [128],
-            "n_layers": [3],
-            "kernel_size": [(3, 3)],
+            "n_filters": [64, 128],
+            "n_layers": [2, 3],
+            "kernel_size": [(3, 3), (5, 3)],
             "dropout": [0.5],
-            "lstm_units": [128],
+            "lstm_units": [64, 128],
             "batch_size": [16],
             "epochs": [500],
             "win_size": [30, 60, 90, 120],
-            "overlap": [0.90],
+            "overlap": [0.9],
         }
 
         super().__init__(model=model, grid_search_params=tunable_parameters)
@@ -56,16 +56,25 @@ class CNNLSTMModelConfig(LearningModelBase):
 
 
 # regression_models = [ConvModelConfig()]
-# models = {str(model): model for model in regression_models}
 
 
 def instantiate_best_dl_model(result_df: pd.DataFrame, model_name: str, task: str):
-    # if model_name not in models:
-        # raise AttributeError(f"Model {model_name} not found.")
+    models = {str(model): model for model in [CNNLSTMModelConfig(), ConvModelConfig()]}
 
-    best_configuration = parse_report_file_to_model_parameters(result_df, model_name, column)
-    best_configuration["verbose"] = 1
-    # best_configuration["epochs"] = 1
-    model = models[model_name].model
-    model.set_params(**best_configuration)
-    return model
+    if task == "regression":
+        column = "avg_mse"
+    else:
+        raise ValueError(f"Task {task} not supported.")
+
+    best_params_dict = parse_report_file_to_model_parameters(result_df, model_name, column)
+    best_params_dict = {k.replace("param_", ""): v for k, v in best_params_dict.items()}
+
+    meta_dict = {}
+    for reserved_key in ["epochs", "overlap", "batch_size"]:
+        meta_dict[reserved_key] = best_params_dict.pop(reserved_key)
+
+    if "win_size" in best_params_dict:
+        meta_dict["win_size"] = best_params_dict["win_size"]  # TODO: This is hacky...
+
+    model = models[model_name].model(**best_params_dict)
+    return model, meta_dict

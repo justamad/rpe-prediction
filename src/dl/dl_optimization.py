@@ -1,8 +1,12 @@
+import logging
+import os
+import keras
 import pandas as pd
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import random
+import yaml
 
 from .plot_callback import PerformancePlotCallback
 from .win_generator import WinDataGen
@@ -10,8 +14,6 @@ from src.ml import MLOptimization, LearningModelBase
 from typing import Union, List, Dict
 from sklearn.model_selection import ParameterGrid
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
-from datetime import datetime
-from os import makedirs
 from os.path import join
 
 
@@ -49,7 +51,11 @@ class DLOptimization(MLOptimization):
         avg_score = SubjectScoresAvg()
         for combination_idx, combination in enumerate(grid):
             avg_score.set_new_combination(combination)
+            cur_folder = join(base_folder, f"combination_{combination_idx}")
+            os.makedirs(cur_folder, exist_ok=True)
+            yaml.dump(combination, open(join(cur_folder, "params.yaml"), "w"))
 
+            # Extract meta parameters for training
             batch_size = combination["batch_size"]
             epochs = combination["epochs"]
             win_size = combination["win_size"]
@@ -58,10 +64,10 @@ class DLOptimization(MLOptimization):
                 del combination[key]
 
             for sub_idx, val_subject in enumerate(self._subjects):
-                print(f"Start [{combination_idx}/{len(grid) - 1}] - [{sub_idx}/{len(self._subjects) - 1}]")
+                logging.info(f"Start [{combination_idx}/{len(grid) - 1}] - [{sub_idx}/{len(self._subjects) - 1}]")
                 subjects = list(self._subjects)
                 subjects.remove(val_subject)
-                test_subjects = random.sample(subjects, 3)
+                test_subjects = random.sample(subjects, 1)
                 train_subjects = [s for s in subjects if s not in test_subjects]
 
                 X_val, y_val = self._X[self._y["subject"] == val_subject], self._y[self._y["subject"] == val_subject]
@@ -80,30 +86,58 @@ class DLOptimization(MLOptimization):
                     train_view_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
                     val_dataset = tf.data.Dataset.from_tensor_slices((X_val, y_val))
 
-                plot_cb = PerformancePlotCallback(train_view_dataset, test_dataset, val_dataset, join(base_folder, f"combi_{combination_idx}", val_subject))
+                plot_cb = PerformancePlotCallback(train_view_dataset, test_dataset, val_dataset, join(cur_folder, f"combi_{combination_idx}", val_subject))
                 model = model_config.model(**combination)
-                # history = model.fit(
-                #     train_dataset,
-                #     epochs=epochs,
-                #     validation_data=test_dataset,
-                #     batch_size=batch_size,
-                #     callbacks=[es, plot_cb],
-                # )
+                history = model.fit(
+                    train_dataset,
+                    epochs=epochs,
+                    validation_data=test_dataset,
+                    batch_size=batch_size,
+                    callbacks=[es, plot_cb],
+                )
 
-                # plt.plot(history.history["loss"], label="train")
-                # plt.plot(history.history["val_loss"], label="test")
-                # plt.title(f"Model Loss for {val_subject}")
-                # plt.legend()
-                # plt.tight_layout()
-                # plt.savefig(join(log_path, f"combi_{combination_idx}", f"{val_subject}_loss.png"))
-                # plt.close()
-                # plt.clf()
+                plt.plot(history.history["loss"], label="train")
+                plt.plot(history.history["val_loss"], label="test")
+                plt.title(f"Model Loss for {val_subject}")
+                plt.legend()
+                plt.tight_layout()
+                plt.savefig(join(cur_folder, f"combi_{combination_idx}", f"{val_subject}_loss.png"))
+                plt.close()
+                plt.clf()
 
                 avg_score.add_subject_results(val_subject, val_dataset, model)
                 # model.save(join(cur_log_path, "model", "model.h5"))
 
         df = avg_score.get_final_results()
         df.to_csv(join(base_folder, "results.csv"))
+
+    def retrain_model(self, model: keras.Sequential, lstm: bool, epochs, win_size, overlap, batch_size) -> pd.DataFrame:
+        y = self._y[self._ground_truth].values
+        subjects = self._y["subject"].values
+        result_df = pd.DataFrame()
+        es = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=3, restore_best_weights=True)
+
+        for subject in self._subjects:
+            logging.info(f"Evaluate subject {subject}")
+            result = {}
+            X_train, y_train = self._X[subjects != subject], y[subjects != subject]
+            X_test, y_test = self._X[subjects == subject], y[subjects == subject]
+
+            if lstm:
+                train_gen = WinDataGen(X_train, y_train, win_size, overlap, batch_size=32, shuffle=True, balance=True)
+                test_gen = WinDataGen(X_test, y_test, win_size, overlap, batch_size=batch_size, shuffle=False, balance=False)
+            else:
+                raise NotImplementedError()
+
+            # model.fit(train_gen, validation_data=test_gen, epochs=epochs, batch_size=batch_size, verbose=1, callbacks=[es])
+            y_pred = model.predict(test_gen)
+
+            result["prediction"] = y_pred
+            result["ground_truth"] = y_test
+            result["subject"] = subject
+            result_df = pd.concat([result_df, pd.DataFrame(result)])
+
+        return result_df
 
 
 class SubjectScoresAvg(object):

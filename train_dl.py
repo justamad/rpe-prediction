@@ -11,7 +11,7 @@ from datetime import datetime
 from argparse import ArgumentParser
 from os.path import join
 from os import makedirs
-from src.dl import build_cnn_lstm_model, WinDataGen, build_conv2d_model, ConvModelConfig, DLOptimization, CNNLSTMModelConfig, PerformancePlotCallback
+from src.dl import build_cnn_lstm_model, WinDataGen, build_conv2d_model, ConvModelConfig, DLOptimization, CNNLSTMModelConfig, PerformancePlotCallback, instantiate_best_dl_model
 from src.dataset import dl_split_data, filter_labels_outliers_per_subject, zero_pad_array, dl_normalize_data_3d_subject, dl_normalize_data_3d_global
 
 
@@ -20,6 +20,13 @@ def train_time_series_grid_search(X, y):
     log_path = join("data/dl_results", timestamp)
     opt = DLOptimization(X, y, balance=True, task="regression", mode="grid", ground_truth="rpe")
     opt.perform_grid_search_with_cv(CNNLSTMModelConfig(), log_path, lstm=True)
+
+
+def evaluate_result(X, y, dst_path: str):
+    df = pd.read_csv(dst_path, index_col=0)
+    model, train_params = instantiate_best_dl_model(df, "CNNLSTM", task="regression")
+    opt = DLOptimization(X, y, balance=True, task="regression", mode="grid", ground_truth="rpe")
+    opt.retrain_model(model, lstm=True, **train_params)
 
 
 def train_time_series_model(
@@ -94,6 +101,7 @@ if __name__ == "__main__":
 
             # train_time_series_model(X, y, cfg["epochs"], cfg["labels"], 30, batch_size=cfg["batch_size"])
             train_time_series_grid_search(X, y)
+            # evaluate_result(X, y, "data/dl_results/20230605-124446/CNNLSTM/results.csv")
         else:
             X = list(np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"])  # TODO: check if list is necessary
             y = pd.read_csv(join(args.src_path, cfg["y_file"]))

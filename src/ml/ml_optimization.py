@@ -142,7 +142,8 @@ class MLOptimization(object):
             r_df.to_csv(join(log_path, f"model__{str(model_config)}.csv"), index=False)
 
     def evaluate_model(
-            self, model,
+            self,
+            model,
             norm_labels: bool,
             label_mean: Union[float, List[float]],
             label_std: Union[float, List[float]],
