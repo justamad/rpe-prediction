@@ -86,7 +86,7 @@ class DLOptimization(MLOptimization):
                     train_view_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
                     val_dataset = tf.data.Dataset.from_tensor_slices((X_val, y_val))
 
-                plot_cb = PerformancePlotCallback(train_view_dataset, test_dataset, val_dataset, join(cur_folder, f"combi_{combination_idx}", val_subject))
+                plot_cb = PerformancePlotCallback(train_view_dataset, test_dataset, val_dataset, join(cur_folder, val_subject))
                 model = model_config.model(**combination)
                 history = model.fit(
                     train_dataset,

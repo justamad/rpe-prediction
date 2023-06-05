@@ -2,7 +2,6 @@ import pandas as pd
 
 from .models import build_conv2d_model, build_cnn_lstm_model
 from src.ml.ml_model_config import LearningModelBase, parse_report_file_to_model_parameters
-# from scikeras.wrappers import KerasRegressor
 
 
 class ConvModelConfig(LearningModelBase):
@@ -31,11 +30,6 @@ class CNNLSTMModelConfig(LearningModelBase):
 
     def __init__(self):
         model = build_cnn_lstm_model
-        #     KerasRegressor(
-        #     model=build_cnn_lstm_model,
-        #     n_filters=32, kernel_size=(10, 3), n_layers=3, dropout=0.3, lstm_units=50,
-        #     verbose=False,
-        # )
 
         tunable_parameters = {
             "n_filters": [64, 128],
@@ -53,9 +47,6 @@ class CNNLSTMModelConfig(LearningModelBase):
 
     def __repr__(self):
         return "CNNLSTM"
-
-
-# regression_models = [ConvModelConfig()]
 
 
 def instantiate_best_dl_model(result_df: pd.DataFrame, model_name: str, task: str):
