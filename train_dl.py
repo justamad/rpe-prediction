@@ -11,7 +11,7 @@ from datetime import datetime
 from argparse import ArgumentParser
 from os.path import join
 from os import makedirs
-from src.dl import build_cnn_lstm_model, WinDataGen, build_conv2d_model, ConvModelConfig, DLOptimization, CNNLSTMModelConfig, PerformancePlotCallback, instantiate_best_dl_model
+from src.dl import build_cnn_lstm_model, WinDataGen, ConvModelConfig, DLOptimization, CNNLSTMModelConfig, PerformancePlotCallback, instantiate_best_dl_model
 from src.dataset import dl_split_data, filter_labels_outliers_per_subject, zero_pad_array, dl_normalize_data_3d_subject, dl_normalize_data_3d_global
 
 

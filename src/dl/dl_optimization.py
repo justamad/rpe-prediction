@@ -41,7 +41,7 @@ class DLOptimization(MLOptimization):
             patience: int = 3,
             lstm: bool = True,
     ):
-        es = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=3, restore_best_weights=True)
+        es = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5, restore_best_weights=True)
         base_folder = join(log_path, str(model_config))
         grid = ParameterGrid(model_config.parameters)
 
@@ -54,6 +54,8 @@ class DLOptimization(MLOptimization):
             cur_folder = join(base_folder, f"combination_{combination_idx}")
             os.makedirs(cur_folder, exist_ok=True)
             yaml.dump(combination, open(join(cur_folder, "params.yaml"), "w"))
+
+            intermediate_result_df = pd.DataFrame()
 
             # Extract meta parameters for training
             batch_size = combination["batch_size"]
@@ -76,8 +78,8 @@ class DLOptimization(MLOptimization):
 
                 if lstm:
                     train_dataset = WinDataGen(X_train, y_train[self._ground_truth].values, win_size, overlap, batch_size, shuffle=True, balance=True)
-                    test_dataset = WinDataGen(X_test, y_test[self._ground_truth].values, win_size, overlap, batch_size, shuffle=False, balance=False)
                     train_view_dataset = WinDataGen(X_train, y_train[self._ground_truth].values, win_size, overlap, batch_size, shuffle=False, balance=False)
+                    test_dataset = WinDataGen(X_test, y_test[self._ground_truth].values, win_size, overlap, batch_size, shuffle=False, balance=False)
                     val_dataset = WinDataGen(X_val, y_val[self._ground_truth].values, win_size, overlap, batch_size, shuffle=False, balance=False)
                 else:
                     train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
@@ -88,6 +90,7 @@ class DLOptimization(MLOptimization):
 
                 plot_cb = PerformancePlotCallback(train_view_dataset, test_dataset, val_dataset, join(cur_folder, val_subject))
                 model = model_config.model(**combination)
+                print(model.summary())
                 history = model.fit(
                     train_dataset,
                     epochs=epochs,
@@ -96,17 +99,28 @@ class DLOptimization(MLOptimization):
                     callbacks=[es, plot_cb],
                 )
 
+                predictions, ground_truth = [], []
+                for i in range(len(val_dataset)):
+                    X, y = val_dataset[i]
+                    predictions.extend(model.predict(X).reshape(-1))
+                    ground_truth.extend(y.reshape(-1))
+
+                df = pd.DataFrame({"y_pred": predictions, "y_true": ground_truth})
+                df["subject"] = val_subject
+                intermediate_result_df = pd.concat([intermediate_result_df, df], axis=0)
+
                 plt.plot(history.history["loss"], label="train")
                 plt.plot(history.history["val_loss"], label="test")
                 plt.title(f"Model Loss for {val_subject}")
                 plt.legend()
                 plt.tight_layout()
-                plt.savefig(join(cur_folder, f"combi_{combination_idx}", f"{val_subject}_loss.png"))
+                plt.savefig(join(cur_folder, f"{val_subject}_loss.png"))
                 plt.close()
                 plt.clf()
 
                 avg_score.add_subject_results(val_subject, val_dataset, model)
-                # model.save(join(cur_log_path, "model", "model.h5"))
+
+            intermediate_result_df.to_csv(join(cur_folder, "results.csv"))
 
         df = avg_score.get_final_results()
         df.to_csv(join(base_folder, "results.csv"))

@@ -10,14 +10,16 @@ class ConvModelConfig(LearningModelBase):
         regressor = build_conv2d_model
 
         tunable_parameters = {
-            f"batch_size": [16, 32],
+            f"batch_size": [16],
             f"learning_rate": [1e-4],
             f"epochs": [500],
-            f"n_filters": [32, 64, 128],
-            f"n_layers": [1, 2, 3],
+            f"n_filters": [64, 128],
+            f"n_layers": [2, 3],
             f"kernel_size": [(3, 3)],
             f"dropout": [0.5],
             f"n_units": [128],
+            f"overlap": [0.95],
+            f"win_size": [120, 150],
         }
 
         super().__init__(model=regressor, grid_search_params=tunable_parameters)
@@ -34,13 +36,14 @@ class CNNLSTMModelConfig(LearningModelBase):
         tunable_parameters = {
             "n_filters": [64, 128],
             "n_layers": [2, 3],
-            "kernel_size": [(3, 3), (5, 3)],
+            "kernel_size": [(3, 3)],
             "dropout": [0.5],
             "lstm_units": [64, 128],
             "batch_size": [16],
             "epochs": [500],
-            "win_size": [30, 60, 90, 120],
+            "win_size": [90, 120],
             "overlap": [0.9],
+            "learning_rate": [1e-4, 1e-3],
         }
 
         super().__init__(model=model, grid_search_params=tunable_parameters)
