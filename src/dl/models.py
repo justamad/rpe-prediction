@@ -43,13 +43,14 @@ def build_conv2d_model(
 
 
 def build_cnn_lstm_model(
+        win_size: int,
         n_filters: int,
         kernel_size: Tuple[int, int],
         n_layers: int,
         dropout: float,
         lstm_units: int,
 ):
-    _, n_samples, n_features, n_channel = (None, 30, 39, 3)
+    _, n_samples, n_features, n_channel = (None, win_size, 39, 3)
     model = keras.Sequential()
     model.add(Input(shape=(n_samples, n_features, n_channel)))
 

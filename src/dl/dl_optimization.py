@@ -40,8 +40,7 @@ class DLOptimization(MLOptimization):
             lstm: bool = True,
     ):
         es = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=3, restore_best_weights=True)
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        folder = join(log_path, str(model_config), timestamp)
+        base_folder = join(log_path, str(model_config))
         grid = ParameterGrid(model_config.parameters)
 
         total_fits = len(grid) * self._n_splits
@@ -55,7 +54,7 @@ class DLOptimization(MLOptimization):
             epochs = combination["epochs"]
             win_size = combination["win_size"]
             overlap = combination["overlap"]
-            for key in ["batch_size", "epochs", "win_size", "overlap"]:
+            for key in ["batch_size", "epochs", "overlap"]:
                 del combination[key]
 
             for sub_idx, val_subject in enumerate(self._subjects):
@@ -73,7 +72,7 @@ class DLOptimization(MLOptimization):
                     train_dataset = WinDataGen(X_train, y_train[self._ground_truth].values, win_size, overlap, batch_size, shuffle=True, balance=True)
                     test_dataset = WinDataGen(X_test, y_test[self._ground_truth].values, win_size, overlap, batch_size, shuffle=False, balance=False)
                     train_view_dataset = WinDataGen(X_train, y_train[self._ground_truth].values, win_size, overlap, batch_size, shuffle=False, balance=False)
-                    val_dataset = WinDataGen(X_val, y_val[self._ground_truth].values, win_size, overlap, 2, shuffle=False, balance=False)
+                    val_dataset = WinDataGen(X_val, y_val[self._ground_truth].values, win_size, overlap, batch_size, shuffle=False, balance=False)
                 else:
                     train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
                     train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
@@ -81,30 +80,30 @@ class DLOptimization(MLOptimization):
                     train_view_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
                     val_dataset = tf.data.Dataset.from_tensor_slices((X_val, y_val))
 
-                plot_cb = PerformancePlotCallback(train_view_dataset, test_dataset, val_dataset, join(log_path, f"combi_{combination_idx}", val_subject))
+                plot_cb = PerformancePlotCallback(train_view_dataset, test_dataset, val_dataset, join(base_folder, f"combi_{combination_idx}", val_subject))
                 model = model_config.model(**combination)
-                history = model.fit(
-                    train_dataset,
-                    epochs=epochs,
-                    validation_data=test_dataset,
-                    batch_size=batch_size,
-                    callbacks=[es, plot_cb],
-                )
+                # history = model.fit(
+                #     train_dataset,
+                #     epochs=epochs,
+                #     validation_data=test_dataset,
+                #     batch_size=batch_size,
+                #     callbacks=[es, plot_cb],
+                # )
 
-                plt.plot(history.history["loss"], label="train")
-                plt.plot(history.history["val_loss"], label="test")
-                plt.title(f"Model Loss for {val_subject}")
-                plt.legend()
-                plt.tight_layout()
-                plt.savefig(join(log_path, f"combi_{combination_idx}", f"{val_subject}_loss.png"))
-                plt.close()
-                plt.clf()
+                # plt.plot(history.history["loss"], label="train")
+                # plt.plot(history.history["val_loss"], label="test")
+                # plt.title(f"Model Loss for {val_subject}")
+                # plt.legend()
+                # plt.tight_layout()
+                # plt.savefig(join(log_path, f"combi_{combination_idx}", f"{val_subject}_loss.png"))
+                # plt.close()
+                # plt.clf()
 
                 avg_score.add_subject_results(val_subject, val_dataset, model)
                 # model.save(join(cur_log_path, "model", "model.h5"))
 
         df = avg_score.get_final_results()
-        df.to_csv(join(folder, "results.csv"))
+        df.to_csv(join(base_folder, "results.csv"))
 
 
 class SubjectScoresAvg(object):

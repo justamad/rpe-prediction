@@ -2,7 +2,7 @@ import pandas as pd
 
 from .models import build_conv2d_model, build_cnn_lstm_model
 from src.ml.ml_model_config import LearningModelBase, parse_report_file_to_model_parameters
-from scikeras.wrappers import KerasRegressor
+# from scikeras.wrappers import KerasRegressor
 
 
 class ConvModelConfig(LearningModelBase):
@@ -46,7 +46,7 @@ class CNNLSTMModelConfig(LearningModelBase):
             "batch_size": [16],
             "epochs": [500],
             "win_size": [30, 60, 90, 120],
-            "overlap": [0.95],
+            "overlap": [0.90],
         }
 
         super().__init__(model=model, grid_search_params=tunable_parameters)
@@ -60,15 +60,8 @@ class CNNLSTMModelConfig(LearningModelBase):
 
 
 def instantiate_best_dl_model(result_df: pd.DataFrame, model_name: str, task: str):
-    if model_name not in models:
-        raise AttributeError(f"Model {model_name} not found.")
-
-    if task == "regression":
-        column = "rank_test_r2"
-    elif task == "classification":
-        column = "rank_test_accuracy"
-    else:
-        raise ValueError(f"Task {task} not supported.")
+    # if model_name not in models:
+        # raise AttributeError(f"Model {model_name} not found.")
 
     best_configuration = parse_report_file_to_model_parameters(result_df, model_name, column)
     best_configuration["verbose"] = 1
