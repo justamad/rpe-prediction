@@ -51,12 +51,16 @@ class PerformancePlotCallback(keras.callbacks.Callback):
         predictions, labels = [], []
         for i in range(len(generator)):
             X_batch, y_batch = generator[i]
+            if len(y_batch.shape) == 2:
+                y_batch = y_batch[:, 0]
+
             pred = np.array(self.model(X_batch, training=training)).reshape(-1)
             predictions.extend(list(pred))
             labels.extend(list(y_batch.reshape(-1)))
 
         metrics = {
-            "mse": mean_squared_error,
+            "mse": lambda x, y: mean_squared_error(x, y, squared=True),
+            "rmse": lambda x, y: mean_squared_error(x, y, squared=False),
             "mae": mean_absolute_error,
             "mape": mean_absolute_percentage_error,
             "r2": r2_score,

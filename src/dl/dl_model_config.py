@@ -38,12 +38,12 @@ class CNNLSTMModelConfig(LearningModelBase):
             "n_layers": [2, 3],
             "kernel_size": [(3, 3)],
             "dropout": [0.5],
-            "lstm_units": [64, 128],
+            "lstm_units": [128],
             "batch_size": [16],
             "epochs": [500],
             "win_size": [90, 120],
             "overlap": [0.9],
-            "learning_rate": [1e-4, 1e-3],
+            "learning_rate": [1e-4],
         }
 
         super().__init__(model=model, grid_search_params=tunable_parameters)

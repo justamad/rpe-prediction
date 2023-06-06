@@ -69,7 +69,7 @@ def train_models_with_grid_search(
 
     # Impute dataframe, remove highly correlated features, and eliminate useless features
     X.fillna(0, inplace=True)
-    X = drop_highly_correlated_features(X, threshold=0.90)
+    X = drop_highly_correlated_features(X, threshold=0.95)
     X, y = filter_labels_outliers_per_subject(X, y, ground_truth, sigma=3.0)
     X = clip_outliers_z_scores(X, sigma=3.0)
 
@@ -243,9 +243,9 @@ if __name__ == "__main__":
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
     parser.add_argument("--result_path", type=str, dest="result_path", default="data/ml_results")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="data/ml_experiments")
-    parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation")
-    parser.add_argument("--train", type=bool, dest="train", default=False)
-    parser.add_argument("--eval", type=bool, dest="eval", default=True)
+    parser.add_argument("--dst_path", type=str, dest="dst_path", default="data/ml_evaluation")
+    parser.add_argument("--train", type=bool, dest="train", default=True)
+    parser.add_argument("--eval", type=bool, dest="eval", default=False)
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -256,7 +256,7 @@ if __name__ == "__main__":
 
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
-    logging.getLogger('matplotlib').setLevel(logging.WARNING)
+    logging.getLogger("matplotlib").setLevel(logging.WARNING)
     logging.getLogger("my_logger").addHandler(console)
 
     matplotlib.use("WebAgg")
@@ -327,7 +327,7 @@ if __name__ == "__main__":
         #     f"power.txt", escape=False,
         #     column_format="l" + "r" * (len(merge_df.columns))
         # )
-        evaluate_entire_experiment_path("data/ml_results/hr", args.dst_path, "", aggregate=False)
+        evaluate_entire_experiment_path("data/ml_results/rpe", args.dst_path, "", aggregate=True)
         # evaluate_entire_experiment_path("results/hr", args.dst_path, "con_ecc", aggregate=False)
 
         # merge_experiments("results/hr", aggregate=False)

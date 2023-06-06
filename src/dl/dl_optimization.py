@@ -10,10 +10,10 @@ import yaml
 
 from .plot_callback import PerformancePlotCallback
 from .win_generator import WinDataGen
+from contextlib import redirect_stdout
 from src.ml import MLOptimization, LearningModelBase
 from typing import Union, List, Dict
 from sklearn.model_selection import ParameterGrid
-from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 from os.path import join
 
 
@@ -48,9 +48,7 @@ class DLOptimization(MLOptimization):
         total_fits = len(grid) * self._n_splits
         print(f"Grid search with {len(grid)} combinations for {self._n_splits} folds. Total {total_fits} fits.")
 
-        avg_score = SubjectScoresAvg()
         for combination_idx, combination in enumerate(grid):
-            avg_score.set_new_combination(combination)
             cur_folder = join(base_folder, f"combination_{combination_idx}")
             os.makedirs(cur_folder, exist_ok=True)
             yaml.dump(combination, open(join(cur_folder, "params.yaml"), "w"))
@@ -77,10 +75,10 @@ class DLOptimization(MLOptimization):
                 X_train, y_train = self._X[self._y["subject"].isin(train_subjects)], self._y[self._y["subject"].isin(train_subjects)]
 
                 if lstm:
-                    train_dataset = WinDataGen(X_train, y_train[self._ground_truth].values, win_size, overlap, batch_size, shuffle=True, balance=True)
-                    train_view_dataset = WinDataGen(X_train, y_train[self._ground_truth].values, win_size, overlap, batch_size, shuffle=False, balance=False)
-                    test_dataset = WinDataGen(X_test, y_test[self._ground_truth].values, win_size, overlap, batch_size, shuffle=False, balance=False)
-                    val_dataset = WinDataGen(X_val, y_val[self._ground_truth].values, win_size, overlap, batch_size, shuffle=False, balance=False)
+                    train_dataset = WinDataGen(X_train, y_train, self._ground_truth, win_size, overlap, batch_size, shuffle=True, balance=True)
+                    train_view_dataset = WinDataGen(X_train, y_train, self._ground_truth, win_size, overlap, batch_size, shuffle=False, balance=False)
+                    test_dataset = WinDataGen(X_test, y_test, self._ground_truth, win_size, overlap, batch_size, shuffle=False, balance=False)
+                    val_dataset = WinDataGen(X_val, y_val, self._ground_truth, win_size, overlap, batch_size, shuffle=False, balance=False, deliver_sets=True)
                 else:
                     train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train))
                     train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
@@ -90,22 +88,32 @@ class DLOptimization(MLOptimization):
 
                 plot_cb = PerformancePlotCallback(train_view_dataset, test_dataset, val_dataset, join(cur_folder, val_subject))
                 model = model_config.model(**combination)
-                print(model.summary())
+
+                with open(join(cur_folder, 'modelsummary.txt'), 'w') as f:
+                    with redirect_stdout(f):
+                        model.summary()
+
                 history = model.fit(
                     train_dataset,
-                    epochs=epochs,
+                    epochs=3,
                     validation_data=test_dataset,
                     batch_size=batch_size,
                     callbacks=[es, plot_cb],
                 )
 
-                predictions, ground_truth = [], []
+                predictions, ground_truth, sets = [], [], []
                 for i in range(len(val_dataset)):
                     X, y = val_dataset[i]
+                    if len(y.shape) == 2:
+                        sets.extend(y[:, 1].reshape(-1))
+                        y = y[:, 0]
+                    else:
+                        sets.extend([0 for _ in range(len(y))])
+
                     predictions.extend(model.predict(X).reshape(-1))
                     ground_truth.extend(y.reshape(-1))
 
-                df = pd.DataFrame({"y_pred": predictions, "y_true": ground_truth})
+                df = pd.DataFrame({"prediction": predictions, "ground_truth": ground_truth, "set_id": sets})
                 df["subject"] = val_subject
                 intermediate_result_df = pd.concat([intermediate_result_df, df], axis=0)
 
@@ -118,75 +126,4 @@ class DLOptimization(MLOptimization):
                 plt.close()
                 plt.clf()
 
-                avg_score.add_subject_results(val_subject, val_dataset, model)
-
             intermediate_result_df.to_csv(join(cur_folder, "results.csv"))
-
-        df = avg_score.get_final_results()
-        df.to_csv(join(base_folder, "results.csv"))
-
-    def retrain_model(self, model: keras.Sequential, lstm: bool, epochs, win_size, overlap, batch_size) -> pd.DataFrame:
-        y = self._y[self._ground_truth].values
-        subjects = self._y["subject"].values
-        result_df = pd.DataFrame()
-        es = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=3, restore_best_weights=True)
-
-        for subject in self._subjects:
-            logging.info(f"Evaluate subject {subject}")
-            result = {}
-            X_train, y_train = self._X[subjects != subject], y[subjects != subject]
-            X_test, y_test = self._X[subjects == subject], y[subjects == subject]
-
-            if lstm:
-                train_gen = WinDataGen(X_train, y_train, win_size, overlap, batch_size=32, shuffle=True, balance=True)
-                test_gen = WinDataGen(X_test, y_test, win_size, overlap, batch_size=batch_size, shuffle=False, balance=False)
-            else:
-                raise NotImplementedError()
-
-            # model.fit(train_gen, validation_data=test_gen, epochs=epochs, batch_size=batch_size, verbose=1, callbacks=[es])
-            y_pred = model.predict(test_gen)
-
-            result["prediction"] = y_pred
-            result["ground_truth"] = y_test
-            result["subject"] = subject
-            result_df = pd.concat([result_df, pd.DataFrame(result)])
-
-        return result_df
-
-
-class SubjectScoresAvg(object):
-
-    def __init__(self):
-        self._df = pd.DataFrame()
-        self._cur_row = None
-
-    def set_new_combination(self, param_combination: Dict):
-        if self._cur_row is not None:
-            self._append_row()
-
-        self._cur_row = {f"param_{k}": v for k, v in param_combination.items()}
-
-    def _append_row(self):
-        for metric in ["mse", "mae", "mape", "r2"]:
-            self._cur_row[f"avg_{metric}"] = np.mean([v for k, v in self._cur_row.items() if metric in k])
-            self._cur_row[f"std_{metric}"] = np.std([v for k, v in self._cur_row.items() if metric in k])
-
-        df = pd.DataFrame(data={k: str(v) if isinstance(v, tuple) else v for k, v in self._cur_row.items()}, index=[0])
-        self._df = pd.concat([self._df, df], axis=0, ignore_index=True)
-
-    def add_subject_results(self, name: str, val_generator, model):
-        prediction, ground_truth = [], []
-        for X, y in val_generator:
-            prediction.extend(model.predict(X).reshape(-1))
-            ground_truth.extend(y.reshape(-1))
-
-        mse = mean_squared_error(ground_truth, prediction)
-        mae = mean_absolute_error(ground_truth, prediction)
-        mape = mean_absolute_percentage_error(ground_truth, prediction)
-        r2 = r2_score(ground_truth, prediction)
-        for metric, value in zip(["mse", "mae", "mape", "r2"], [mse, mae, mape, r2]):
-            self._cur_row[f"{name}_{metric}"] = value
-
-    def get_final_results(self):
-        self._append_row()
-        return self._df

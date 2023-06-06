@@ -10,18 +10,19 @@ from datetime import datetime
 from argparse import ArgumentParser
 from os.path import join
 from os import makedirs
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error, r2_score
+from scipy.stats import spearmanr
 from src.dl import build_cnn_lstm_model, WinDataGen, ConvModelConfig, DLOptimization, CNNLSTMModelConfig, \
-    PerformancePlotCallback, instantiate_best_dl_model
+    PerformancePlotCallback
 from src.dataset import dl_split_data, filter_labels_outliers_per_subject, zero_pad_array, dl_normalize_data_3d_subject, \
     dl_normalize_data_3d_global
 from src.plot import plot_sample_predictions
 
 
-def train_time_series_grid_search(X, y):
+def train_time_series_grid_search(X, y, label):
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     log_path = join("data/dl_results", timestamp)
-    opt = DLOptimization(X, y, balance=True, task="regression", mode="grid", ground_truth="rpe")
+    opt = DLOptimization(X, y, balance=True, task="regression", mode="grid", ground_truth=label)
     opt.perform_grid_search_with_cv(CNNLSTMModelConfig(), log_path, lstm=True)
 
 
@@ -38,24 +39,35 @@ def evaluate_result_grid_search(src_path: str, dst_path: str):
 
 
 def collect_trials(dst_path: str) -> pd.DataFrame:
-    data_dict = []
+    data_dicts = []
     for folder in os.listdir(dst_path):
         result_file = join(dst_path, folder, "results.csv")
         if not os.path.exists(result_file):
             continue
 
         df = pd.read_csv(result_file, index_col=0)
-        errors = []
+        metrics = {
+            "RMSE": lambda x, y: mean_squared_error(x, y, squared=False),
+            "MAE": mean_absolute_error,
+            "R2": r2_score,
+            "MAPE": mean_absolute_percentage_error,
+            "Spearman": lambda x, y: spearmanr(x, y)[0],
+        }
+        errors = {k: [] for k in metrics.keys()}
         for subject in df["subject"].unique():
             subject_df = df[df["subject"] == subject]
-            rmse = mean_squared_error(subject_df["y_pred"], subject_df["y_true"], squared=False)
-            errors.append(rmse)
 
-        errors = np.array(errors)
-        data_dict.append({"file": result_file, "mean_rmse": errors.mean(), "std_rmse": errors.std()})
+            for metric, func in metrics.items():
+                errors[metric].append(func(subject_df["y_pred"], subject_df["y_true"]))
 
-    result_df = pd.DataFrame(data_dict)
-    result_df.sort_values(by="mean_rmse", inplace=True)
+        errors = {k: np.mean(v) for k, v in errors.items()}
+        errors["file"] = result_file
+
+        params_dict = yaml.load(open(join(dst_path, folder, "params.yaml")), Loader=yaml.FullLoader)
+        data_dicts.append({**params_dict, **errors})
+
+    result_df = pd.DataFrame(data_dicts)
+    result_df.sort_values(by="RMSE", inplace=True)
     return result_df
 
 
@@ -105,7 +117,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_gpu", type=bool, dest="use_gpu", default=True)
     args = parser.parse_args()
 
-    # matplotlib.use("WebAgg")
+    matplotlib.use("WebAgg")
 
     print(f"Available GPU devices: {tf.config.list_physical_devices('GPU')}")
 
@@ -130,9 +142,8 @@ if __name__ == "__main__":
             # X = dl_normalize_data_3d_global(X, method="min_max")
 
             # train_time_series_model(X, y, cfg["epochs"], cfg["labels"], 30, batch_size=cfg["batch_size"])
-            # train_time_series_grid_search(X, y)
-            evaluate_result_grid_search("data/dl_results/20230605-165732/CNNLSTM", "data/dl_evaluation")
-            # evaluate_result(X, y, "data/dl_results/20230605-124446/CNNLSTM/results.csv")
+            train_time_series_grid_search(X, y, cfg["label"])
+            # evaluate_result_grid_search("data/dl_results/20230605-211848/CNNLSTM", "data/dl_evaluation")
         else:
             X = list(np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"])  # TODO: check if list is necessary
             y = pd.read_csv(join(args.src_path, cfg["y_file"]))

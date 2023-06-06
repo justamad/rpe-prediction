@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import math
-import logging
 
 from imblearn.over_sampling import RandomOverSampler
+from typing import Union
 
 
 class WinDataGen(tf.keras.utils.Sequence):
@@ -12,27 +12,41 @@ class WinDataGen(tf.keras.utils.Sequence):
     def __init__(
             self,
             X: np.ndarray,
-            y: np.ndarray,
+            y: Union[np.ndarray, pd.DataFrame],
+            label_col: str,
             win_size: int,
             overlap: float,
-            batch_size: int = None,
+            batch_size: int,
             shuffle: bool = True,
-            balance: bool = False
+            balance: bool = False,
+            deliver_sets: bool = False,
     ):
         assert len(X) == len(y), "X and y must have the same length"
+
+        if label_col not in y.columns:
+            raise ValueError(f"Label column {label_col} not in y")
+
+        if deliver_sets and "set_id" not in y.columns:
+            raise ValueError("If deliver_sets is True, y must have a column named set")
+
         self._X = X
-        self._y = y
+        if deliver_sets:
+            self._y = y[[label_col, "set_id"]].values
+        else:
+            self._y = y[label_col].values
+
         self._win_size = win_size
         self._stride = int(self._win_size - (self._win_size * overlap))
         self._shuffle = shuffle
         self._balance = balance
         self._index = []
-        self._build_index()
-        if batch_size is None:
-            batch_size = len(self._index)
 
+        self._label_col = label_col
         self._batch_size = batch_size
+
+        self._build_index()
         self._n_samples = len(self._index)
+
         print("Got samples: ", self._n_samples)
         print(f"Number of batches: {len(self)}")
 
@@ -70,8 +84,13 @@ class WinDataGen(tf.keras.utils.Sequence):
 if __name__ == '__main__':
     X = np.load("../../data/training/X_lstm.npz", allow_pickle=True)["X"]
     y = pd.read_csv("../../data/training/y_lstm.csv", index_col=0)
-    y = y["rpe"]
-    gen = WinDataGen(X, y, win_size=30, overlap=0.5, batch_size=4, shuffle=True, balance=False)
+
+    gen = WinDataGen(
+        X, y, label_col="rpe", win_size=30, overlap=0.5, batch_size=4, shuffle=True, balance=False, deliver_sets=True
+    )
+
     for batch_idx in range(len(gen)):
         x, y = gen[batch_idx]
+        if len(y.shape) == 2:
+            print(y[:, 0])
         print(x.shape, y.shape)
