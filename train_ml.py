@@ -167,7 +167,7 @@ def evaluate_entire_experiment_path(
         df = retrain_model(best_model["result_path"], best_model["model_file"], dst_path, filter_exp)
         df["model"] = model
 
-        plot_sample_predictions(value_df=df, exp_name="rpe", dst_path=join(dst_path, model))
+        plot_sample_predictions(value_df=df, exp_name=exp_name, dst_path=join(dst_path, model))
 
         if aggregate:
             df = aggregate_results(df)
@@ -275,33 +275,8 @@ if __name__ == "__main__":
                     train_models_with_grid_search(df, log_path, **exp_cfg)
 
     if args.eval:
-
-        # def merge_experiments(exp_name: str, aggregate: bool):
-        #     full_df = evaluate_entire_experiment_path(exp_name, args.dst_path, "full", aggregate)
-        #     full_df.columns = [(c, "Full Rep") for c in full_df.columns]
-        #     ecc_con_df = evaluate_entire_experiment_path(exp_name, args.dst_path, "con_ecc", aggregate)
-        #     ecc_con_df.columns = [(c, "Con / Ecc") for c in ecc_con_df.columns]
-        #     merge_df = pd.concat([full_df, ecc_con_df], axis=1)
-        #     merge_df.columns = pd.MultiIndex.from_tuples(merge_df.columns, names=['Model', 'Mode'])
-        #     merge_df.sort_index(axis=1, level=[0, 1], ascending=[True, True], inplace=True)
-        #     merge_df.to_latex(
-        #         f"{exp_name.replace('/', '_')}.txt", escape=False,
-        #         column_format="l" + "r" * (len(merge_df.columns))
-        #     )
-
-        # merge_experiments("results/rpe", aggregate=False)
-        # con_df = evaluate_entire_experiment_path("results/powercon", args.dst_path, aggregate=False)
-        # con_df.columns = [(c, "Con") for c in con_df.columns]
-        # ecc_df = evaluate_entire_experiment_path("results/powerecc", args.dst_path, aggregate=False)
-        # ecc_df.columns = [(c, "Ecc") for c in ecc_df.columns]
-        # merge_df = pd.concat([con_df, ecc_df], axis=1)
-        # merge_df.columns = pd.MultiIndex.from_tuples(merge_df.columns, names=['Model', 'Mode'])
-        # merge_df.sort_index(axis=1, level=[0, 1], ascending=[True, True], inplace=True)
-        # merge_df.to_latex(
-        #     f"power.txt", escape=False,
-        #     column_format="l" + "r" * (len(merge_df.columns))
-        # )
-        evaluate_entire_experiment_path("data/ml_results/rpe_seg", args.dst_path, "", aggregate=True)
-        # evaluate_entire_experiment_path("results/hr", args.dst_path, "con_ecc", aggregate=False)
-
-        # merge_experiments("results/hr", aggregate=False)
+        # evaluate_entire_experiment_path("data/ml_results/hr", args.dst_path, "", aggregate=True)
+        t_ml = pd.read_csv("data/ml_evaluation/rpe/retrain_results.csv", index_col=0)
+        d_ml = pd.read_csv("data/dl_evaluation/retrain.csv", index_col=0)
+        total_df = pd.concat([t_ml, d_ml], axis=1)
+        total_df.to_latex("rpe.tex", column_format="l" + "r" * (len(total_df.columns)), escape=False)

@@ -95,7 +95,7 @@ class DLOptimization(MLOptimization):
 
                 history = model.fit(
                     train_dataset,
-                    epochs=3,
+                    epochs=epochs,
                     validation_data=test_dataset,
                     batch_size=batch_size,
                     callbacks=[es, plot_cb],

@@ -12,10 +12,8 @@ from os.path import join
 from os import makedirs
 from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error, r2_score
 from scipy.stats import spearmanr
-from src.dl import build_cnn_lstm_model, WinDataGen, ConvModelConfig, DLOptimization, CNNLSTMModelConfig, \
-    PerformancePlotCallback
-from src.dataset import dl_split_data, filter_labels_outliers_per_subject, zero_pad_array, dl_normalize_data_3d_subject, \
-    dl_normalize_data_3d_global, aggregate_results
+from src.dl import build_cnn_lstm_model, WinDataGen, ConvModelConfig, DLOptimization, CNNLSTMModelConfig, PerformancePlotCallback
+from src.dataset import dl_split_data, filter_labels_outliers_per_subject, zero_pad_array, dl_normalize_data_3d_subject, aggregate_results
 from src.plot import plot_sample_predictions, create_retrain_table
 
 
@@ -39,7 +37,7 @@ def evaluate_result_grid_search(src_path: str, dst_path: str, aggregate: bool = 
 
     plot_sample_predictions(data_df, "rpe", dst_path)
     train_df = create_retrain_table(data_df, dst_path)
-    train_df.to_csv(join(dst_path, "retrain.csv"), index=False)
+    train_df.to_csv(join(dst_path, "retrain.csv"))
 
 
 def collect_trials(dst_path: str) -> pd.DataFrame:
@@ -154,5 +152,4 @@ if __name__ == "__main__":
             X, y = filter_labels_outliers_per_subject(X, y, cfg["labels"], sigma=3.0)
 
             train_grid_search(X, y, labels=cfg["labels"])
-            # train_model_own_routine(X, y, labels=cfg["labels"], epochs=cfg["epochs"], batch_size=cfg["batch_size"], learning_rate=cfg["learning_rate"])
             # evaluate_single_model(X, y, src_path="models/20230519-115702/model")
