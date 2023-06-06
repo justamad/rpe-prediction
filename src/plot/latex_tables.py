@@ -32,11 +32,12 @@ def create_train_table(df: pd.DataFrame, dst_path: str):
 
 def create_retrain_table(results: pd.DataFrame, dst_path: str) -> pd.DataFrame:
     metrics = {
-        "$R^{2}$": r2_score,
-        "MAPE": mean_absolute_percentage_error,
-        "RMSE": calculate_mse,
+        "MSE": lambda x, y: mean_squared_error(x, y, squared=True),
+        "RMSE": lambda x, y: mean_squared_error(x, y, squared=False),
         "MAE": mean_absolute_error,
-        "Spearman": calculate_spearman,
+        "MAPE": mean_absolute_percentage_error,
+        "$R^{2}$": r2_score,
+        "Spearman": lambda x, y: stats.spearmanr(x, y)[0]
     }
 
     data_entries = []
@@ -57,14 +58,3 @@ def create_retrain_table(results: pd.DataFrame, dst_path: str) -> pd.DataFrame:
     final_df = pd.DataFrame.from_records(data_entries, index=list(map(lambda x: x.upper(), models))).T
     final_df.to_latex(join(dst_path, "retrain_results_latex.txt"), escape=False)
     return final_df
-
-
-def calculate_mse(y_true, y_pred, squared=False):
-    if squared:
-        return mean_squared_error(y_true, y_pred, squared=True)
-    return mean_squared_error(y_true, y_pred, squared=False)
-
-
-def calculate_spearman(y_true, y_pred):
-    res, p_value = stats.spearmanr(y_true, y_pred)
-    return res

@@ -7,6 +7,7 @@ import yaml
 import matplotlib
 
 from src.ml import MLOptimization, eliminate_features_with_rfe, regression_models, instantiate_best_model
+from src.dataset import aggregate_results
 from typing import List, Union
 from datetime import datetime
 from argparse import ArgumentParser
@@ -166,10 +167,11 @@ def evaluate_entire_experiment_path(
         df = retrain_model(best_model["result_path"], best_model["model_file"], dst_path, filter_exp)
         df["model"] = model
 
-        if aggregate:
-            df = aggregate_results(df, weighting=False)
+        plot_sample_predictions(value_df=df, exp_name="rpe", dst_path=join(dst_path, model))
 
-        plot_sample_predictions(value_df=df, exp_name=exp_name, dst_path=join(dst_path, model))
+        if aggregate:
+            df = aggregate_results(df)
+
         plot_subject_correlations(df, join(dst_path, model))
         create_bland_altman_plot(df, join(dst_path), model)
         create_scatter_plot(df, dst_path, model, exp_name)
@@ -179,34 +181,6 @@ def evaluate_entire_experiment_path(
     final_df = create_retrain_table(retrain_df, dst_path)
     final_df.to_csv(join(dst_path, "retrain_results.csv"))
     return final_df
-
-
-def aggregate_results(df: pd.DataFrame, weighting: bool = False):
-    result_df = pd.DataFrame()
-    for model in df["model"].unique():
-        model_df = df[df["model"] == model]
-
-        for subject_name in model_df["subject"].unique():
-            subject_df = model_df[model_df["subject"] == subject_name]
-
-            data = {"ground_truth": [], "prediction": [], "set_id": []}
-
-            for set_id in subject_df["set_id"].unique():
-                set_df = subject_df[subject_df["set_id"] == set_id]
-                data["ground_truth"].append(set_df["ground_truth"].to_numpy().mean())
-                if weighting:
-                    data["prediction"].append(np.average(set_df["prediction"], weights=np.arange(len(set_df))))
-                else:
-                    data["prediction"].append(np.average(set_df["prediction"]))
-
-                data["set_id"].append(set_id)
-
-            temp_df = pd.DataFrame(data)
-            temp_df["model"] = model
-            temp_df["subject"] = subject_name
-            result_df = pd.concat([result_df, temp_df])
-
-    return result_df
 
 
 def retrain_model(result_path: str, model_file: str, dst_path: str, filter_exp: str) -> pd.DataFrame:
@@ -244,8 +218,8 @@ if __name__ == "__main__":
     parser.add_argument("--result_path", type=str, dest="result_path", default="data/ml_results")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="data/ml_experiments")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="data/ml_evaluation")
-    parser.add_argument("--train", type=bool, dest="train", default=True)
-    parser.add_argument("--eval", type=bool, dest="eval", default=False)
+    parser.add_argument("--train", type=bool, dest="train", default=False)
+    parser.add_argument("--eval", type=bool, dest="eval", default=True)
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -327,7 +301,7 @@ if __name__ == "__main__":
         #     f"power.txt", escape=False,
         #     column_format="l" + "r" * (len(merge_df.columns))
         # )
-        evaluate_entire_experiment_path("data/ml_results/rpe", args.dst_path, "", aggregate=True)
+        evaluate_entire_experiment_path("data/ml_results/rpe_seg", args.dst_path, "", aggregate=True)
         # evaluate_entire_experiment_path("results/hr", args.dst_path, "con_ecc", aggregate=False)
 
         # merge_experiments("results/hr", aggregate=False)

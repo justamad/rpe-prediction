@@ -1,4 +1,5 @@
 from .data_iterator import SubjectDataIterator
+from .result_collecton import aggregate_results
 
 from .data_preparation import (
     discretize_subject_rpe,

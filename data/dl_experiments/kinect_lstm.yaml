@@ -1,6 +1,6 @@
 X_file: X_lstm.npz
 y_file: y_lstm.csv
-labels: rpe
+label: rpe
 lstm: True
 search: grid
 task: regression

@@ -15,8 +15,8 @@ from scipy.stats import spearmanr
 from src.dl import build_cnn_lstm_model, WinDataGen, ConvModelConfig, DLOptimization, CNNLSTMModelConfig, \
     PerformancePlotCallback
 from src.dataset import dl_split_data, filter_labels_outliers_per_subject, zero_pad_array, dl_normalize_data_3d_subject, \
-    dl_normalize_data_3d_global
-from src.plot import plot_sample_predictions
+    dl_normalize_data_3d_global, aggregate_results
+from src.plot import plot_sample_predictions, create_retrain_table
 
 
 def train_time_series_grid_search(X, y, label):
@@ -26,16 +26,20 @@ def train_time_series_grid_search(X, y, label):
     opt.perform_grid_search_with_cv(CNNLSTMModelConfig(), log_path, lstm=True)
 
 
-def evaluate_result_grid_search(src_path: str, dst_path: str):
+def evaluate_result_grid_search(src_path: str, dst_path: str, aggregate: bool = False):
     results_df = collect_trials(src_path)
-    file = results_df.iloc[0]["file"]
 
     if not os.path.exists(dst_path):
         makedirs(dst_path)
 
-    df = pd.read_csv(file, index_col=0)
-    df.rename(columns={"y_true": "ground_truth", "y_pred": "prediction"}, inplace=True)  # TODO: fix this in the future
-    plot_sample_predictions(df, "rpe", dst_path)
+    data_df = pd.read_csv(results_df.iloc[0]["file"], index_col=0)
+    data_df["model"] = "CNN-LSTM"
+    if aggregate:
+        data_df = aggregate_results(data_df)
+
+    plot_sample_predictions(data_df, "rpe", dst_path)
+    train_df = create_retrain_table(data_df, dst_path)
+    train_df.to_csv(join(dst_path, "retrain.csv"), index=False)
 
 
 def collect_trials(dst_path: str) -> pd.DataFrame:
@@ -58,7 +62,7 @@ def collect_trials(dst_path: str) -> pd.DataFrame:
             subject_df = df[df["subject"] == subject]
 
             for metric, func in metrics.items():
-                errors[metric].append(func(subject_df["y_pred"], subject_df["y_true"]))
+                errors[metric].append(func(subject_df["prediction"], subject_df["ground_truth"]))
 
         errors = {k: np.mean(v) for k, v in errors.items()}
         errors["file"] = result_file
@@ -131,19 +135,8 @@ if __name__ == "__main__":
             X = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"]
             y = pd.read_csv(join(args.src_path, cfg["y_file"]), index_col=0)
             X = dl_normalize_data_3d_subject(X, y, method="min_max")
-
-            # for c in range(len(X)):
-            #     d = X[c][:, :, 2]
-            #     non_zero_columns = np.any(d != 0, axis=0)
-            #     filtered_arr = d[:, non_zero_columns]
-            #     X[c] = filtered_arr
-
-            # X = dl_normalize_data_3d_subject(X, y, method="std")
-            # X = dl_normalize_data_3d_global(X, method="min_max")
-
-            # train_time_series_model(X, y, cfg["epochs"], cfg["labels"], 30, batch_size=cfg["batch_size"])
-            train_time_series_grid_search(X, y, cfg["label"])
-            # evaluate_result_grid_search("data/dl_results/20230605-211848/CNNLSTM", "data/dl_evaluation")
+            # train_time_series_grid_search(X, y, cfg["label"])
+            evaluate_result_grid_search("data/dl_results/20230606-124038/CNNLSTM", "data/dl_evaluation", aggregate=True)
         else:
             X = list(np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"])  # TODO: check if list is necessary
             y = pd.read_csv(join(args.src_path, cfg["y_file"]))
