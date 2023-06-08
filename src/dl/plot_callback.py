@@ -2,6 +2,7 @@ import numpy as np
 import logging
 import os
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 from tensorflow import keras
 from os.path import join
@@ -49,14 +50,21 @@ class PerformancePlotCallback(keras.callbacks.Callback):
 
     def evaluate_for_generator(self, generator, training: bool = False):
         predictions, labels = [], []
-        for i in range(len(generator)):
-            X_batch, y_batch = generator[i]
-            if len(y_batch.shape) == 2:
-                y_batch = y_batch[:, 0]
 
-            pred = np.array(self.model(X_batch, training=training)).reshape(-1)
-            predictions.extend(list(pred))
-            labels.extend(list(y_batch.reshape(-1)))
+        if isinstance(generator, tf.data.Dataset):
+            for X_batch, y_batch in generator:
+                pred = np.array(self.model(X_batch, training=training)).reshape(-1)
+                predictions.extend(list(pred))
+                labels.extend(list(np.array(y_batch).reshape(-1)))
+        else:
+            for i in range(len(generator)):
+                X_batch, y_batch = generator[i]
+                if len(y_batch.shape) == 2:
+                    y_batch = y_batch[:, 0]
+
+                pred = np.array(self.model(X_batch, training=training)).reshape(-1)
+                predictions.extend(list(pred))
+                labels.extend(list(y_batch.reshape(-1)))
 
         metrics = {
             "mse": lambda x, y: mean_squared_error(x, y, squared=True),

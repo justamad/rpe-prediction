@@ -18,14 +18,12 @@ class ConvModelConfig(LearningModelBase):
             f"kernel_size": [(3, 3)],
             f"dropout": [0.5],
             f"n_units": [128],
-            f"overlap": [0.95],
-            f"win_size": [120, 150],
         }
 
         super().__init__(model=regressor, grid_search_params=tunable_parameters)
 
     def __repr__(self):
-        return "Conv2D"
+        return "CONV2D"
 
 
 class CNNLSTMModelConfig(LearningModelBase):

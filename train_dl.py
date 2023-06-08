@@ -13,15 +13,26 @@ from os import makedirs
 from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error, r2_score
 from scipy.stats import spearmanr
 from src.dl import build_cnn_lstm_model, WinDataGen, ConvModelConfig, DLOptimization, CNNLSTMModelConfig, PerformancePlotCallback
-from src.dataset import dl_split_data, filter_labels_outliers_per_subject, zero_pad_array, dl_normalize_data_3d_subject, aggregate_results
-from src.plot import plot_sample_predictions, create_retrain_table
+# from src.plot import plot_sample_predictions, create_retrain_table
+
+from src.dataset import (
+    dl_split_data,
+    filter_labels_outliers_per_subject,
+    zero_pad_dataset,
+    dl_normalize_data_3d_subject,
+    aggregate_results,
+    dl_normalize_data_3d_global,
+)
 
 
-def train_time_series_grid_search(X, y, label):
+def train_time_series_grid_search(X, y, label, lstm: bool = False):
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     log_path = join("data/dl_results", timestamp)
     opt = DLOptimization(X, y, balance=True, task="regression", mode="grid", ground_truth=label)
-    opt.perform_grid_search_with_cv(CNNLSTMModelConfig(), log_path, lstm=True)
+    if lstm:
+        opt.perform_grid_search_with_cv(CNNLSTMModelConfig(), log_path, lstm=lstm)
+    else:
+        opt.perform_grid_search_with_cv(ConvModelConfig(), log_path, lstm=lstm)
 
 
 def evaluate_result_grid_search(src_path: str, dst_path: str, aggregate: bool = False):
@@ -35,9 +46,9 @@ def evaluate_result_grid_search(src_path: str, dst_path: str, aggregate: bool = 
     if aggregate:
         data_df = aggregate_results(data_df)
 
-    plot_sample_predictions(data_df, "rpe", dst_path)
-    train_df = create_retrain_table(data_df, dst_path)
-    train_df.to_csv(join(dst_path, "retrain.csv"))
+    # plot_sample_predictions(data_df, "rpe", dst_path)
+    # train_df = create_retrain_table(data_df, dst_path)
+    # train_df.to_csv(join(dst_path, "retrain.csv"))
 
 
 def collect_trials(dst_path: str) -> pd.DataFrame:
@@ -101,25 +112,20 @@ def train_time_series_model(
     # model.save(f"models/{timestamp}/model")
 
 
-def train_grid_search(X, y, labels):
-    opt = DLOptimization(X, y, balance=False, task="regression", mode="grid", n_splits=16, ground_truth=labels)
-    opt.perform_grid_search_with_cv(ConvModelConfig(), "results_dl/power")
-
-
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
     parser.add_argument("--log_path", type=str, dest="log_path", default="results_dl")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="data/dl_experiments")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation_dl")
-    parser.add_argument("--exp_file", type=str, dest="exp_file", default="kinect_lstm.yaml")
+    parser.add_argument("--exp_file", type=str, dest="exp_file", default="power.yaml")
     parser.add_argument("--train", type=bool, dest="train", default=True)
     parser.add_argument("--eval", type=bool, dest="eval", default=False)
     parser.add_argument("--single", type=bool, dest="single", default=True)
     parser.add_argument("--use_gpu", type=bool, dest="use_gpu", default=True)
     args = parser.parse_args()
 
-    matplotlib.use("WebAgg")
+    # matplotlib.use("WebAgg")
 
     print(f"Available GPU devices: {tf.config.list_physical_devices('GPU')}")
 
@@ -135,21 +141,14 @@ if __name__ == "__main__":
             X = dl_normalize_data_3d_subject(X, y, method="min_max")
             # train_time_series_grid_search(X, y, cfg["label"])
             evaluate_result_grid_search("data/dl_results/20230606-124038/CNNLSTM", "data/dl_evaluation", aggregate=True)
+
         else:
-            X = list(np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"])  # TODO: check if list is necessary
+            X = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"]
             y = pd.read_csv(join(args.src_path, cfg["y_file"]))
 
-            arr = np.vstack(X)
-            mean = np.mean(arr, axis=0)
-            std = np.std(arr, axis=0)
+            X = dl_normalize_data_3d_global(X, method="min_max")
+            X = zero_pad_dataset(X, 170)
+            X, y = filter_labels_outliers_per_subject(X, y, cfg["label"], sigma=3.0)
 
-            for skeleton in range(len(X)):
-                skel = (X[skeleton] - mean) / std
-                X[skeleton] = zero_pad_array(skel, 170)
-
-            X = np.array(X)
-            X = np.nan_to_num(X)
-            X, y = filter_labels_outliers_per_subject(X, y, cfg["labels"], sigma=3.0)
-
-            train_grid_search(X, y, labels=cfg["labels"])
+            train_time_series_grid_search(X, y, cfg["label"], lstm=False)
             # evaluate_single_model(X, y, src_path="models/20230519-115702/model")

@@ -1,7 +1,17 @@
-from typing import List
-
 import numpy as np
 import pandas as pd
+
+from typing import List
+
+
+def zero_pad_dataset(X: np.ndarray, max_length) -> np.ndarray:
+    sequences = []
+    for seq in range(len(X)):
+        sequences.append(zero_pad_array(X[seq], max_length))
+
+    X = np.array(sequences)
+    X = np.nan_to_num(X)
+    return X
 
 
 def zero_pad_array(array: np.ndarray, max_length: int) -> np.ndarray:
@@ -27,10 +37,3 @@ def impute_dataframe(df: pd.DataFrame):
     df = df.interpolate(method="linear", limit_direction="forward", axis=0)
     df = df.fillna(0)
     return df
-
-
-# def truncate_data_frames(*data_frames) -> List[pd.DataFrame]:
-#     start_time = max([df.index[0] for df in data_frames])
-#     end_time = min([df.index[-1] for df in data_frames])
-#     result = [df[(df.index >= start_time) & (df.index < end_time)] for df in data_frames]
-#     return result

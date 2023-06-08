@@ -103,21 +103,17 @@ def clip_outliers_z_scores(df: pd.DataFrame, sigma: float = 3.0):
 def filter_labels_outliers_per_subject(
         X: Union[np.ndarray, pd.DataFrame],
         y: pd.DataFrame,
-        label_col: Union[str, List[str]],
+        label_col: str,
         sigma: float = 3.1,
 ) -> Tuple[np.ndarray, pd.DataFrame]:
     if "subject" not in y.columns:
         raise ValueError("Subject column not in dataframe.")
 
-    if isinstance(label_col, str):
-        label_col = [label_col]
-
     final_mask = np.ones(len(y), dtype=bool)
     for subject in y["subject"].unique():
         mask = np.array(y["subject"] == subject)
-        for col in label_col:
-            new_mask = np.abs(stats.zscore(y.loc[mask, col].values)) < sigma
-            final_mask[mask] = final_mask[mask] & new_mask
+        new_mask = np.abs(stats.zscore(y.loc[mask, label_col].values)) < sigma
+        final_mask[mask] = final_mask[mask] & new_mask
 
     X = X[final_mask]
     y = y[final_mask]
@@ -129,17 +125,6 @@ def drop_highly_correlated_features(X: pd.DataFrame, threshold: float = 0.95) ->
     upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
     to_drop = [column for column in upper.columns if any(upper[column] > threshold)]
     X.drop(to_drop, axis=1, inplace=True)
-    return X
-
-
-def add_lag_feature(X: pd.DataFrame, y: pd.DataFrame, label_col: str, lag: int = 1) -> pd.DataFrame:
-    if "subject" not in y.columns:
-        raise ValueError("Subject column not in dataframe.")
-
-    for subject in y["subject"].unique():
-        mask = y["subject"] == subject
-        y.loc[mask, "lag_feature"] = y.loc[mask, label_col].shift(lag)
-
     return X
 
 
@@ -226,22 +211,16 @@ def dl_normalize_data_3d_global(X: np.ndarray, method="min_max"):
         raise ValueError(f"Unknown normalization method: {method}")
 
     arr = np.vstack(X)
-
     if method == "min_max":
         minimum = np.min(arr, axis=0)
         maximum = np.max(arr, axis=0)
-        for trial in range(len(X)):
-            cur_data = (X[trial] - minimum) / (maximum - minimum)
-            cur_data = np.clip(cur_data, 0, 1)
-            X[trial] = cur_data
+        for skeleton in range(len(X)):
+            X[skeleton] = (X[skeleton] - minimum) / (maximum - minimum)
 
-    else:
+    if method == "std":
         mean = np.mean(arr, axis=0)
         std = np.std(arr, axis=0)
-
-        for trial in range(len(X)):
-            cur_data = (X[trial] - mean) / std
-            cur_data = np.clip(cur_data, -3, 3)
-            X[trial] = cur_data
+        for skeleton in range(len(X)):
+            X[skeleton] = (X[skeleton] - mean) / std
 
     return X

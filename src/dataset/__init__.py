@@ -11,7 +11,6 @@ from .data_preparation import (
     filter_labels_outliers_per_subject,
     drop_highly_correlated_features,
     calculate_trend_labels,
-    add_lag_feature,
     add_rolling_statistics,
     dl_split_data,
     dl_normalize_data_3d_subject,
@@ -26,7 +25,7 @@ from .data_loaders import (
 )
 
 from .utils import (
-    zero_pad_array,
+    zero_pad_dataset,
     impute_dataframe,
     mask_repetitions,
 )
