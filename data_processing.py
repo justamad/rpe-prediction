@@ -314,7 +314,8 @@ def prepare_data_dl_entire_trials(src_path: str, dst_path: str, plot: bool, plot
         meta_dict, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
         skeleton_img = calculate_skeleton_images(pos_df, ori_df)
         skeleton_images.append(skeleton_img)
-        labels.append(meta_dict)
+        hrv = hrv_df.mean().to_dict()
+        labels.append({**meta_dict, **hrv})
 
     X = np.array(skeleton_images, dtype=object)
     np.savez(join(dst_path, "X_lstm.npz"), X=X)
@@ -351,9 +352,9 @@ if __name__ == "__main__":
 
     # process_all_raw_data(args.raw_path, args.proc_path, args.plot_path)
 
-    prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="concentric", plot=args.show, plot_path=args.plot_path)
-    prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="eccentric", plot=args.show, plot_path=args.plot_path)
+    # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="concentric", plot=args.show, plot_path=args.plot_path)
+    # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="eccentric", plot=args.show, plot_path=args.plot_path)
     # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="full", plot=args.show, plot_path=args.plot_path)
 
-    prepare_segmented_data_for_dl(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
+    # prepare_segmented_data_for_dl(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
     prepare_data_dl_entire_trials(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)

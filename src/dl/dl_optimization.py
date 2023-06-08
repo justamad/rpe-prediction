@@ -72,12 +72,16 @@ class DLOptimization(MLOptimization):
                     win_size = combination["win_size"]
                     overlap = combination["overlap"]
 
-                    train_dataset = WinDataGen(X_train, y_train, self._ground_truth, win_size, overlap, batch_size, shuffle=True, balance=True)
-                    train_view_dataset = WinDataGen(X_train, y_train, self._ground_truth, win_size, overlap, batch_size, shuffle=False, balance=False)
-                    test_dataset = WinDataGen(X_test, y_test, self._ground_truth, win_size, overlap, batch_size, shuffle=False, balance=False)
-                    val_dataset = WinDataGen(X_val, y_val, self._ground_truth, win_size, overlap, batch_size, shuffle=False, balance=False, deliver_sets=True)
+                    train_dataset = WinDataGen(X_train, y_train, self._ground_truth, win_size, overlap, batch_size,
+                                               shuffle=True, balance=self._balance)
+                    train_view_dataset = WinDataGen(X_train, y_train, self._ground_truth, win_size, overlap, batch_size,
+                                                    shuffle=False, balance=self._balance)
+                    test_dataset = WinDataGen(X_test, y_test, self._ground_truth, win_size, overlap, batch_size,
+                                              shuffle=False, balance=self._balance)
+                    val_dataset = WinDataGen(X_val, y_val, self._ground_truth, win_size, overlap, batch_size,
+                                             shuffle=False, balance=self._balance, deliver_sets=True)
                     combi = combination.copy()
-                    combi.pop("win_size")
+                    # combi.pop("win_size")
                     combi.pop("overlap")
                     model = model_config.model(**combi)
                 else:

@@ -72,6 +72,8 @@ class WinDataGen(tf.keras.utils.Sequence):
     def __getitem__(self, idx: int):
         X, y = [], []
         for file_c, win_idx, label in self._index[idx * self._batch_size:idx * self._batch_size + self._batch_size]:
+            file_c = int(file_c)
+            win_idx = int(win_idx)
             X.append(self._X[file_c][win_idx:win_idx + self._win_size])
             y.append(label)
 
@@ -86,7 +88,7 @@ if __name__ == '__main__':
     y = pd.read_csv("../../data/training/y_lstm.csv", index_col=0)
 
     gen = WinDataGen(
-        X, y, label_col="rpe", win_size=30, overlap=0.5, batch_size=4, shuffle=True, balance=False, deliver_sets=True
+        X, y, label_col="Mean HR (1/min)", win_size=30, overlap=0.5, batch_size=4, shuffle=True, balance=False, deliver_sets=True
     )
 
     for batch_idx in range(len(gen)):

@@ -105,7 +105,7 @@ def filter_labels_outliers_per_subject(
         y: pd.DataFrame,
         label_col: str,
         sigma: float = 3.1,
-) -> Tuple[np.ndarray, pd.DataFrame]:
+) -> Tuple[Union[np.ndarray, pd.DataFrame], pd.DataFrame]:
     if "subject" not in y.columns:
         raise ValueError("Subject column not in dataframe.")
 

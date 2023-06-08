@@ -1,8 +1,6 @@
-import tensorflow as tf
-
 from typing import Tuple
 from tensorflow import keras
-from keras.layers import Input, Conv1D, Conv2D, BatchNormalization, GRU, Dropout, MaxPooling2D, Flatten, Dense, Reshape, Masking, GlobalAveragePooling2D, MaxPooling1D
+from keras.layers import Input, Conv2D, BatchNormalization, GRU, Dropout, MaxPooling2D, Flatten, Dense, Reshape
 from tensorflow_addons.metrics import RSquare
 from keras.regularizers import l2
 
@@ -25,7 +23,6 @@ def build_conv2d_model(
         model.add(BatchNormalization())
         model.add(MaxPooling2D(pool_size=(2, 2)))
 
-    # model.add(GlobalAveragePooling2D())
     model.add(Flatten())
     model.add(Dense(n_units, activation="relu"))
     model.add(Dropout(dropout))
@@ -54,10 +51,9 @@ def build_cnn_lstm_model(
     model.add(Input(shape=(n_samples, n_features, n_channel)))
 
     for i in range(n_layers):
-        model.add(Conv2D(filters=n_filters * 2 ** i, kernel_size=kernel_size, padding="same", activation="relu",
+        model.add(Conv2D(filters=n_filters * (2 ** i), kernel_size=kernel_size, padding="same", activation="relu",
                          kernel_regularizer=l2(0.01)))
         model.add(BatchNormalization())
-        # model.add(Dropout(dropout))
         model.add(MaxPooling2D(pool_size=(2, 2)))
 
     model.add(Reshape((model.output_shape[1], model.output_shape[2] * model.output_shape[3])))
