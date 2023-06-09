@@ -13,7 +13,7 @@ from os import makedirs
 from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error, r2_score
 from scipy.stats import spearmanr
 from src.dl import ConvModelConfig, DLOptimization, CNNLSTMModelConfig
-# from src.plot import plot_sample_predictions, create_retrain_table
+from src.plot import plot_sample_predictions, create_retrain_table
 
 from src.dataset import (
     filter_labels_outliers_per_subject,
@@ -53,9 +53,9 @@ def evaluate_result_grid_search(src_path: str, dst_path: str, exp_name: str, agg
     if aggregate:
         data_df = aggregate_results(data_df)
 
-    # plot_sample_predictions(data_df, exp_name, dst_path)
-    # train_df = create_retrain_table(data_df, dst_path)
-    # train_df.to_csv(join(dst_path, "retrain.csv"))
+    plot_sample_predictions(data_df, exp_name, dst_path)
+    train_df = create_retrain_table(data_df, dst_path)
+    train_df.to_csv(join(dst_path, "retrain.csv"))
 
 
 def collect_trials(dst_path: str) -> pd.DataFrame:
@@ -99,36 +99,43 @@ if __name__ == "__main__":
     parser.add_argument("--log_path", type=str, dest="log_path", default="results_dl")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="data/dl_experiments")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation_dl")
-    parser.add_argument("--exp_file", type=str, dest="exp_file", default="hr.yaml")
-    parser.add_argument("--train", type=bool, dest="train", default=True)
-    parser.add_argument("--eval", type=bool, dest="eval", default=False)
-    parser.add_argument("--single", type=bool, dest="single", default=True)
+    parser.add_argument("--exp_file", type=str, dest="exp_file", default="power.yaml")
+    parser.add_argument("--train", type=bool, dest="train", default=False)
+    parser.add_argument("--eval", type=bool, dest="eval", default=True)
     parser.add_argument("--use_gpu", type=bool, dest="use_gpu", default=True)
     args = parser.parse_args()
 
-    # matplotlib.use("WebAgg")
-
+    matplotlib.use("WebAgg")
     print(f"Available GPU devices: {tf.config.list_physical_devices('GPU')}")
 
-    if args.train:
-        if not args.use_gpu:
-            os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+    if not args.use_gpu:
+        os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-        cfg = yaml.load(open(join(args.exp_path, args.exp_file), "r"), Loader=yaml.FullLoader)
+    cfg = yaml.load(open(join(args.exp_path, args.exp_file), "r"), Loader=yaml.FullLoader)
 
-        if cfg["lstm"]:
-            X = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"]
-            y = pd.read_csv(join(args.src_path, cfg["y_file"]), index_col=0)
-            X = dl_normalize_data_3d_subject(X, y, method="min_max")
+    if cfg["lstm"]:
+        X = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"]
+        y = pd.read_csv(join(args.src_path, cfg["y_file"]), index_col=0)
+        X = dl_normalize_data_3d_subject(X, y, method="min_max")
+
+        if args.train:
             train_time_series_grid_search(X, y, cfg["label"], cfg["balance"], cfg["task"], cfg["search"], cfg["lstm"])
-            # evaluate_result_grid_search("data/dl_results/rpe/CNNLSTM", "data/dl_evaluation/rpe", exp_name="rpe", aggregate=True)
-        else:
-            X = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"]
-            y = pd.read_csv(join(args.src_path, cfg["y_file"]))
+        if args.eval:
+            evaluate_result_grid_search(
+                "data/dl_results/rpe/CNNLSTM", "data/dl_evaluation/rpe", exp_name="rpe", aggregate=True
+            )
+    else:
+        X = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"]
+        y = pd.read_csv(join(args.src_path, cfg["y_file"]))
 
-            X = dl_normalize_data_3d_global(X, method="min_max")
-            X = zero_pad_dataset(X, 170)
-            X, y = filter_labels_outliers_per_subject(X, y, cfg["label"], sigma=3.0)
+        X = dl_normalize_data_3d_global(X, method="min_max")
+        X = zero_pad_dataset(X, 170)
+        X, y = filter_labels_outliers_per_subject(X, y, cfg["label"], sigma=3.0)
 
-            # train_time_series_grid_search(X, y, cfg["label"], lstm=False)
-            evaluate_result_grid_search("data/dl_results/20230608-104103/CONV2D", "data/dl_evaluation/power", exp_name="poweravg", aggregate=False)
+        if args.train:
+            train_time_series_grid_search(X, y, cfg["label"], lstm=False)
+        if args.eval:
+            evaluate_result_grid_search(
+                "data/dl_results/power/CONV2D", "data/dl_evaluation/power", exp_name="poweravg",
+                aggregate=False
+            )

@@ -128,6 +128,6 @@ if __name__ == "__main__":
     physics_res_df = create_retrain_table(res_df, args.dst_path)
     physics_res_df.to_csv(join(args.dst_path, "results.csv"))
 
-    create_bland_altman_plot(res_df, log_path=args.dst_path, file_name="Avg")
+    create_bland_altman_plot(res_df, log_path=args.dst_path, file_name="physical_model")
     plot_sample_predictions(res_df, "poweravg", dst_path=args.dst_path)
     create_scatter_plot(res_df, log_path=args.dst_path, file_name="model", exp_name="poweravg")

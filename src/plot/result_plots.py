@@ -1,17 +1,21 @@
-from .plot_settings import column_width, cm, dpi, line_width, blob_size
-from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error
-from scipy.stats import spearmanr, linregress
-from os.path import join, exists
-from os import makedirs
-from matplotlib.ticker import MaxNLocator, MultipleLocator, AutoLocator
-
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
+from .plot_settings import text_width, cm, dpi, line_width, blob_size
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error
+from scipy.stats import spearmanr, linregress
+from os.path import join, exists
+from os import makedirs
+from matplotlib.ticker import MaxNLocator, AutoLocator
 
-y_labels = {"rpe": "RPE [Borg Scale]", "hr": "Heart Rate [1/min]", "poweravg": "Power [Watts]",}
-y_limits = {"rpe": (11, 21), "hr": (90, 200), "poweravg": (0, 300),}
+
+y_labels = {"rpe": "RPE [Borg Scale]", "poweravg": "Power [Watts]",}
+y_limits = {"rpe": (10, 21), "poweravg": (0, 300),}
+max_limits = {"poweravg": 800}  # Used to equally scale physical model and ML models
+
+primary_color = "#d62728"
+secondary_color = "#1f77b4"
 
 
 def plot_sample_predictions(
@@ -33,9 +37,9 @@ def plot_sample_predictions(
         mape = mean_absolute_percentage_error(predictions, ground_truth)
         sp, _ = spearmanr(ground_truth, predictions)
 
-        plt.figure(figsize=(0.8 * column_width * cm, 0.8 * column_width * cm), dpi=dpi)
-        plt.plot(ground_truth, label="Ground Truth", c="lightgray")
-        plt.plot(predictions, label="Prediction", c="black")
+        plt.figure(figsize=(text_width * cm * 0.5, text_width * cm * 0.5), dpi=dpi)
+        plt.plot(ground_truth, label="Ground Truth", color=primary_color)
+        plt.plot(predictions, label="Prediction", color=secondary_color)
         plt.ylim(y_limits[exp_name])
         plt.title(f"$R^2$={r2:.2f}, MAPE={mape:.2f}, S={sp:.2f}")
         plt.xlabel("Repetition")
@@ -52,7 +56,7 @@ def plot_sample_predictions(
 
 
 def evaluate_nr_features(df: pd.DataFrame, dst_path: str):
-    plt.figure(figsize=(column_width * cm, column_width * cm * 0.65), dpi=dpi)
+    plt.figure(figsize=(text_width * cm, text_width * cm * 0.65), dpi=dpi)
 
     nr_features = sorted(df["n_features"].unique())
     for model in df["model"].unique():
@@ -94,9 +98,8 @@ def plot_subject_correlations(df: pd.DataFrame, dst_path: str):
         metrics.append(metric)
         print(f"{subject}: {metric:.2f} ({p_value:.2f})")
 
-    fig, axs = plt.subplots(1, 1, figsize=(column_width * cm, column_width * cm / 2), dpi=dpi)
-    axs.bar([f"{i+1:2d}" for i in range(len(subjects))], metrics, color="darkgray")
-    # plt.title("Spearman's Rho")
+    fig, axs = plt.subplots(1, 1, figsize=(text_width * cm, text_width * cm * 0.5), dpi=dpi)
+    axs.bar([f"{i+1:2d}" for i in range(len(subjects))], metrics, color=primary_color)
     plt.ylim([0, 1])
     plt.xlabel("Subjects")
     plt.ylabel("Spearman's Rho")
@@ -106,7 +109,6 @@ def plot_subject_correlations(df: pd.DataFrame, dst_path: str):
         makedirs(dst_path)
 
     plt.savefig(join(dst_path, "subject_performance.pdf"))
-    # plt.show()
     plt.clf()
     plt.close()
 
@@ -117,25 +119,27 @@ def create_scatter_plot(
         file_name: str,
         exp_name: str,
 ):
-    max_limits = {"poweravg": 800}
-
     ground_truth = df.loc[:, "ground_truth"]
     prediction = df.loc[:, "prediction"]
 
     slope, intercept, r_value, p_value_1, std_error_1 = linregress(ground_truth, prediction)
     rmse = np.sqrt(mean_squared_error(ground_truth, prediction))
-    r2 = r_value ** 2
+    # r2 = r_value ** 2
+    r2 = r2_score(ground_truth, prediction)
 
-    min_value = 0
+    min_value = min(ground_truth.min(), prediction.min())
+    max_value = max(ground_truth.max(), prediction.max())
+
     if exp_name in max_limits:
         max_value = max_limits[exp_name]
-    else:
-        max_value = max(ground_truth.max(), prediction.max())
+
+    min_value = int(min_value - min_value * 0.09)
+    max_value = int(max_value + max_value * 0.09)
 
     x_values = np.arange(int(min_value * 100), int(max_value * 100 + 50)) / 100
     y_values = intercept + slope * x_values
 
-    fig = plt.figure(figsize=(0.75 * column_width * cm, 0.75 * column_width * cm), dpi=dpi)
+    fig = plt.figure(figsize=(text_width * cm * 0.5, text_width * cm * 0.5), dpi=dpi)
     ax = fig.add_subplot(111)
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
     ax.spines["top"].set_visible(False)
@@ -144,7 +148,7 @@ def create_scatter_plot(
     ax.spines["left"].set_linewidth(line_width)
 
     plt.plot(x_values, x_values, '-', color="gray", linewidth=line_width)
-    plt.plot(x_values, y_values, '--', color="red", linewidth=line_width)
+    plt.plot(x_values, y_values, '--', color=primary_color, linewidth=line_width)
 
     sign = "+" if intercept > 0 else ""
     margin = (max_value - min_value) * 0.95
@@ -156,7 +160,7 @@ def create_scatter_plot(
         horizontalalignment="right",
     )
 
-    plt.scatter(ground_truth, prediction, s=blob_size, c="gray", alpha=0.5),
+    plt.scatter(ground_truth, prediction, s=blob_size, c=primary_color),  # alpha=0.5),
     plt.xlim(([min_value, max_value]))
     plt.ylim(([min_value, max_value]))
 
@@ -190,7 +194,7 @@ def create_bland_altman_plot(
     m1 = df.loc[:, "prediction"]
     m2 = df.loc[:, "ground_truth"]
 
-    fig = plt.figure(figsize=(0.75 * column_width * cm, 0.75 * column_width * cm), dpi=dpi)
+    fig = plt.figure(figsize=(text_width * cm * 0.5, text_width * cm * 0.5), dpi=dpi)
     ax = fig.add_subplot(111)
 
     means = np.mean([m1, m2], axis=0)
@@ -198,9 +202,8 @@ def create_bland_altman_plot(
     mean_diff = np.mean(diffs)
     std_diff = np.std(diffs, axis=0)
 
-    # Plot individual gait speed colors
-    ax.scatter(means, diffs, s=blob_size, c="gray", alpha=0.5)
-    ax.axhline(mean_diff, **{"color": "gray", "linewidth": 1, "linestyle": "--"})
+    ax.scatter(means, diffs, s=blob_size, c=primary_color)  # , alpha=0.5)
+    ax.axhline(mean_diff, **{"color": primary_color, "linewidth": 1, "linestyle": "--"})
 
     if x_min is not None and x_max is not None:
         plt.xlim(([x_min, x_max]))
