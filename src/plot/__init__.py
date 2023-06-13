@@ -4,6 +4,7 @@ from .result_plots import (
     plot_subject_correlations,
     create_scatter_plot,
     create_bland_altman_plot,
+    create_residual_plot,
 )
 
 from .latex_tables import (

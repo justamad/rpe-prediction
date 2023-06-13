@@ -1,6 +1,7 @@
-import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 from .plot_settings import text_width, cm, dpi, line_width, blob_size
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error
@@ -41,7 +42,7 @@ def plot_sample_predictions(
         plt.plot(ground_truth, label="Ground Truth", color=primary_color)
         plt.plot(predictions, label="Prediction", color=secondary_color)
         plt.ylim(y_limits[exp_name])
-        plt.title(f"$R^2$={r2:.2f}, MAPE={mape:.2f}, S={sp:.2f}")
+        plt.title(f"$R^2$={r2:.2f}, MAPE={mape:.2f}, $\\rho$={sp:.2f}")
         plt.xlabel("Repetition")
         plt.ylabel(y_labels[exp_name])
         plt.legend()
@@ -113,6 +114,22 @@ def plot_subject_correlations(df: pd.DataFrame, dst_path: str):
     plt.close()
 
 
+def create_residual_plot(
+        df: pd.DataFrame,
+        log_path: str,
+        file_name: str,
+):
+    ground_truth = df.loc[:, "ground_truth"]
+    prediction = df.loc[:, "prediction"]
+    differences = ground_truth - prediction
+    plt.plot(prediction, differences, "o", color=primary_color)
+    plt.axhline(y=0, color="black", linestyle="--")
+    plt.xlabel("Prediction")
+    plt.ylabel("Residual")
+    plt.tight_layout()
+    plt.savefig(join(log_path, f"{file_name}_residual.pdf"))
+
+
 def create_scatter_plot(
         df: pd.DataFrame,
         log_path: str,
@@ -124,7 +141,6 @@ def create_scatter_plot(
 
     slope, intercept, r_value, p_value_1, std_error_1 = linregress(ground_truth, prediction)
     rmse = np.sqrt(mean_squared_error(ground_truth, prediction))
-    # r2 = r_value ** 2
     r2 = r2_score(ground_truth, prediction)
 
     min_value = min(ground_truth.min(), prediction.min())
@@ -160,7 +176,13 @@ def create_scatter_plot(
         horizontalalignment="right",
     )
 
-    plt.scatter(ground_truth, prediction, s=blob_size, c=primary_color),  # alpha=0.5),
+    # Create custom HSV color map
+    subjects = df["subject"].unique()
+    hsv_colors = [mcolors.hsv_to_rgb((i / len(subjects), 1, 1)) for i in range(len(subjects))]
+    for idx, subject in enumerate(subjects):
+        sub_df = df[df["subject"] == subject]
+        plt.scatter(sub_df["ground_truth"], sub_df["prediction"], s=blob_size, color=hsv_colors[idx])
+
     plt.xlim(([min_value, max_value]))
     plt.ylim(([min_value, max_value]))
 
@@ -202,7 +224,13 @@ def create_bland_altman_plot(
     mean_diff = np.mean(diffs)
     std_diff = np.std(diffs, axis=0)
 
-    ax.scatter(means, diffs, s=blob_size, c=primary_color)  # , alpha=0.5)
+    subjects = df["subject"].unique()
+    hsv_colors = [mcolors.hsv_to_rgb((i / len(subjects), 1, 1)) for i in range(len(subjects))]
+    for idx, subject in enumerate(subjects):
+        subject_mask = df["subject"] == subject
+        ax.scatter(means[subject_mask], diffs[subject_mask], s=blob_size, color=hsv_colors[idx])
+
+    # ax.scatter(means, diffs, s=blob_size, c=primary_color)  # , alpha=0.5)
     ax.axhline(mean_diff, **{"color": primary_color, "linewidth": 1, "linestyle": "--"})
 
     if x_min is not None and x_max is not None:

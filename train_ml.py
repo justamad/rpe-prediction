@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import itertools
 import logging
 import os
@@ -20,6 +19,7 @@ from src.plot import (
     plot_subject_correlations,
     create_bland_altman_plot,
     create_scatter_plot,
+    create_residual_plot,
 )
 
 from src.dataset import (
@@ -175,6 +175,7 @@ def evaluate_entire_experiment_path(
         plot_subject_correlations(df, join(dst_path, model))
         create_bland_altman_plot(df, join(dst_path), model)
         create_scatter_plot(df, dst_path, model, exp_name)
+        create_residual_plot(df, dst_path, model)
 
         retrain_df = pd.concat([retrain_df, df])
 
@@ -275,7 +276,8 @@ if __name__ == "__main__":
                     train_models_with_grid_search(df, log_path, **exp_cfg)
 
     if args.eval:
-        evaluate_entire_experiment_path("data/ml_results/poweravg", args.dst_path, "", aggregate=True)
+        evaluate_entire_experiment_path("data/ml_results/rpe", args.dst_path, "", aggregate=True)
+        evaluate_entire_experiment_path("data/ml_results/poweravg", args.dst_path, "", aggregate=False)
 
         # t_ml = pd.read_csv("data/ml_evaluation/rpe/retrain_results.csv", index_col=0)
         # d_ml = pd.read_csv("data/dl_evaluation/rpe/retrain.csv", index_col=0)

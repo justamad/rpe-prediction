@@ -122,7 +122,7 @@ if __name__ == "__main__":
             train_time_series_grid_search(X, y, cfg["label"], cfg["balance"], cfg["task"], cfg["search"], cfg["lstm"])
         if args.eval:
             evaluate_result_grid_search(
-                "data/dl_results/rpe/CNNLSTM", "data/dl_evaluation/rpe", exp_name="rpe", aggregate=True
+                "data/dl_results/rpe/CNNLSTM", "data/dl_evaluation/rpe", exp_name="rpe", aggregate=True,
             )
     else:
         X = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"]
@@ -137,5 +137,5 @@ if __name__ == "__main__":
         if args.eval:
             evaluate_result_grid_search(
                 "data/dl_results/power/CONV2D", "data/dl_evaluation/power", exp_name="poweravg",
-                aggregate=False
+                aggregate=False,
             )
