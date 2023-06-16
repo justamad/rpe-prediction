@@ -3,9 +3,10 @@ pandas
 matplotlib
 scipy
 fastdtw
-pyEDFlib
 tensorflow
+keras
 scikit-learn
+scikeras
 sklearn
 tsfresh
 imblearn
@@ -14,7 +15,9 @@ xgboost
 seaborn
 PyMoCapViewer
 python-dateutil
-neurokit2
-biosppy
-pyEDFlib
-pyhrv
+pyyaml
+tqdm
+cycler
+pyarrow
+fastparquet
+tensorflow-addons

@@ -1,16 +1,13 @@
-from .pdf_writer import PDFWriter
-from .confidence import plot_confidence_values
-
-from .data_evaluation import (
-    plot_prediction_results_for_sets,
-    plot_ml_predictions_for_frames,
-    plot_parallel_coordinates,
+from .result_plots import (
+    plot_sample_predictions,
+    evaluate_nr_features,
+    plot_subject_correlations,
+    create_scatter_plot,
+    create_bland_altman_plot,
+    create_residual_plot,
 )
 
-from .trajectories import (
-    plot_sensor_data_for_axes,
-    plot_sensor_data_for_single_axis,
-    plot_data_frame_column_wise_as_pdf,
-    plot_feature_distribution_as_pdf,
-    plot_feature_correlation_heatmap,
+from .latex_tables import (
+    create_train_table,
+    create_retrain_table,
 )

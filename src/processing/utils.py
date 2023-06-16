@@ -29,10 +29,6 @@ def get_joint_names_from_columns_as_list(df, joints):
     return list(filter(lambda x: any([c for c in df.columns if x in c]), joints))
 
 
-def get_hsv_color(cur_value, max_value):
-    return matplotlib.colors.hsv_to_rgb([cur_value / max_value * 0.75, 1, 1])
-
-
 def compute_mean_and_std_of_joint_for_subjects(subject_iterator):
     trials_for_subjects = {}
 

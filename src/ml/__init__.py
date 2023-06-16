@@ -1,4 +1,4 @@
-from .ml_optimization import MLOptimization
+from .ml_optimization import MLOptimization, LearningModelBase
 
 from .ml_feature_extraction import (
     eliminate_features_with_xgboost_coefficients,
@@ -8,9 +8,10 @@ from .ml_feature_extraction import (
 
 from .ml_model_config import (
     SVRModelConfig,
-    KNNModelConfig,
     RFModelConfig,
     GBRModelConfig,
     MLPModelConfig,
     XGBoostConfig,
+    regression_models,
+    instantiate_best_model,
 )

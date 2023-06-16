@@ -1,0 +1,17 @@
+training_file:
+  - concentric_stat.csv
+  - eccentric_stat.csv
+drop_columns: []
+drop_prefixes:
+- HRV
+- PHYSILOG
+- FLYWHEEL
+ground_truth: rpe
+normalization_input: subject
+normalization_labels: False
+opt_n_features: [25, 50]
+opt_rolling_statistics: [6, 9, 12]
+search: grid
+task: regression
+balancing: True
+n_splits: 16

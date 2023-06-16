@@ -126,8 +126,11 @@ dmypy.json
 
 # Generated Report Data
 reports/
-data/raw
-data/processed
+data/
+plots/
 *.avi
 .idea
 **.mp4
+results/
+logs/
+models/

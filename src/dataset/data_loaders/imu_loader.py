@@ -33,20 +33,20 @@ class IMUSubjectLoader(BaseSubjectLoader):
             df = df.add_prefix(sensor_location + "_")
             self._trials.append(df)
 
-    def get_trial_by_set_nr(self, trial_nr: int):
+    def get_trial_by_set_nr(self, trial_nr: int) -> pd.DataFrame:
         if trial_nr not in self._sets:
             raise LoadingException(f"Could not load trial {trial_nr} for subject {self._subject_name}")
 
-        set_1 = self._sets[trial_nr]
-        start_dt = datetime.strptime(set_1['start'], '%H:%M:%S.%f') + relativedelta(years=+70, seconds=-4)
-        end_dt = datetime.strptime(set_1['end'], '%H:%M:%S.%f') + relativedelta(years=+70, seconds=4)
+        set_time = self._sets[trial_nr]
+        start_dt = datetime.strptime(set_time["start"], '%H:%M:%S.%f') + relativedelta(years=+70, seconds=-3)
+        end_dt = datetime.strptime(set_time["end"], '%H:%M:%S.%f') + relativedelta(years=+70, seconds=3)
 
         # Fuse dataframes into one
-        dataframes = [df.loc[(df.index > start_dt) & (df.index < end_dt)] for df in self._trials]
+        dataframes = [df.loc[(df.index >= start_dt) & (df.index < end_dt)] for df in self._trials]
         max_length = min([len(df) for df in dataframes])
         df = pd.concat(
             objs=list(map(lambda x: x.iloc[:max_length].reset_index(drop=True), dataframes)),
-            axis=1
+            axis=1,
         )
         df.index = dataframes[0].index[:max_length]
         return df
@@ -55,4 +55,4 @@ class IMUSubjectLoader(BaseSubjectLoader):
         return len(self._trials)
 
     def __repr__(self):
-        return f"FusedAzureLoader {self._subject_name}"
+        return f"IMULoader {self._subject_name}"

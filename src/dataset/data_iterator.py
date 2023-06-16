@@ -4,47 +4,53 @@ from typing import List
 
 from src.dataset.data_loaders import (
     LoadingException,
-    StereoAzureSubjectLoader,
+    AzureSubjectLoader,
     RPESubjectLoader,
-    ECGSubjectLoader,
     IMUSubjectLoader,
+    HRVSubjectLoader,
+    FlyWheelSubjectLoader,
 )
 
 import os
 import logging
 import shutil
 
-loader_names = {
-    StereoAzureSubjectLoader: "azure",
-    RPESubjectLoader: "rpe",
-    ECGSubjectLoader: "ecg",
-    IMUSubjectLoader: "imu",
-}
-
 
 class SubjectDataIterator(object):
+
+    AZURE = "azure"
+    RPE = "rpe"
+    IMU = "imu"
+    HRV = "hrv"
+    FLYWHEEL = "flywheel"
+
+    loader_names = {
+        AZURE: AzureSubjectLoader,
+        RPE: RPESubjectLoader,
+        IMU: IMUSubjectLoader,
+        HRV: HRVSubjectLoader,
+        FLYWHEEL: FlyWheelSubjectLoader,
+    }
 
     def __init__(
             self,
             base_path: str,
-            dst_path: str,
-            loaders: List,
-            log_path: str = None,
+            data_loader: List[str],
+            dst_path: str = None,
     ):
         self._base_path = base_path
-        self._dst = dst_path
-        self._log_path = log_path
-        self._data_loaders_dict = {loader_names[loader_type]: loader_type for loader_type in loaders}
+        self._dst_path = dst_path
+        self._data_loaders_dict = {self.loader_names[loader_name]: loader_name for loader_name in data_loader}
 
     def iterate_over_all_subjects(self):
         return self.iterate_over_specific_subjects()
 
     def iterate_over_specific_subjects(self, *subjects):
-        for subject_id, loader in enumerate(self._load_subject_data_collectors(list(subjects))):
-            for trial in loader.iterate_over_sets(log_path=self._log_path, group_id=subject_id):
+        for subject_id, subject_loader in enumerate(self._load_and_yield_subject_data_collectors(list(subjects))):
+            for trial in subject_loader.iterate_over_sets(group_id=subject_id):
                 yield trial
 
-    def _load_subject_data_collectors(self, subject_list: List):
+    def _load_and_yield_subject_data_collectors(self, subject_list: List[str]):
         subjects = os.listdir(self._base_path)
         if subject_list:
             subjects = list(filter(lambda s: s in subject_list, subjects))
@@ -54,12 +60,13 @@ class SubjectDataIterator(object):
                 yield SubjectDataCollector(
                     subject_root_path=join(self._base_path, subject),
                     data_loaders=self._data_loaders_dict,
-                    subject_name=subject,
+                    subject=subject,
                     nr_sets=12,
+                    dst_path=self._dst_path,
                 )
                 shutil.copy(
                     src=join(self._base_path, subject, "rpe_ratings.json"),
-                    dst=join(self._dst, subject, "rpe_ratings.json"),
+                    dst=join(self._dst_path, subject, "rpe_ratings.json"),
                 )
 
             except LoadingException as e:

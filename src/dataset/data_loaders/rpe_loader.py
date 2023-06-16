@@ -8,7 +8,7 @@ class RPESubjectLoader(BaseSubjectLoader):
 
     def __init__(self, root_path: str, subject_name: str):
         super().__init__(subject_name)
-        json_file = join(root_path, "rpe.json")
+        json_file = join(root_path, "rpe_ratings.json")
         if not isfile(json_file):
             raise LoadingException(f"RPE file {json_file} does not exists!")
 
