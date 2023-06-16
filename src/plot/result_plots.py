@@ -103,7 +103,7 @@ def plot_subject_correlations(df: pd.DataFrame, dst_path: str):
     axs.bar([f"{i+1:2d}" for i in range(len(subjects))], metrics, color=primary_color)
     plt.ylim([0, 1])
     plt.xlabel("Subjects")
-    plt.ylabel("Spearman's Rho")
+    plt.ylabel("Spearman's $\\rho$")
     plt.tight_layout()
 
     if not exists(dst_path):
@@ -197,7 +197,7 @@ def create_scatter_plot(
     if not exists(log_path):
         makedirs(log_path)
 
-    plt.savefig(join(log_path, f"{file_name}_scatter.pdf"))
+    plt.savefig(join(log_path, f"{file_name}_scatter.png"))
     plt.clf()
     plt.cla()
     plt.close()
@@ -207,6 +207,7 @@ def create_bland_altman_plot(
         df: pd.DataFrame,
         log_path: str,
         file_name: str,
+        exp_name: str = "rpe",
         sd_limit: float = 1.96,
         x_min: float = None,
         x_max: float = None,
@@ -279,15 +280,17 @@ def create_bland_altman_plot(
 
     ax.set_ylabel("Difference between two measurements")
     ax.set_xlabel("Average of two measurements")
-    # plt.xlim(([min_value, max_value]))
-    # plt.ylim(([min_value, max_value]))
+
+    if exp_name != "rpe":
+        plt.xlim(([0, 500]))
+        plt.ylim(([-300, 500]))
 
     fig.tight_layout()
 
     if not exists(log_path):
         makedirs(log_path)
 
-    plt.savefig(join(log_path, f"{file_name}_ba.pdf"))
+    plt.savefig(join(log_path, f"{file_name}_ba.png"))
     plt.clf()
     plt.cla()
     plt.close()

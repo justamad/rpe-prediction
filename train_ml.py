@@ -173,7 +173,7 @@ def evaluate_entire_experiment_path(
             df = aggregate_results(df)
 
         plot_subject_correlations(df, join(dst_path, model))
-        create_bland_altman_plot(df, join(dst_path), model)
+        create_bland_altman_plot(df, join(dst_path), model, exp_name)
         create_scatter_plot(df, dst_path, model, exp_name)
         create_residual_plot(df, dst_path, model)
 
