@@ -32,12 +32,12 @@ def create_train_table(df: pd.DataFrame, dst_path: str):
 
 def create_retrain_table(results: pd.DataFrame, dst_path: str) -> pd.DataFrame:
     metrics = {
-        "MSE": lambda x, y: mean_squared_error(x, y, squared=True),
+        # "MSE": lambda x, y: mean_squared_error(x, y, squared=True),
         "RMSE": lambda x, y: mean_squared_error(x, y, squared=False),
         "MAE": mean_absolute_error,
         "MAPE": lambda x, y: mean_absolute_percentage_error(x, y) * 100,
         "$R^{2}$": r2_score,
-        "Spearman": lambda x, y: stats.spearmanr(x, y)[0]
+        "Spearman": lambda x, y: stats.spearmanr(x, y)[0],
     }
 
     data_entries = []
