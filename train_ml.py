@@ -277,15 +277,15 @@ if __name__ == "__main__":
 
     if args.eval:
         evaluate_entire_experiment_path("data/ml_results/rpe", args.dst_path, "", aggregate=True)
-        evaluate_entire_experiment_path("data/ml_results/poweravg", args.dst_path, "", aggregate=False)
+        # evaluate_entire_experiment_path("data/ml_results/poweravg", args.dst_path, "", aggregate=False)
 
         # t_ml = pd.read_csv("data/ml_evaluation/rpe/retrain_results.csv", index_col=0)
         # d_ml = pd.read_csv("data/dl_evaluation/rpe/retrain.csv", index_col=0)
         # total_df = pd.concat([t_ml, d_ml], axis=1)
         # total_df.to_latex("rpe.tex", column_format="l" + "r" * (len(total_df.columns)), escape=False)
 
-        t_ml = pd.read_csv("data/ml_evaluation/poweravg/retrain_results.csv", index_col=0)
-        d_ml = pd.read_csv("data/dl_evaluation/power/retrain.csv", index_col=0)
-        p_ml = pd.read_csv("data/physics/results.csv", index_col=0)
-        total_df = pd.concat([t_ml, d_ml, p_ml], axis=1)
-        total_df.to_latex("power.tex", column_format="l" + "r" * (len(total_df.columns)), escape=False)
+        # t_ml = pd.read_csv("data/ml_evaluation/poweravg/retrain_results.csv", index_col=0)
+        # d_ml = pd.read_csv("data/dl_evaluation/power/retrain.csv", index_col=0)
+        # p_ml = pd.read_csv("data/physics/results.csv", index_col=0)
+        # total_df = pd.concat([t_ml, d_ml, p_ml], axis=1)
+        # total_df.to_latex("power.tex", column_format="l" + "r" * (len(total_df.columns)), escape=False)

@@ -13,7 +13,13 @@ from os import makedirs
 from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error, r2_score
 from scipy.stats import spearmanr
 from src.dl import ConvModelConfig, DLOptimization, CNNLSTMModelConfig
-from src.plot import plot_sample_predictions, create_retrain_table
+from src.plot import (
+    plot_sample_predictions,
+    create_retrain_table,
+    create_residual_plot,
+    create_scatter_plot,
+    create_bland_altman_plot,
+)
 
 from src.dataset import (
     filter_labels_outliers_per_subject,
@@ -54,6 +60,9 @@ def evaluate_result_grid_search(src_path: str, dst_path: str, exp_name: str, agg
         data_df = aggregate_results(data_df)
 
     plot_sample_predictions(data_df, exp_name, dst_path)
+    create_bland_altman_plot(data_df, join(dst_path), "CNN", exp_name)
+    create_scatter_plot(data_df, dst_path, "CNN", exp_name)
+    create_residual_plot(data_df, dst_path, "CNN")
     train_df = create_retrain_table(data_df, dst_path)
     train_df.to_csv(join(dst_path, "retrain.csv"))
 

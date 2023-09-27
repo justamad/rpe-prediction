@@ -119,15 +119,23 @@ def create_residual_plot(
         log_path: str,
         file_name: str,
 ):
-    ground_truth = df.loc[:, "ground_truth"]
-    prediction = df.loc[:, "prediction"]
-    differences = ground_truth - prediction
-    plt.plot(prediction, differences, "o", color=primary_color)
+    fig = plt.figure(figsize=(text_width * cm * 0.5, text_width * cm * 0.5), dpi=dpi)
+    ax = fig.add_subplot(111)
+
+    subjects = df["subject"].unique()
+    hsv_colors = [mcolors.hsv_to_rgb((i / len(subjects), 1, 1)) for i in range(len(subjects))]
+    for idx, subject in enumerate(subjects):
+        sub_df = df[df["subject"] == subject]
+        ground_truth = sub_df.loc[:, "ground_truth"]
+        prediction = sub_df.loc[:, "prediction"]
+        differences = ground_truth - prediction
+        plt.plot(ground_truth, differences, "o", color=hsv_colors[idx], markersize=2)
+
     plt.axhline(y=0, color="black", linestyle="--")
-    plt.xlabel("Prediction")
-    plt.ylabel("Residual")
+    plt.xlabel("Ground Truth")
+    plt.ylabel("Residual (Ground Truth - Prediction)")
     plt.tight_layout()
-    plt.savefig(join(log_path, f"{file_name}_residual.pdf"))
+    plt.savefig(join(log_path, f"{file_name}_residual.png"))
 
 
 def create_scatter_plot(
