@@ -109,7 +109,7 @@ if __name__ == "__main__":
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="data/dl_experiments")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation_dl")
     parser.add_argument("--exp_file", type=str, dest="exp_file", default="power.yaml")
-    parser.add_argument("--train", type=bool, dest="train", default=False)
+    parser.add_argument("--train", type=bool, dest="train", default=True)
     parser.add_argument("--eval", type=bool, dest="eval", default=True)
     parser.add_argument("--use_gpu", type=bool, dest="use_gpu", default=True)
     args = parser.parse_args()

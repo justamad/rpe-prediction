@@ -148,7 +148,8 @@ def create_scatter_plot(
     prediction = df.loc[:, "prediction"]
 
     slope, intercept, r_value, p_value_1, std_error_1 = linregress(ground_truth, prediction)
-    rmse = np.sqrt(mean_squared_error(ground_truth, prediction))
+    rmse2 = np.sqrt(mean_squared_error(ground_truth, prediction))
+    rmse = mean_squared_error(ground_truth, prediction, squared=False)
     r2 = r2_score(ground_truth, prediction)
 
     min_value = min(ground_truth.min(), prediction.min())
