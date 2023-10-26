@@ -120,25 +120,33 @@ def train_models_with_grid_search(
     ).perform_grid_search_with_cv(models=regression_models, log_path=log_path, verbose=2)
 
 
-def evaluate_entire_experiment_path(
+def evaluate_entire_training_folder(
         src_path: str,
         dst_path: str,
         filter_exp: str = "",
         aggregate: bool = False,
+) -> pd.DataFrame:
+    basename = os.path.basename(src_path)
+
+    for experiment in os.listdir(src_path):
+        prediction_goal, experiment_name = experiment.split("_")
+        dst_path = join(dst_path, basename, experiment_name)
+        os.makedirs(dst_path, exist_ok=True)
+        evaluate_experiment_path(src_path, dst_path, prediction_goal, filter_exp, aggregate)
+
+
+def evaluate_experiment_path(
+        src_path: str,
+        dst_path: str,
+        exp_name: str,
+        filter_exp: str = "",
+        aggregate: bool = True,
         criteria_rank: str = "rank_test_r2",
         criteria_score: str = "mean_test_r2",
 ) -> pd.DataFrame:
-    exp_name = os.path.basename(os.path.normpath(src_path))
-    dst_path = join(dst_path, exp_name, filter_exp)
-    if not exists(dst_path):
-        os.makedirs(dst_path)
-
     result_files = []
     for root, _, files in os.walk(src_path):
         if "config.yml" not in files:
-            continue
-
-        if filter_exp not in root:
             continue
 
         config = yaml.load(open(join(root, "config.yml"), "r"), Loader=yaml.FullLoader)
@@ -215,12 +223,13 @@ def retrain_model(result_path: str, model_file: str, dst_path: str, filter_exp: 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
-    parser.add_argument("--result_path", type=str, dest="result_path", default="data/ml_results")
-    parser.add_argument("--exp_path", type=str, dest="exp_path", default="data/ml_experiments")
-    parser.add_argument("--dst_path", type=str, dest="dst_path", default="data/ml_evaluation")
+    parser.add_argument("--data_path", type=str, dest="data_path", default="data/training")
+    parser.add_argument("--result_path", type=str, dest="result_path", default="results/ml/train")
+    parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/ml")
+    parser.add_argument("--dst_path", type=str, dest="dst_path", default="results/ml/test")
+    parser.add_argument("--exp_folder", type=str, dest="exp_folder", default="results/ml/train/2023-10-26-08-20-15")
     parser.add_argument("--train", type=bool, dest="train", default=False)
-    parser.add_argument("--eval", type=bool, dest="eval", default=True)
+    parser.add_argument("--eval", type=bool, dest="eval", default=False)
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -233,57 +242,53 @@ if __name__ == "__main__":
     console.setLevel(logging.INFO)
     logging.getLogger("matplotlib").setLevel(logging.WARNING)
     logging.getLogger("my_logger").addHandler(console)
-
     matplotlib.use("WebAgg")
 
     if args.train:
-        experiments = list(filter(lambda x: os.path.isdir(join(args.exp_path, x)), os.listdir(args.exp_path)))
-        for experiment_folder in experiments:
-            exp_files = filter(lambda f: not f.startswith("_"), os.listdir(join(args.exp_path, experiment_folder)))
+        experiment_time = f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
 
-            for exp_name in exp_files:
-                exp_cfg = yaml.load(open(join(args.exp_path, experiment_folder, exp_name), "r"), Loader=yaml.FullLoader)
+        exp_files = filter(lambda f: not f.startswith("_"), os.listdir(join(args.exp_path)))
+        for exp_file in exp_files:
+            exp_name = exp_file.replace(".yaml", "")
+            config = yaml.load(open(join(args.exp_path, exp_file), "r"), Loader=yaml.FullLoader)
+            file_names = config["training_file"]
+            if isinstance(file_names, str):
+                file_names = [file_names]
 
-                # Load data
-                file_names = exp_cfg["training_file"]
-                if isinstance(file_names, str):
-                    file_names = [file_names]
+            df = pd.read_csv(join(args.data_path, file_names[0]), index_col=0)
+            for file_name in file_names[1:]:
+                add_df = pd.read_csv(join(args.data_path, file_name), index_col=0)
+                add_df.drop([c for c in df.columns if c in add_df.columns], axis=1, inplace=True)
+                df = pd.concat([df, add_df], axis=1)
 
-                df = pd.read_csv(join(args.src_path, file_names[0]), index_col=0)
-                for file_name in file_names[1:]:
-                    add_df = pd.read_csv(join(args.src_path, file_name), index_col=0)
-                    add_df.drop([c for c in df.columns if c in add_df.columns], axis=1, inplace=True)
-                    df = pd.concat([df, add_df], axis=1)
+            del config["training_file"]
+            elements = {key.replace("opt_", ""): value for key, value in config.items() if key.startswith("opt_")}
+            for name in elements.keys():
+                del config[f"opt_{name}"]
 
-                del exp_cfg["training_file"]
+            for combination in itertools.product(*elements.values()):
+                combination = dict(zip(elements.keys(), combination))
+                config.update(combination)
 
-                # Construct search space with defined experiments
-                elements = {key.replace("opt_", ""): value for key, value in exp_cfg.items() if key.startswith("opt_")}
-                for name in elements.keys():
-                    del exp_cfg[f"opt_{name}"]
+                experiment_folder = "_".join([f"{k}_{v}" for k, v in combination.items()])
 
-                for combination in itertools.product(*elements.values()):
-                    combination = dict(zip(elements.keys(), combination))
-                    exp_cfg.update(combination)
-                    cur_name = exp_name.replace(".yaml", "_") + "_".join([f"{k}_{v}" for k, v in combination.items()])
+                logging.info(f"Start to process experiment: {experiment_folder}")
+                log_path = join(args.result_path, experiment_time, exp_name, experiment_folder)
+                if not exists(log_path):
+                    os.makedirs(log_path)
 
-                    logging.info(f"Start to process experiment: {cur_name}")
-                    log_path = join(args.result_path, experiment_folder,
-                                    f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}_{cur_name}")
-                    if not exists(log_path):
-                        os.makedirs(log_path)
-
-                    train_models_with_grid_search(df, log_path, **exp_cfg)
+                train_models_with_grid_search(df, log_path, **config)
 
     if args.eval:
-        evaluate_entire_experiment_path("data/ml_results/rpe", args.dst_path, "", aggregate=True)
-        # evaluate_entire_experiment_path("data/ml_results/poweravg", args.dst_path, "", aggregate=False)
+        evaluate_entire_training_folder(args.exp_folder, args.dst_path, "", aggregate=True)
 
+        # evaluate_entire_experiment_path("data/ml_results/poweravg", args.dst_path, "", aggregate=False)
+        #
         # t_ml = pd.read_csv("data/ml_evaluation/rpe/retrain_results.csv", index_col=0)
         # d_ml = pd.read_csv("data/dl_evaluation/rpe/retrain.csv", index_col=0)
         # total_df = pd.concat([t_ml, d_ml], axis=1)
         # total_df.to_latex("rpe.tex", column_format="l" + "r" * (len(total_df.columns)), escape=False)
-
+        #
         # t_ml = pd.read_csv("data/ml_evaluation/poweravg/retrain_results.csv", index_col=0)
         # d_ml = pd.read_csv("data/dl_evaluation/power/retrain.csv", index_col=0)
         # p_ml = pd.read_csv("data/physics/results.csv", index_col=0)
