@@ -6,13 +6,14 @@ plt.rcParams.update({
     # "text.latex.preamble": r"\usepackage{libertine}",
     # "font.serif": ["Palatino"],
     # "font.serif": ["Libertine"],
-    "font.serif": ["cmr12"],
-    "font.size": 9,
+    "font.serif": ["Computer Modern"],
+    "font.size": 8,
 })
 
 cm = 1/2.54  # Convert centimeters to inches
 # text_width = 17.7917
-text_width = 13.70499
+# text_width = 13.70499
+text_width = 13.85803
 column_width = 8.47415
 dpi = 300
 line_width = 1.0

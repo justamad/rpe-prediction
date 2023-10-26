@@ -1,17 +1,14 @@
-from scipy.stats import pearsonr, linregress
-from src.dataset import clip_outliers_z_scores
-from os.path import join
-
+import numpy as np
 import matplotlib
-matplotlib.use("WebAgg")
 import matplotlib.pyplot as plt
 import seaborn as sns
-import plot_settings as ps
-import numpy as np
 import pandas as pd
 
+from os.path import join
+from scipy.stats import pearsonr, linregress
+from src.plot import plot_settings as ps
+from string import ascii_uppercase
 
-df = pd.read_csv("flywheel.csv", index_col=False)
 
 units = {
     "duration": "Duration [s]",
@@ -95,43 +92,35 @@ def create_correlation_heatmap(df: pd.DataFrame):
     }
     df.rename(columns=column_names, inplace=True)
 
-    plt.figure(figsize=(ps.image_width * 2 * ps.cm, ps.image_width * 2 * ps.cm), dpi=300)
-    ax = sns.heatmap(df, fmt=".2f", vmin=-1, vmax=1, linewidth=0.5, annot=True)  # , cmap=colormap)
+    plt.figure(figsize=(ps.column_width * 1.2 * ps.cm, ps.column_width * ps.cm), dpi=ps.dpi)
+    cbar_kws = {"label": "Pearson's Correlation Coefficient", }  # "ticks_position": "right"
+    ax = sns.heatmap(df, fmt=".2f", vmin=-1, vmax=1, linewidth=0.5, annot=True, cbar_kws=cbar_kws)
+    plt.yticks(rotation=0)
+    plt.xticks(rotation=45, ha='right')
     plt.ylabel("Subject")
-    plt.xlabel("Feature")
+    # plt.xlabel("Feature")
     plt.tight_layout()
-    # plt.show()
-    plt.savefig("correlations.pdf", dpi=300)
+    plt.savefig("correlations.pdf")
     plt.close()
 
 
-correlation_df = pd.DataFrame()
+if __name__ == "__main__":
+    data_df = pd.read_csv("data/training/full_stat.csv", index_col=0)
+    drop_columns = []
+    for sensors in ["PHYSILOG", "HRV", "KINECT"]:
+        drop_columns += [col for col in data_df.columns if sensors in col]
 
-for subject in df["subject"].unique():
-    sub_df = df[df["subject"] == subject]
-    l1 = len(sub_df)
-    sub_df = clip_outliers_z_scores(sub_df, "duration", sigma=2.0)
-    sub_df = clip_outliers_z_scores(sub_df, "rep_range", sigma=2.0)
-    sub_df = clip_outliers_z_scores(sub_df, "powerCon", sigma=3.0)
-    sub_df = clip_outliers_z_scores(sub_df, "powerEcc", sigma=3.0)
-    sub_df = clip_outliers_z_scores(sub_df, "powerAvg", sigma=3.0)
-    l2 = len(sub_df)
-    print(f"Filtered {l1 - l2} outliers for subject {subject}")
-    sub_df.reset_index(inplace=True)
+    data_df.drop(columns=drop_columns, inplace=True)
+    data_df.rename(columns={col: col.replace("FLYWHEEL_", '') for col in data_df.columns}, inplace=True)
 
-    features = ["duration", "peakSpeed", "powerAvg", "powerCon", "powerEcc", "rep_force", "rep_range"]
+    values = {}
+    for pseudonym, (subject_name, sub_df) in zip(ascii_uppercase, data_df.groupby("subject")):
+        sub_df.drop(columns=["subject"], inplace=True)
+        set_df = sub_df.groupby("set_id").mean()
+        correlation_df = set_df.iloc[:, :7].corrwith(set_df['rpe'])
+        values[pseudonym] = correlation_df
 
-    correlation_values = []
-    for feature in features:
-        plt.close()
-        plt.figure(figsize=(ps.image_width * 2 * ps.cm, ps.image_width * ps.cm), dpi=300)
-        corr_value = plot_correlation_per_subject(sub_df, feature)
-        correlation_values.append(corr_value)
-
-    corr_df = pd.DataFrame([[subject] + correlation_values], columns=["subject"] + features)
-    correlation_df = pd.concat([correlation_df, corr_df], axis=0)
-
-correlation_df.set_index("subject", inplace=True)
-correlation_df.to_csv("correlation.csv", index=True)
-
-create_correlation_heatmap(correlation_df)
+    correlation_df = pd.DataFrame(values).T
+    mean_corr = correlation_df.mean(axis=0) # .abs()
+    print(mean_corr)
+    create_correlation_heatmap(correlation_df)
