@@ -130,9 +130,9 @@ def evaluate_entire_training_folder(
 
     for experiment in os.listdir(src_path):
         prediction_goal, experiment_name = experiment.split("_")
-        dst_path = join(dst_path, basename, experiment_name)
-        os.makedirs(dst_path, exist_ok=True)
-        evaluate_experiment_path(src_path, dst_path, prediction_goal, filter_exp, aggregate)
+        temp_path = join(dst_path, basename, experiment_name)
+        os.makedirs(temp_path, exist_ok=True)
+        evaluate_experiment_path(src_path, temp_path, prediction_goal, filter_exp, aggregate)
 
 
 def evaluate_experiment_path(
@@ -227,9 +227,9 @@ if __name__ == "__main__":
     parser.add_argument("--result_path", type=str, dest="result_path", default="results/ml/train")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/ml")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="results/ml/test")
-    parser.add_argument("--exp_folder", type=str, dest="exp_folder", default="results/ml/train/2023-10-26-08-20-15")
+    parser.add_argument("--exp_folder", type=str, dest="exp_folder", default="results/ml/train/2023-10-26-10-00-02")
     parser.add_argument("--train", type=bool, dest="train", default=False)
-    parser.add_argument("--eval", type=bool, dest="eval", default=False)
+    parser.add_argument("--eval", type=bool, dest="eval", default=True)
     args = parser.parse_args()
 
     logging.basicConfig(

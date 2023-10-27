@@ -1,3 +1,6 @@
+import json
+import os
+
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -10,7 +13,7 @@ from src.plot import plot_settings as ps
 from string import ascii_uppercase
 
 
-units = {
+UNITS = {
     "duration": "Duration [s]",
     "rep_range": "Distance [cm]",
     "powerAvg": "Power [Watt]",
@@ -81,30 +84,68 @@ def plot_correlation_per_subject(sub_df: pd.DataFrame, feature: str):
 
 
 def create_correlation_heatmap(df: pd.DataFrame):
-    column_names = {
-        "duration": "Duration",
-        "peakSpeed": "Peak Speed",
-        "powerAvg": "Average Power",
-        "powerCon": "Concentric Power",
-        "powerEcc": "Eccentric Power",
-        "rep_force": "Repetition Force",
-        "rep_range": "Repetition Range",
-    }
-    df.rename(columns=column_names, inplace=True)
-
-    plt.figure(figsize=(ps.column_width * 1.2 * ps.cm, ps.column_width * ps.cm), dpi=ps.dpi)
+    plt.figure(figsize=(ps.text_width * ps.cm, ps.text_width * 0.8 * ps.cm), dpi=ps.dpi)
     cbar_kws = {"label": "Pearson's Correlation Coefficient", }  # "ticks_position": "right"
-    ax = sns.heatmap(df, fmt=".2f", vmin=-1, vmax=1, linewidth=0.5, annot=True, cbar_kws=cbar_kws)
+    sns.heatmap(df, fmt=".2f", vmin=-1, vmax=1, linewidth=0.5, annot=True, cbar_kws=cbar_kws)
     plt.yticks(rotation=0)
     plt.xticks(rotation=45, ha='right')
     plt.ylabel("Subject")
-    # plt.xlabel("Feature")
     plt.tight_layout()
     plt.savefig("correlations.pdf")
     plt.close()
 
 
+def read_json_rpe_files(src_path: str) -> pd.DataFrame:
+    rpe_values = {}
+    for pseudonym, subject_folder in zip(ascii_uppercase, os.listdir(src_path)):
+        json_content = json.load(open(join(src_path, subject_folder, "rpe_ratings.json")))
+        rpe = list(map(int, json_content["rpe_ratings"]))
+        rpe_values[pseudonym] = rpe + [np.nan for _ in range(12 - len(rpe))]
+
+    return pd.DataFrame(rpe_values).T  #.astype(int)
+
+
+def plot_rpe_heatmap(rpe_df: pd.DataFrame):
+    plt.figure(figsize=(ps.text_width * 0.5 * ps.cm, ps.text_width * 0.5 * ps.cm), dpi=ps.dpi)
+
+    ticks = np.arange(11, 21)
+    boundaries = np.arange(10.5, 21.5)
+    cmap = matplotlib.cm.get_cmap("YlGnBu", len(ticks))
+    sns.heatmap(data=rpe_df, cmap=cmap, annot=False, fmt='.2f', cbar_kws={'ticks': ticks, 'boundaries': boundaries})
+
+    plt.ylabel("Subject")
+    plt.xlabel("Set")
+    plt.tight_layout()
+    plt.savefig("rpe_heatmap.pdf")
+    plt.close()
+
+
+def plot_rpe_histogram(rpe_df: pd.DataFrame):
+    all_values = rpe_df.values.flatten()
+    data = all_values[~np.isnan(all_values)].astype(int)
+
+    plt.figure(figsize=(ps.text_width * 0.5 * ps.cm, ps.text_width * 0.5 * ps.cm), dpi=ps.dpi)
+    hist, bins = np.histogram(data, bins=np.arange(np.min(data), np.max(data) + 2))
+    plt.bar(bins[:-1], hist, width=1, align='center')  # Use 'center' alignment
+    x_ticks = bins[:-1]  # Adjust the tick positions to the center of the bars
+    x_labels = bins[:-1]
+    plt.xticks(x_ticks, x_labels)
+    plt.ylim(0, 40)
+
+    for i, count in enumerate(hist):
+        plt.text(x_ticks[i], count + 1, str(count), ha='center', va='bottom')
+
+    plt.xlabel("RPE")
+    plt.ylabel("Count")
+    plt.tight_layout()
+    plt.savefig("rpe_histogram.pdf")
+
+
 if __name__ == "__main__":
+    rpe_df = read_json_rpe_files("data/processed")
+    plot_rpe_heatmap(rpe_df)
+    plot_rpe_histogram(rpe_df)
+
     data_df = pd.read_csv("data/training/full_stat.csv", index_col=0)
     drop_columns = []
     for sensors in ["PHYSILOG", "HRV", "KINECT"]:
@@ -117,10 +158,11 @@ if __name__ == "__main__":
     for pseudonym, (subject_name, sub_df) in zip(ascii_uppercase, data_df.groupby("subject")):
         sub_df.drop(columns=["subject"], inplace=True)
         set_df = sub_df.groupby("set_id").mean()
-        correlation_df = set_df.iloc[:, :7].corrwith(set_df['rpe'])
+        correlation_df = set_df.iloc[:, :7].corrwith(set_df["rpe"])
         values[pseudonym] = correlation_df
 
     correlation_df = pd.DataFrame(values).T
-    mean_corr = correlation_df.mean(axis=0) # .abs()
+    correlation_df.rename(columns=UNITS, inplace=True)
+    mean_corr = correlation_df.mean(axis=0)  # .abs()
     print(mean_corr)
     create_correlation_heatmap(correlation_df)
