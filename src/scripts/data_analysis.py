@@ -10,6 +10,7 @@ from os.path import join
 from scipy.stats import spearmanr, linregress
 from src.plot import plot_settings as ps
 from string import ascii_uppercase
+from argparse import ArgumentParser
 
 
 UNITS = {
@@ -23,49 +24,48 @@ UNITS = {
 }
 
 
-def plot_correlation_per_subject(df: pd.DataFrame, feature: str, subject_name: str):
+def plot_correlation_per_subject(df: pd.DataFrame, feature: str, subject_name: str, src_path: str):
     df.reset_index(inplace=True, drop=True)
-
-    plt.figure(figsize=(ps.text_width * ps.cm, ps.text_width * 0.5 * ps.cm), dpi=ps.dpi)
     feature_column = UNITS[feature]
 
+    plt.figure(figsize=(ps.text_width * ps.cm, ps.text_width * 0.5 * ps.cm), dpi=ps.dpi)
     ax = plt.gca()
     ax.twinx()
     plt.xlabel("Repetitions")
     plt.ylabel("RPE")
-    ax.set_ylabel(feature)
+    ax.set_ylabel("Watts")
     ax.set_xlabel("Repetitions")
 
-    lns1 = plt.plot(df["rpe"], color="red", label="RPE", linewidth=1)
-    ax.scatter(df.index, df[feature_column], color="black", label=feature, s=2)
-    plt.ylim(10, 21)
-
-    # pear, _ = pearsonr(df["rpe"], df[feature_column])
-    slope, intercept, r, p, se = linregress(np.arange(len(sub_df)), df[feature_column])
-    x_seq = np.linspace(0, len(sub_df), num=10)
-    lns2 = ax.plot(x_seq, intercept + slope * x_seq, color="green", lw=1.0, label="Regression Repetitions")
-
-    # Create one legend for both y-axes
-    lns = lns1 + lns2
-    labs = [l.get_label() for l in lns]
-    plt.legend(lns, labs, loc=0)
-
     mean_df = sub_df.groupby("set_id").mean()
-
+    mean_power = []
     for set_nr in sub_df["set_id"].unique():
         set_df = sub_df[sub_df["set_id"] == set_nr]
         x_min = set_df.index[0]
         x_max = set_df.index[-1]
+        mean_power.extend([df[feature_column].loc[x_min:x_max].mean() for i in range(x_max - x_min + 1)])
 
         if set_nr % 2 == 0:
-            plt.axvspan(x_min, x_max + 1, facecolor="gray", alpha=0.1)
+            plt.axvspan(x_min, x_max + 1, facecolor="0.7", alpha=0.1)
+
+    lns1 = plt.plot(df["rpe"], color="0.0", label="RPE", linewidth=1)
+    plt.ylim(10, 21)
+
+    # slope, intercept, r, p, se = linregress(np.arange(len(mean_df)), mean_df[feature_column])
+    # x_seq = np.linspace(0, len(sub_df), num=10)
+    # lns2 = ax.plot(x_seq, intercept + slope * x_seq, color="0.2", lw=1.0, label="Regression Repetitions")
+    lns2 = ax.plot(mean_power, color="0.6", label="Average Power", linewidth=1)
+
+    # Create one legend for both y-axes
+    lns = lns1 + lns2
+    labs = [label.get_label() for label in lns]
+    plt.legend(lns, labs, loc=0)
 
     spearman, _ = spearmanr(mean_df["rpe"], mean_df[feature_column])
-    slope, intercept, r, p, se = linregress(np.arange(len(mean_df)), mean_df[feature_column])
-    plt.title(f"Spearman={spearman:.2f}")
+    ax.scatter(df.index, df[feature_column], color="0.6", label=feature, s=2)
+
+    plt.title(f"Spearmans $\\rho$={spearman:.2f}")
     plt.tight_layout()
-    # plt.show()
-    plt.savefig(join(f"{subject_name}.png"))
+    plt.savefig(join(src_path, f"{subject_name}.png"))
     plt.close()
 
 
@@ -88,10 +88,10 @@ def read_json_rpe_files(src_path: str) -> pd.DataFrame:
         rpe = list(map(int, json_content["rpe_ratings"]))
         rpe_values[pseudonym] = rpe + [np.nan for _ in range(12 - len(rpe))]
 
-    return pd.DataFrame(rpe_values).T  #.astype(int)
+    return pd.DataFrame(rpe_values).T
 
 
-def plot_rpe_heatmap(rpe_df: pd.DataFrame):
+def plot_rpe_heatmap(rpe_df: pd.DataFrame, src_path: str):
     plt.figure(figsize=(ps.text_width * 0.5 * ps.cm, ps.text_width * 0.5 * ps.cm), dpi=ps.dpi)
 
     ticks = np.arange(11, 21)
@@ -102,11 +102,11 @@ def plot_rpe_heatmap(rpe_df: pd.DataFrame):
     plt.ylabel("Subject")
     plt.xlabel("Set")
     plt.tight_layout()
-    plt.savefig("rpe_heatmap.pdf")
+    plt.savefig(join(src_path, "rpe_heatmap.pdf"))
     plt.close()
 
 
-def plot_rpe_histogram(rpe_df: pd.DataFrame):
+def plot_rpe_histogram(rpe_df: pd.DataFrame, src_path: str):
     all_values = rpe_df.values.flatten()
     data = all_values[~np.isnan(all_values)].astype(int)
 
@@ -124,13 +124,19 @@ def plot_rpe_histogram(rpe_df: pd.DataFrame):
     plt.xlabel("RPE")
     plt.ylabel("Count")
     plt.tight_layout()
-    plt.savefig("rpe_histogram.pdf")
+    plt.savefig(join(src_path, "rpe_histogram.pdf"))
 
 
 if __name__ == "__main__":
-    # rpe_df = read_json_rpe_files("data/processed")
-    # plot_rpe_heatmap(rpe_df)
-    # plot_rpe_histogram(rpe_df)
+    parser = ArgumentParser()
+    parser.add_argument("--src_path", type=str, dest="src_path", default="plots")
+    args = parser.parse_args()
+
+    os.makedirs(args.src_path, exist_ok=True)
+
+    rpe_df = read_json_rpe_files("data/processed")
+    plot_rpe_heatmap(rpe_df, args.src_path)
+    plot_rpe_histogram(rpe_df, args.src_path)
 
     data_df = pd.read_csv("data/training/full_stat.csv", index_col=0)
     drop_columns = []
@@ -144,7 +150,7 @@ if __name__ == "__main__":
     values = {}
     for pseudonym, (subject_name, sub_df) in zip(ascii_uppercase, data_df.groupby("subject")):
         sub_df.drop(columns=["subject"], inplace=True)
-        plot_correlation_per_subject(sub_df, "powerAvg", subject_name)
+        plot_correlation_per_subject(sub_df, "powerAvg", subject_name, src_path=args.src_path)
         set_df = sub_df.groupby("set_id").mean()
         correlation_df = set_df.iloc[:, :7].corrwith(set_df["rpe"])
         values[pseudonym] = correlation_df
