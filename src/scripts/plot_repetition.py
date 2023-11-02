@@ -20,7 +20,7 @@ concentric, _ = segment_kinect_signal(pelvis, prominence=0.01, std_dev_p=0.4, mi
 eccentric, full_repetitions = segment_kinect_signal(pelvis, prominence=0.01, std_dev_p=0.4, min_dist_p=0.5,
                                                     min_time=30, mode="eccentric", show=False)
 
-fig, (axs1, axs2) = plt.subplots(2, 1, figsize=(ps.column_width, ps.column_width / 2), dpi=ps.dpi)
+fig, (axs1, axs2) = plt.subplots(2, 1, figsize=(ps.text_width, ps.text_width / 2), dpi=ps.dpi)
 axs1.plot(pelvis, color="gray")
 axs1.set_ylabel("Distance (m)")
 axs1.set_xlabel("Time (s)")
