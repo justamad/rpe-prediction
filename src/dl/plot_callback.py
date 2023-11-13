@@ -7,6 +7,7 @@ import tensorflow as tf
 from tensorflow import keras
 from os.path import join
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, mean_absolute_percentage_error
+from scipy.stats import spearmanr
 
 
 class PerformancePlotCallback(keras.callbacks.Callback):
@@ -44,6 +45,9 @@ class PerformancePlotCallback(keras.callbacks.Callback):
         axs[3].plot(val_pred, label="Predicted")
         axs[3].plot(val_labels, label="True")
 
+        for i in range(4):
+            axs[i].set_ylim([0, 21])
+
         plt.tight_layout()
         plt.savefig(join(self._log_path, f"{epoch:03d}.png"))
         plt.close()
@@ -72,6 +76,7 @@ class PerformancePlotCallback(keras.callbacks.Callback):
             "mae": mean_absolute_error,
             "mape": mean_absolute_percentage_error,
             "r2": r2_score,
+            "Rho": lambda x, y: spearmanr(x, y)[0],
         }
 
         results = [f"{metric.upper()}: {metrics[metric](labels, predictions):.2f}" for metric in metrics.keys()]

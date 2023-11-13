@@ -34,13 +34,12 @@ def train_time_series_grid_search(
         X: Union[np.ndarray, pd.DataFrame],
         y: Union[np.ndarray, pd.DataFrame],
         label: str,
+        log_path: str,
         balance: bool = True,
         task: str = "regression",
         search: str = "grid",
         lstm: bool = False,
 ):
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    log_path = join("data/dl_results", timestamp)
     opt = DLOptimization(X, y, balance=balance, task=task, mode=search, ground_truth=label)
     if lstm:
         opt.perform_grid_search_with_cv(CNNLSTMModelConfig(), log_path, lstm=lstm)
@@ -105,10 +104,10 @@ def collect_trials(dst_path: str) -> pd.DataFrame:
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
-    parser.add_argument("--log_path", type=str, dest="log_path", default="results_dl")
-    parser.add_argument("--exp_path", type=str, dest="exp_path", default="data/dl_experiments")
+    parser.add_argument("--log_path", type=str, dest="log_path", default="dl_results")
+    parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/dl")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation_dl")
-    parser.add_argument("--exp_file", type=str, dest="exp_file", default="power.yaml")
+    parser.add_argument("--exp_file", type=str, dest="exp_file", default="rpe.yaml")
     parser.add_argument("--train", type=bool, dest="train", default=True)
     parser.add_argument("--eval", type=bool, dest="eval", default=True)
     parser.add_argument("--use_gpu", type=bool, dest="use_gpu", default=True)
@@ -121,14 +120,16 @@ if __name__ == "__main__":
         os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
     cfg = yaml.load(open(join(args.exp_path, args.exp_file), "r"), Loader=yaml.FullLoader)
+    log_path = join(args.log_path, datetime.now().strftime("%Y%m%d-%H%M%S"))
+    os.makedirs(log_path, exist_ok=True)
 
     if cfg["lstm"]:
         X = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"]
         y = pd.read_csv(join(args.src_path, cfg["y_file"]), index_col=0)
-        X = dl_normalize_data_3d_subject(X, y, method="min_max")
+        X = dl_normalize_data_3d_subject(X, y, method="std")
 
         if args.train:
-            train_time_series_grid_search(X, y, cfg["label"], cfg["balance"], cfg["task"], cfg["search"], cfg["lstm"])
+            train_time_series_grid_search(X, y, cfg["label"], log_path, cfg["balance"], cfg["task"], cfg["search"], cfg["lstm"])
         if args.eval:
             evaluate_result_grid_search(
                 "data/dl_results/rpe/CNNLSTM", "data/dl_evaluation/rpe", exp_name="rpe", aggregate=True,

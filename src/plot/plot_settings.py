@@ -1,14 +1,14 @@
 import matplotlib.pyplot as plt
 
-plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "serif",
-    # "text.latex.preamble": r"\usepackage{libertine}",
-    # "font.serif": ["Palatino"],
-    # "font.serif": ["Libertine"],
-    "font.serif": ["Computer Modern"],
-    "font.size": 10,
-})
+# plt.rcParams.update({
+#     "text.usetex": True,
+#     "font.family": "serif",
+#     # "text.latex.preamble": r"\usepackage{libertine}",
+#     # "font.serif": ["Palatino"],
+#     # "font.serif": ["Libertine"],
+#     "font.serif": ["Computer Modern"],
+#     "font.size": 10,
+# })
 
 cm = 1/2.54  # Convert centimeters to inches
 # text_width = 17.7917

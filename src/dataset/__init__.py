@@ -9,7 +9,7 @@ from .data_preparation import (
     normalize_labels_min_max,
     normalize_data_global,
     filter_labels_outliers_per_subject,
-    drop_highly_correlated_features,
+    drop_correlated_features,
     calculate_trend_labels,
     add_rolling_statistics,
     dl_split_data,

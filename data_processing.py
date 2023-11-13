@@ -14,6 +14,7 @@ from tsfresh.utilities.dataframe_functions import impute
 from cycler import cycler
 from src.dataset import SubjectDataIterator, impute_dataframe, mask_repetitions
 from src.features import CustomFeatures, calculate_linear_joint_positions, calculate_skeleton_images
+from PyMoCapViewer import MoCapViewer
 
 from src.processing import (
     segment_kinect_signal,
@@ -80,7 +81,7 @@ def process_all_raw_data(src_path: str, dst_path: str, plot_path: str):
             ref_sync_axis="CHEST_ACCELERATION_Z",
             target_df=azure_acc_df,
             target_sync_axis="SPINE_CHEST (y)",
-            show=False,
+            show=True,
         )
         azure_acc_df.index += shift_dt
         pos_df.index += shift_dt
@@ -254,7 +255,11 @@ def prepare_segmented_data_for_ml(src_path: str, dst_path: str, mode: str, plot:
             logging.warning(f"Different nr of reps: {subject}, set {set_id}: {c_f} vs. {c_p} vs. {c_i}")
             continue
 
-        pos_df = calculate_linear_joint_positions(pos_df)
+        # pos_df = calculate_linear_joint_positions(pos_df)
+
+        viewer = MoCapViewer()
+        viewer.add_skeleton(pos_df.iloc[:,:-1])
+        viewer.show_window()
 
         imu_features_df = extract_features(imu_df, column_id="Repetition", default_fc_parameters=settings)
         imu_features_df = impute(imu_features_df)  # Replace Nan and inf by with extreme values (min, max)
@@ -344,17 +349,14 @@ if __name__ == "__main__":
     default_cycler = (cycler(color=['#FF007F', '#D62598']))
     plt.rc('axes', prop_cycle=default_cycler)
 
-    if not exists(args.proc_path):
-        os.makedirs(args.proc_path)
+    os.makedirs(args.proc_path, exist_ok=True)
+    os.makedirs(args.train_path, exist_ok=True)
 
-    if not exists(args.train_path):
-        os.makedirs(args.train_path)
+    process_all_raw_data(args.raw_path, args.proc_path, args.plot_path)
 
-    # process_all_raw_data(args.raw_path, args.proc_path, args.plot_path)
-
-    prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="concentric", plot=args.show, plot_path=args.plot_path)
+    # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="concentric", plot=args.show, plot_path=args.plot_path)
     # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="eccentric", plot=args.show, plot_path=args.plot_path)
     # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="full", plot=args.show, plot_path=args.plot_path)
 
     # prepare_segmented_data_for_dl(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
-    prepare_data_dl_entire_trials(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
+    # prepare_data_dl_entire_trials(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)

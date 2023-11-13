@@ -28,7 +28,7 @@ from src.dataset import (
     normalize_data_global,
     filter_labels_outliers_per_subject,
     clip_outliers_z_scores,
-    drop_highly_correlated_features,
+    drop_correlated_features,
     add_rolling_statistics,
 )
 
@@ -54,37 +54,37 @@ def train_models_with_grid_search(
         drop_columns = []
 
     X, y = extract_dataset_input_output(df=df, labels=ground_truth)
-    for prefix in drop_prefixes:
-        drop_columns += [col for col in df.columns if prefix in col]
+    # for prefix in drop_prefixes:
+    #     drop_columns += [col for col in df.columns if prefix in col]
+    #
+    # X.drop(columns=drop_columns, inplace=True, errors="ignore")
+    # X = X.loc[:, (X != 0).any(axis=0)]
 
-    X.drop(columns=drop_columns, inplace=True, errors="ignore")
-    X = X.loc[:, (X != 0).any(axis=0)]
-
-    if normalization_input:
-        if normalization_input == "subject":
-            X = normalize_data_by_subject(X, y)
-        elif normalization_input == "global":
-            X = normalize_data_global(X)
-        else:
-            raise ValueError(f"Unknown normalization_input: {normalization_input}")
+    # if normalization_input:
+    #     if normalization_input == "subject":
+    #         X = normalize_data_by_subject(X, y)
+    #     elif normalization_input == "global":
+    #         X = normalize_data_global(X)
+    #     else:
+    #         raise ValueError(f"Unknown normalization_input: {normalization_input}")
 
     # Impute dataframe, remove highly correlated features, and eliminate useless features
-    X.fillna(0, inplace=True)
-    X = drop_highly_correlated_features(X, threshold=0.95)
-    X, y = filter_labels_outliers_per_subject(X, y, ground_truth, sigma=3.0)
-    X = clip_outliers_z_scores(X, sigma=3.0)
+    # if rolling_statistics:
+    #     X = add_rolling_statistics(X, y, win=rolling_statistics, normalize=True)
+
+    # X.fillna(0, inplace=True)
+    # X = drop_correlated_features(X, threshold=0.95)
+    # X, y = filter_labels_outliers_per_subject(X, y, ground_truth, sigma=3.0)
+    # X = clip_outliers_z_scores(X, sigma=3.0)
 
     label_mean, label_std = float("inf"), float("inf")
-    if normalization_labels:
-        values = y.loc[:, ground_truth].values
-        label_mean, label_std = values.mean(), values.std()
-        y.loc[:, ground_truth] = (values - label_mean) / label_std
+    # if normalization_labels:
+    #     values = y.loc[:, ground_truth].values
+    #     label_mean, label_std = values.mean(), values.std()
+    #     y.loc[:, ground_truth] = (values - label_mean) / label_std
 
-    X, _report_df = eliminate_features_with_rfe(X_train=X, y_train=y[ground_truth], step=25, n_features=n_features)
-    _report_df.to_csv(join(log_path, "rfe_report.csv"))
-
-    if rolling_statistics:
-        X = add_rolling_statistics(X, y, win=rolling_statistics, normalize=True)
+    # X, _report_df = eliminate_features_with_rfe(X_train=X, y_train=y[ground_truth], step=25, n_features=n_features)
+    # _report_df.to_csv(join(log_path, "rfe_report.csv"))
 
     X.to_csv(join(log_path, "X.csv"))
     y.to_csv(join(log_path, "y.csv"))
@@ -227,7 +227,7 @@ if __name__ == "__main__":
     parser.add_argument("--result_path", type=str, dest="result_path", default="results/ml/train")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/ml")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="results/ml/test")
-    parser.add_argument("--exp_folder", type=str, dest="exp_folder", default="results/ml/train/2023-10-26-10-00-02")
+    parser.add_argument("--exp_folder", type=str, dest="exp_folder", default="results/ml/train/2023-11-13-12-30-37")
     parser.add_argument("--train", type=bool, dest="train", default=False)
     parser.add_argument("--eval", type=bool, dest="eval", default=True)
     args = parser.parse_args()
@@ -255,7 +255,7 @@ if __name__ == "__main__":
             if isinstance(file_names, str):
                 file_names = [file_names]
 
-            df = pd.read_csv(join(args.data_path, file_names[0]), index_col=0)
+            df = pd.read_csv(join(args.data_path, file_names[0]))
             for file_name in file_names[1:]:
                 add_df = pd.read_csv(join(args.data_path, file_name), index_col=0)
                 add_df.drop([c for c in df.columns if c in add_df.columns], axis=1, inplace=True)

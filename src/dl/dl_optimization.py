@@ -79,7 +79,8 @@ class DLOptimization(MLOptimization):
                     test_dataset = WinDataGen(X_test, y_test, self._ground_truth, win_size, overlap, batch_size,
                                               shuffle=False, balance=self._balance)
                     val_dataset = WinDataGen(X_val, y_val, self._ground_truth, win_size, overlap, batch_size,
-                                             shuffle=False, balance=self._balance, deliver_sets=True)
+                                             shuffle=False, balance=self._balance, deliver_sets=False)
+
                     combi = combination.copy()
                     # combi.pop("win_size")
                     combi.pop("overlap")

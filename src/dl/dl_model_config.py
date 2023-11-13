@@ -32,15 +32,15 @@ class CNNLSTMModelConfig(LearningModelBase):
         model = build_cnn_lstm_model
 
         tunable_parameters = {
-            "n_filters": [64, 128],
-            "n_layers": [2, 3],
+            "n_filters": [32],
+            "n_layers": [2],
             "kernel_size": [(3, 3)],
             "dropout": [0.5],
-            "lstm_units": [128],
+            "lstm_units": [64],
             "batch_size": [16],
             "epochs": [500],
-            "win_size": [90, 120],
-            "overlap": [0.9],
+            "win_size": [150],
+            "overlap": [0.95],
             "learning_rate": [1e-4],
         }
 
