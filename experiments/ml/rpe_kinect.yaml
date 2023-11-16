@@ -1,0 +1,14 @@
+{
+  "training_file": ["concentric_stat.csv", "eccentric_stat.csv"],
+  "task": "regression",
+  "search": "grid",
+  "n_features": false,
+  "drop_columns": [],
+  "ground_truth": "rpe",
+  "drop_prefixes": ["PHYSILOG", "HRV", "FLYWHEEL"],
+  "normalization_input": false,
+  "opt_rolling_statistics": [false, 6, 9, 12],
+  "balancing": true,
+  "normalization_labels": false,
+  "n_splits": 16
+}

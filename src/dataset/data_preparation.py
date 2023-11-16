@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 import logging
 
+from sklearn.feature_selection import VarianceThreshold
+
 META_DATA = ["subject", "set_id", "rpe"]
 
 
@@ -149,6 +151,7 @@ def add_rolling_statistics(X: pd.DataFrame, y: pd.DataFrame, win: List[int]) -> 
 
     temp_context_df = pd.concat(subjects, axis=0)
     temp_context_df.fillna(0, inplace=True)
+    temp_context_df = normalize_data_by_subject(temp_context_df, y)
     return temp_context_df
 
 
@@ -227,3 +230,16 @@ def dl_normalize_data_3d_global(X: np.ndarray, method="min_max"):
             X[skeleton] = (X[skeleton] - mean) / std
 
     return X
+
+
+def remove_low_variance_features(X: pd.DataFrame, threshold: float = 0.01):
+    variance_selector = VarianceThreshold(threshold=threshold)
+    variance_selector.fit_transform(X)
+    return X.loc[:, variance_selector.get_support()]
+
+
+def get_highest_correlation_features(X: pd.DataFrame, y: np.ndarray, k=300):
+    correlations = np.abs(X.corrwith(y))
+    selected_features_mask = correlations.nlargest(k).index
+    X_selected = X[selected_features_mask]
+    return X_selected

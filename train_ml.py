@@ -5,12 +5,11 @@ import os
 import yaml
 import matplotlib
 
-from src.ml import MLOptimization, eliminate_features_with_rfe, regression_models, instantiate_best_model
-from src.dataset import aggregate_results
 from typing import List, Union
 from datetime import datetime
 from argparse import ArgumentParser
 from os.path import join, exists
+from src.ml import MLOptimization, regression_models, instantiate_best_model, eliminate_features_rfecv
 
 from src.plot import (
     plot_sample_predictions,
@@ -23,13 +22,15 @@ from src.plot import (
 )
 
 from src.dataset import (
+    aggregate_results,
     extract_dataset_input_output,
     normalize_data_by_subject,
     normalize_data_global,
-    filter_labels_outliers_per_subject,
     clip_outliers_z_scores,
     drop_correlated_features,
     add_rolling_statistics,
+    remove_low_variance_features,
+    get_highest_correlation_features,
 )
 
 
@@ -54,28 +55,31 @@ def train_models_with_grid_search(
         drop_columns = []
 
     X, y = extract_dataset_input_output(df=df, labels=ground_truth)
-    # for prefix in drop_prefixes:
-    #     drop_columns += [col for col in df.columns if prefix in col]
-    #
-    # X.drop(columns=drop_columns, inplace=True, errors="ignore")
-    # X = X.loc[:, (X != 0).any(axis=0)]
+    for prefix in drop_prefixes:
+        drop_columns += [col for col in df.columns if prefix in col]
 
-    # if normalization_input:
-    #     if normalization_input == "subject":
-    #         X = normalize_data_by_subject(X, y)
-    #     elif normalization_input == "global":
-    #         X = normalize_data_global(X)
-    #     else:
-    #         raise ValueError(f"Unknown normalization_input: {normalization_input}")
+    X.drop(columns=drop_columns, inplace=True, errors="ignore")
+    X = X.loc[:, (X != 0).any(axis=0)]
+
+    if normalization_input:
+        if normalization_input == "subject":
+            X = normalize_data_by_subject(X, y)
+        elif normalization_input == "global":
+            X = normalize_data_global(X)
+        else:
+            raise ValueError(f"Unknown normalization_input: {normalization_input}")
 
     # Impute dataframe, remove highly correlated features, and eliminate useless features
-    # if rolling_statistics:
-    #     X = add_rolling_statistics(X, y, win=rolling_statistics, normalize=True)
+    if rolling_statistics:
+        X = add_rolling_statistics(X, y, win=[rolling_statistics])
 
-    # X.fillna(0, inplace=True)
-    # X = drop_correlated_features(X, threshold=0.95)
+    X.fillna(0, inplace=True)
+    X = remove_low_variance_features(X, threshold=0.01)
+    X = drop_correlated_features(X, threshold=0.95)
     # X, y = filter_labels_outliers_per_subject(X, y, ground_truth, sigma=3.0)
-    # X = clip_outliers_z_scores(X, sigma=3.0)
+    X = clip_outliers_z_scores(X, sigma=3.0)
+    X = get_highest_correlation_features(X, y[ground_truth], k=600)
+    X = eliminate_features_rfecv(X, y, steps=100, min_features=1, log_path=log_path)
 
     label_mean, label_std = float("inf"), float("inf")
     # if normalization_labels:
@@ -117,7 +121,7 @@ def train_models_with_grid_search(
         balance=balancing,
         labels=ground_truth,
         n_splits=n_splits,
-    ).perform_grid_search_with_cv(models=regression_models, log_path=log_path, verbose=2)
+    ).perform_grid_search_with_cv(models=regression_models, log_path=log_path, verbose=2, n_jobs=4)
 
 
 def evaluate_entire_training_folder(
@@ -227,8 +231,8 @@ if __name__ == "__main__":
     parser.add_argument("--result_path", type=str, dest="result_path", default="results/ml/train")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/ml")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="results/ml/test")
-    parser.add_argument("--exp_folder", type=str, dest="exp_folder", default="results/ml/train/2023-11-13-12-30-37")
-    parser.add_argument("--train", type=bool, dest="train", default=False)
+    parser.add_argument("--exp_folder", type=str, dest="exp_folder", default="results/ml/train/2023-11-13-17-26-26")
+    parser.add_argument("--train", type=bool, dest="train", default=True)
     parser.add_argument("--eval", type=bool, dest="eval", default=True)
     args = parser.parse_args()
 
@@ -255,7 +259,7 @@ if __name__ == "__main__":
             if isinstance(file_names, str):
                 file_names = [file_names]
 
-            df = pd.read_csv(join(args.data_path, file_names[0]))
+            df = pd.read_csv(join(args.data_path, file_names[0]), index_col=0)
             for file_name in file_names[1:]:
                 add_df = pd.read_csv(join(args.data_path, file_name), index_col=0)
                 add_df.drop([c for c in df.columns if c in add_df.columns], axis=1, inplace=True)

@@ -15,6 +15,8 @@ from .data_preparation import (
     dl_split_data,
     dl_normalize_data_3d_subject,
     dl_normalize_data_3d_global,
+    remove_low_variance_features,
+    get_highest_correlation_features,
 )
 
 from .data_loaders import (
