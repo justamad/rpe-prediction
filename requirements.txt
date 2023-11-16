@@ -9,7 +9,6 @@ scikit-learn
 scikeras
 tsfresh
 imblearn
-PyPDF2
 xgboost
 seaborn
 PyMoCapViewer

@@ -10,9 +10,8 @@ from os.path import join, exists
 from os import makedirs
 from matplotlib.ticker import MaxNLocator, AutoLocator
 
-
-y_labels = {"rpe": "RPE [Borg Scale]", "poweravg": "Power [Watts]",}
-y_limits = {"rpe": (10, 21), "poweravg": (0, 300),}
+y_labels = {"rpe": "RPE [Borg Scale]", "poweravg": "Power [Watts]", }
+y_limits = {"rpe": (10, 21), "poweravg": (0, 300), }
 max_limits = {"poweravg": 800}  # Used to equally scale physical model and ML models
 
 primary_color = "#d62728"
@@ -67,7 +66,8 @@ def evaluate_nr_features(df: pd.DataFrame, dst_path: str):
         y_axis = []
         errors = []
         for nr_feature in nr_features:
-            sub_sub_df = sub_df[sub_df["n_features"] == nr_feature].sort_values(by="mean_test_r2", ascending=False).iloc[0]
+            sub_sub_df = \
+            sub_df[sub_df["n_features"] == nr_feature].sort_values(by="mean_test_r2", ascending=False).iloc[0]
             x_axis.append(nr_feature)
             y_axis.append(sub_sub_df["mean_test_r2"])
             errors.append(sub_sub_df["std_test_r2"])
@@ -97,11 +97,11 @@ def plot_subject_correlations(df: pd.DataFrame, dst_path: str):
         sub_df = df[df["subject"] == subject]
         metric, p_value = spearmanr(sub_df["ground_truth"], sub_df["prediction"])
         metrics.append(metric)
-        print(f"{subject}: {metric:.2f} ({p_value:.2f})")
 
     fig, axs = plt.subplots(1, 1, figsize=(text_width * cm, text_width * cm * 0.5), dpi=dpi)
-    axs.bar([f"{i+1:2d}" for i in range(len(subjects))], metrics, color=primary_color)
+    axs.bar([f"{i + 1:2d}" for i in range(len(subjects))], metrics, color=primary_color)
     plt.ylim([0, 1])
+    plt.title("Spearman's $\\rho$ Mean: {:.2f} Std: {:.2f}".format(np.mean(metrics), np.std(metrics)))
     plt.xlabel("Subjects")
     plt.ylabel("Spearman's $\\rho$")
     plt.tight_layout()

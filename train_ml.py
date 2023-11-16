@@ -82,13 +82,10 @@ def train_models_with_grid_search(
     X = eliminate_features_rfecv(X, y, steps=100, min_features=1, log_path=log_path)
 
     label_mean, label_std = float("inf"), float("inf")
-    # if normalization_labels:
-    #     values = y.loc[:, ground_truth].values
-    #     label_mean, label_std = values.mean(), values.std()
-    #     y.loc[:, ground_truth] = (values - label_mean) / label_std
-
-    # X, _report_df = eliminate_features_with_rfe(X_train=X, y_train=y[ground_truth], step=25, n_features=n_features)
-    # _report_df.to_csv(join(log_path, "rfe_report.csv"))
+    if normalization_labels:
+        values = y.loc[:, ground_truth].values
+        label_mean, label_std = values.mean(), values.std()
+        y.loc[:, ground_truth] = (values - label_mean) / label_std
 
     X.to_csv(join(log_path, "X.csv"))
     y.to_csv(join(log_path, "y.csv"))
@@ -124,54 +121,39 @@ def train_models_with_grid_search(
     ).perform_grid_search_with_cv(models=regression_models, log_path=log_path, verbose=2, n_jobs=4)
 
 
-def evaluate_entire_training_folder(
-        src_path: str,
-        dst_path: str,
-        filter_exp: str = "",
-        aggregate: bool = False,
-) -> pd.DataFrame:
+def evaluate_entire_training_folder(src_path: str, dst_path: str, filter_exp: str = "", aggregate: bool = False):
     basename = os.path.basename(src_path)
 
     for experiment in os.listdir(src_path):
         prediction_goal, experiment_name = experiment.split("_")
-        temp_path = join(dst_path, basename, experiment_name)
-        os.makedirs(temp_path, exist_ok=True)
-        evaluate_experiment_path(src_path, temp_path, prediction_goal, filter_exp, aggregate)
+        for root, _, files in os.walk(join(src_path, experiment)):
+            if "config.yml" in files:
+                evaluate_experiment_path(
+                    src_path=root,
+                    dst_path=root.replace("train", "test"),
+                    exp_name=prediction_goal,
+                    files=files,
+                    filter_exp=filter_exp,
+                    aggregate=aggregate,
+                )
 
 
 def evaluate_experiment_path(
         src_path: str,
         dst_path: str,
         exp_name: str,
+        files: List[str] = None,
         filter_exp: str = "",
         aggregate: bool = True,
         criteria_rank: str = "rank_test_r2",
         criteria_score: str = "mean_test_r2",
 ) -> pd.DataFrame:
-    result_files = []
-    for root, _, files in os.walk(src_path):
-        if "config.yml" not in files:
-            continue
+    os.makedirs(dst_path, exist_ok=True)
 
-        config = yaml.load(open(join(root, "config.yml"), "r"), Loader=yaml.FullLoader)
-        dp_c = ["drop_columns", "drop_prefixes", "task", "search", "ground_truth", "label_mean", "label_std"]
-        for k in dp_c:
-            del config[k]
-
-        for model_file in list(filter(lambda x: "model__" in x, files)):
-            model_df = pd.read_csv(join(root, model_file), index_col=0)
-            best_combination = model_df.sort_values(by=criteria_rank, ascending=True).iloc[0]
-            best_combination = best_combination[best_combination.index.str.contains("mean_test|std_test|rank_")]
-            config["model"] = model_file.replace("model__", "").replace(".csv", "")
-            config["result_path"] = root
-            config["model_file"] = model_file
-            result_files.append(pd.concat([best_combination, pd.Series(config)]))
-
-    result_df = pd.DataFrame.from_records(result_files)
+    result_df = collect_model_run_files(src_path, criteria_rank, files)
     result_df.to_csv(join(dst_path, "results.csv"))
-    # evaluate_nr_features(result_df, dst_path)
     create_train_table(result_df, dst_path)
-    logging.info("Collected all trial data. Now evaluating the best model for each ML model.")
+    logging.info("Collected all trial data. Now evaluating the best combination of each model.")
 
     retrain_df = pd.DataFrame()
     for model in result_df["model"].unique():
@@ -196,6 +178,26 @@ def evaluate_experiment_path(
     return final_df
 
 
+def collect_model_run_files(src_path: str, criteria_rank: str, files: List[str]) -> pd.DataFrame:
+    config = yaml.load(open(join(src_path, "config.yml"), "r"), Loader=yaml.FullLoader)
+    dp_c = ["drop_columns", "drop_prefixes", "task", "search", "ground_truth", "label_mean", "label_std"]
+    for k in dp_c:
+        del config[k]
+
+    result_files = []
+    for model_file in list(filter(lambda x: "model__" in x, files)):
+        model_df = pd.read_csv(join(src_path, model_file), index_col=0)
+        best_combination = model_df.sort_values(by=criteria_rank, ascending=True).iloc[0]
+        best_combination = best_combination[best_combination.index.str.contains("mean_test|std_test|rank_")]
+        config["model"] = model_file.replace("model__", "").replace(".csv", "")
+        config["result_path"] = src_path
+        config["model_file"] = model_file
+        result_files.append(pd.concat([best_combination, pd.Series(config)]))
+
+    result_df = pd.DataFrame.from_records(result_files)
+    return result_df
+
+
 def retrain_model(result_path: str, model_file: str, dst_path: str, filter_exp: str) -> pd.DataFrame:
     model_name = model_file.replace("model__", "").replace(".csv", "")
     result_filename = join(dst_path, f"{model_name}_{filter_exp + '_' if filter_exp else ''}results.csv")
@@ -210,7 +212,7 @@ def retrain_model(result_path: str, model_file: str, dst_path: str, filter_exp: 
     X = pd.read_csv(join(result_path, "X.csv"), index_col=0)
     y = pd.read_csv(join(result_path, "y.csv"), index_col=0)
 
-    logging.info(f"Re-train {model_name.upper()} model from path {result_path}")
+    logging.info(f"Re-train best {model_name.upper()} model from path {result_path}.")
     opt = MLOptimization(
         X=X,
         y=y,
@@ -231,8 +233,8 @@ if __name__ == "__main__":
     parser.add_argument("--result_path", type=str, dest="result_path", default="results/ml/train")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/ml")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="results/ml/test")
-    parser.add_argument("--exp_folder", type=str, dest="exp_folder", default="results/ml/train/2023-11-13-17-26-26")
-    parser.add_argument("--train", type=bool, dest="train", default=True)
+    parser.add_argument("--exp_folder", type=str, dest="exp_folder", default="results/ml/train/2023-11-15-12-13-23")
+    parser.add_argument("--train", type=bool, dest="train", default=False)
     parser.add_argument("--eval", type=bool, dest="eval", default=True)
     args = parser.parse_args()
 

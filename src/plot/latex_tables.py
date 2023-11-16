@@ -1,9 +1,9 @@
+import pandas as pd
+import numpy as np
+
 from os.path import join
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 from scipy import stats
-
-import pandas as pd
-import numpy as np
 
 
 def create_train_table(df: pd.DataFrame, dst_path: str):
