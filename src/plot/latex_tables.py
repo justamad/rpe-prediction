@@ -52,8 +52,11 @@ def create_retrain_table(results: pd.DataFrame, dst_path: str) -> pd.DataFrame:
             for metric, func in metrics.items():
                 test_subjects[metric].append(func(subject_df["ground_truth"], subject_df["prediction"]))
 
-        res = {metric: f"${np.mean(values):.2f} \\pm {np.std(values):.2f}$" for metric, values in test_subjects.items()}
-        data_entries.append(res)
+        data_entries.append({
+            f"{metric}_mean": np.mean(values) for metric, values in test_subjects.items()
+        } | {
+            f"{metric}_std": np.std(values) for metric, values in test_subjects.items()
+        })
 
     final_df = pd.DataFrame.from_records(data_entries, index=list(map(lambda x: x.upper(), models))).T
     final_df.to_latex(join(dst_path, "retrain_results_latex.txt"), escape=False)

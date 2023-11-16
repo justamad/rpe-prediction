@@ -58,36 +58,19 @@ def plot_sample_predictions(
 def evaluate_nr_features(df: pd.DataFrame, dst_path: str):
     plt.figure(figsize=(text_width * cm, text_width * cm * 0.65), dpi=dpi)
 
-    nr_features = sorted(df["n_features"].unique())
-    for model in df["model"].unique():
-        sub_df = df[df["model"] == model]
+    # Calculate confidence interval bounds
+    # confidence_interval = 1.96  # 95% confidence interval
+    # upper_bound = rfecv.cv_results_['mean_test_score'] + confidence_interval * rfecv.cv_results_['std_test_score']
+    # lower_bound = rfecv.cv_results_['mean_test_score'] - confidence_interval * rfecv.cv_results_['std_test_score']
 
-        x_axis = []
-        y_axis = []
-        errors = []
-        for nr_feature in nr_features:
-            sub_sub_df = \
-            sub_df[sub_df["n_features"] == nr_feature].sort_values(by="mean_test_r2", ascending=False).iloc[0]
-            x_axis.append(nr_feature)
-            y_axis.append(sub_sub_df["mean_test_r2"])
-            errors.append(sub_sub_df["std_test_r2"])
-
-        # plt.errorbar(x_axis, y_axis, yerr=errors, label=model.upper())
-        plt.plot(x_axis, y_axis, label=model.upper())
-
-    # plt.ylim(0, 1)
-    plt.xticks(nr_features)
-    plt.legend()
-    plt.xlabel("Number of Features")
-    plt.ylabel("$R^2$")
-    plt.tight_layout()
-
-    if not exists(dst_path):
-        makedirs(dst_path)
-
-    plt.savefig(join(dst_path, "nr_features.pdf"))
-    plt.clf()
-    plt.close()
+    plt.errorbar(range(rfecv.min_features_to_select, len(rfecv.cv_results_['mean_test_score']) + 1),
+                 rfecv.cv_results_['mean_test_score'],
+                 yerr=rfecv.cv_results_['std_test_score'],
+                 marker='o', linestyle='', capsize=3)
+    plt.title(f'RFECV - Optimal Number of Features: {rfecv.n_features_}')
+    plt.xlabel('Number of Features Selected')
+    plt.ylabel('R2')
+    plt.savefig(join(dst_path, "rfecv.png"))
 
 
 def plot_subject_correlations(df: pd.DataFrame, dst_path: str):

@@ -41,7 +41,6 @@ def train_models_with_grid_search(
         normalization_input: str,
         normalization_labels: bool,
         search: str,
-        n_features: int,
         ground_truth: str,
         n_splits: int,
         rolling_statistics: Union[int, bool],
@@ -69,17 +68,15 @@ def train_models_with_grid_search(
         else:
             raise ValueError(f"Unknown normalization_input: {normalization_input}")
 
-    # Impute dataframe, remove highly correlated features, and eliminate useless features
     if rolling_statistics:
         X = add_rolling_statistics(X, y, win=[rolling_statistics])
 
     X.fillna(0, inplace=True)
     X = remove_low_variance_features(X, threshold=0.01)
     X = drop_correlated_features(X, threshold=0.95)
-    # X, y = filter_labels_outliers_per_subject(X, y, ground_truth, sigma=3.0)
     X = clip_outliers_z_scores(X, sigma=3.0)
-    X = get_highest_correlation_features(X, y[ground_truth], k=600)
-    X = eliminate_features_rfecv(X, y, steps=100, min_features=1, log_path=log_path)
+    X = get_highest_correlation_features(X, y[ground_truth], k=200)
+    X = eliminate_features_rfecv(X, y, gt=ground_truth, n_splits=n_splits, steps=5, min_features=5, log_path=log_path)
 
     label_mean, label_std = float("inf"), float("inf")
     if normalization_labels:
@@ -95,7 +92,7 @@ def train_models_with_grid_search(
             {
                 "task": task,
                 "search": search,
-                "n_features": n_features,
+                "n_features": X.shape[1],
                 "drop_columns": drop_columns,
                 "ground_truth": ground_truth,
                 "drop_prefixes": drop_prefixes,
@@ -234,8 +231,8 @@ if __name__ == "__main__":
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/ml")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="results/ml/test")
     parser.add_argument("--exp_folder", type=str, dest="exp_folder", default="results/ml/train/2023-11-15-12-13-23")
-    parser.add_argument("--train", type=bool, dest="train", default=False)
-    parser.add_argument("--eval", type=bool, dest="eval", default=True)
+    parser.add_argument("--train", type=bool, dest="train", default=True)
+    parser.add_argument("--eval", type=bool, dest="eval", default=False)
     args = parser.parse_args()
 
     logging.basicConfig(

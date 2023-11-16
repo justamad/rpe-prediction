@@ -2,7 +2,6 @@
   "training_file": ["concentric_stat.csv", "eccentric_stat.csv"],
   "task": "regression",
   "search": "grid",
-  "n_features": false,
   "drop_columns": [],
   "ground_truth": "rpe",
   "drop_prefixes": ["KINECT", "HRV", "FLYWHEEL"],
