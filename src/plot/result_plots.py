@@ -55,22 +55,36 @@ def plot_sample_predictions(
         plt.close()
 
 
-def evaluate_nr_features(df: pd.DataFrame, dst_path: str):
-    plt.figure(figsize=(text_width * cm, text_width * cm * 0.65), dpi=dpi)
+def plot_feature_elimination(feature_df: pd.DataFrame, dst_path: str):
+    plt.figure(figsize=(text_width * cm * 0.5, text_width * cm * 0.45), dpi=dpi)
+    feature_df["mean_test_score"] *= -1  # Invert scores to maximize
 
-    # Calculate confidence interval bounds
-    # confidence_interval = 1.96  # 95% confidence interval
-    # upper_bound = rfecv.cv_results_['mean_test_score'] + confidence_interval * rfecv.cv_results_['std_test_score']
-    # lower_bound = rfecv.cv_results_['mean_test_score'] - confidence_interval * rfecv.cv_results_['std_test_score']
+    # plt.errorbar(
+    #     feature_df.index,
+    #     feature_df['mean_test_score'],
+    #     yerr=feature_df['std_test_score'],
+    #     marker='o', linestyle='', capsize=3,
+    # )
 
-    plt.errorbar(range(rfecv.min_features_to_select, len(rfecv.cv_results_['mean_test_score']) + 1),
-                 rfecv.cv_results_['mean_test_score'],
-                 yerr=rfecv.cv_results_['std_test_score'],
-                 marker='o', linestyle='', capsize=3)
-    plt.title(f'RFECV - Optimal Number of Features: {rfecv.n_features_}')
-    plt.xlabel('Number of Features Selected')
-    plt.ylabel('R2')
-    plt.savefig(join(dst_path, "rfecv.png"))
+    best_features_index = feature_df["mean_test_score"].idxmin()
+
+    plt.plot(feature_df.index, feature_df["mean_test_score"], marker='o', color='b', markersize=2)
+    plt.fill_between(
+        feature_df.index,
+        feature_df['mean_test_score'] - feature_df['std_test_score'],
+        feature_df['mean_test_score'] + feature_df['std_test_score'],
+        color='lightblue', alpha=0.3,
+    )
+
+    plt.axvline(x=best_features_index, color="black", linestyle="--", label=f"Features: {best_features_index}")
+    plt.legend()
+    # plt.title(f"Optimal Number of Features: {best_features_index}")
+    plt.xlabel("Number of Features Selected")
+    plt.ylabel("MSE")
+    plt.tight_layout()
+    plt.savefig(join(dst_path, "feature_analysis.png"), dpi=dpi)
+    plt.clf()
+    plt.close()
 
 
 def plot_subject_correlations(df: pd.DataFrame, dst_path: str):

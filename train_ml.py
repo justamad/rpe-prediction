@@ -12,6 +12,7 @@ from os.path import join, exists
 from src.ml import MLOptimization, regression_models, instantiate_best_model, eliminate_features_rfecv
 
 from src.plot import (
+    plot_feature_elimination,
     plot_sample_predictions,
     create_train_table,
     create_retrain_table,
@@ -118,9 +119,7 @@ def train_models_with_grid_search(
     ).perform_grid_search_with_cv(models=regression_models, log_path=log_path, verbose=2, n_jobs=4)
 
 
-def evaluate_entire_training_folder(src_path: str, dst_path: str, filter_exp: str = "", aggregate: bool = False):
-    basename = os.path.basename(src_path)
-
+def evaluate_entire_training_folder(src_path: str, aggregate: bool):
     for experiment in os.listdir(src_path):
         prediction_goal, experiment_name = experiment.split("_")
         for root, _, files in os.walk(join(src_path, experiment)):
@@ -130,7 +129,6 @@ def evaluate_entire_training_folder(src_path: str, dst_path: str, filter_exp: st
                     dst_path=root.replace("train", "test"),
                     exp_name=prediction_goal,
                     files=files,
-                    filter_exp=filter_exp,
                     aggregate=aggregate,
                 )
 
@@ -140,7 +138,6 @@ def evaluate_experiment_path(
         dst_path: str,
         exp_name: str,
         files: List[str] = None,
-        filter_exp: str = "",
         aggregate: bool = True,
         criteria_rank: str = "rank_test_r2",
         criteria_score: str = "mean_test_r2",
@@ -152,23 +149,27 @@ def evaluate_experiment_path(
     create_train_table(result_df, dst_path)
     logging.info("Collected all trial data. Now evaluating the best combination of each model.")
 
+    # Investigate features
+    rfe_df = pd.read_csv(join(src_path, "cv_results.csv"), index_col=0)
+    plot_feature_elimination(rfe_df, dst_path)
+
     retrain_df = pd.DataFrame()
     for model in result_df["model"].unique():
         best_model = result_df[result_df["model"] == model].sort_values(by=criteria_score, ascending=False).iloc[0]
-        df = retrain_model(best_model["result_path"], best_model["model_file"], dst_path, filter_exp)
-        df["model"] = model
+        prediction_df = retrain_model(best_model["result_path"], best_model["model_file"], dst_path)
+        prediction_df["model"] = model
 
-        plot_sample_predictions(value_df=df, exp_name=exp_name, dst_path=join(dst_path, model))
+        plot_sample_predictions(value_df=prediction_df, exp_name=exp_name, dst_path=join(dst_path, model))
 
         if aggregate:
-            df = aggregate_results(df)
+            prediction_df = aggregate_results(prediction_df)
 
-        plot_subject_correlations(df, join(dst_path, model))
-        create_bland_altman_plot(df, join(dst_path), model, exp_name)
-        create_scatter_plot(df, dst_path, model, exp_name)
-        create_residual_plot(df, dst_path, model)
+        plot_subject_correlations(prediction_df, join(dst_path, model))
+        create_bland_altman_plot(prediction_df, join(dst_path), model, exp_name)
+        create_scatter_plot(prediction_df, dst_path, model, exp_name)
+        create_residual_plot(prediction_df, dst_path, model)
 
-        retrain_df = pd.concat([retrain_df, df])
+        retrain_df = pd.concat([retrain_df, prediction_df])
 
     final_df = create_retrain_table(retrain_df, dst_path)
     final_df.to_csv(join(dst_path, "retrain_results.csv"))
@@ -195,9 +196,9 @@ def collect_model_run_files(src_path: str, criteria_rank: str, files: List[str])
     return result_df
 
 
-def retrain_model(result_path: str, model_file: str, dst_path: str, filter_exp: str) -> pd.DataFrame:
+def retrain_model(result_path: str, model_file: str, dst_path: str) -> pd.DataFrame:
     model_name = model_file.replace("model__", "").replace(".csv", "")
-    result_filename = join(dst_path, f"{model_name}_{filter_exp + '_' if filter_exp else ''}results.csv")
+    result_filename = join(dst_path, f"{model_name}_results.csv")
     if exists(result_filename):
         logging.info(f"Skip re-training of {model_name.upper()} as result already exists.")
         return pd.read_csv(result_filename, index_col=0)
@@ -230,9 +231,9 @@ if __name__ == "__main__":
     parser.add_argument("--result_path", type=str, dest="result_path", default="results/ml/train")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/ml")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="results/ml/test")
-    parser.add_argument("--exp_folder", type=str, dest="exp_folder", default="results/ml/train/2023-11-15-12-13-23")
-    parser.add_argument("--train", type=bool, dest="train", default=True)
-    parser.add_argument("--eval", type=bool, dest="eval", default=False)
+    parser.add_argument("--exp_folder", type=str, dest="exp_folder", default="results/ml/train/2023-11-16-16-45-14")
+    parser.add_argument("--train", type=bool, dest="train", default=False)
+    parser.add_argument("--eval", type=bool, dest="eval", default=True)
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -283,7 +284,7 @@ if __name__ == "__main__":
                 train_models_with_grid_search(df, log_path, **config)
 
     if args.eval:
-        evaluate_entire_training_folder(args.exp_folder, args.dst_path, "", aggregate=True)
+        evaluate_entire_training_folder(args.exp_folder, aggregate=True)
 
         # evaluate_entire_experiment_path("data/ml_results/poweravg", args.dst_path, "", aggregate=False)
         #
