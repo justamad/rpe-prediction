@@ -58,16 +58,6 @@ def plot_sample_predictions(
 def plot_feature_elimination(feature_df: pd.DataFrame, dst_path: str):
     plt.figure(figsize=(text_width * cm * 0.5, text_width * cm * 0.45), dpi=dpi)
     feature_df["mean_test_score"] *= -1  # Invert scores to maximize
-
-    # plt.errorbar(
-    #     feature_df.index,
-    #     feature_df['mean_test_score'],
-    #     yerr=feature_df['std_test_score'],
-    #     marker='o', linestyle='', capsize=3,
-    # )
-
-    best_features_index = feature_df["mean_test_score"].idxmin()
-
     plt.plot(feature_df.index, feature_df["mean_test_score"], marker='o', color='b', markersize=2)
     plt.fill_between(
         feature_df.index,
@@ -76,11 +66,14 @@ def plot_feature_elimination(feature_df: pd.DataFrame, dst_path: str):
         color='lightblue', alpha=0.3,
     )
 
-    plt.axvline(x=best_features_index, color="black", linestyle="--", label=f"Features: {best_features_index}")
-    plt.legend()
-    # plt.title(f"Optimal Number of Features: {best_features_index}")
+    n_features = feature_df["mean_test_score"].idxmin()
+    plt.axvline(x=n_features, color="black", linestyle="--", label=f"Opt. Features: {n_features}")
+    plt.title(f"Minimum MSE={feature_df['mean_test_score'].min():.2f}")
     plt.xlabel("Number of Features Selected")
     plt.ylabel("MSE")
+    plt.legend()
+    plt.ylim([0, 15])
+
     plt.tight_layout()
     plt.savefig(join(dst_path, "feature_analysis.png"), dpi=dpi)
     plt.clf()
