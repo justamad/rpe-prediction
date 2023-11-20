@@ -20,6 +20,7 @@ class WinDataGen(tf.keras.utils.Sequence):
             shuffle: bool = True,
             balance: bool = False,
             deliver_sets: bool = False,
+            encoder: bool = False,
     ):
         assert len(X) == len(y), "X and y must have the same length"
 
@@ -46,6 +47,7 @@ class WinDataGen(tf.keras.utils.Sequence):
 
         self._build_index()
         self._n_samples = len(self._index)
+        self._encoder = encoder
 
         print("Got samples: ", self._n_samples)
         print(f"Number of batches: {len(self)}")
@@ -77,6 +79,10 @@ class WinDataGen(tf.keras.utils.Sequence):
             X.append(self._X[file_c][win_idx:win_idx + self._win_size])
             y.append(label)
 
+        if self._encoder:
+            X_batch = np.array(X).reshape(self._batch_size, -1)
+            return X_batch, X_batch
+
         return np.array(X), np.array(y)
 
     def __len__(self):
@@ -88,7 +94,8 @@ if __name__ == '__main__':
     y = pd.read_csv("../../data/training/y_lstm.csv", index_col=0)
 
     gen = WinDataGen(
-        X, y, label_col="Mean HR (1/min)", win_size=30, overlap=0.5, batch_size=4, shuffle=True, balance=False, deliver_sets=True
+        X, y, label_col="Mean HR (1/min)", win_size=150, overlap=0.5, batch_size=4, shuffle=True, balance=False,
+        deliver_sets=False
     )
 
     for batch_idx in range(len(gen)):

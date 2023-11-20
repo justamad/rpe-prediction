@@ -1,22 +1,24 @@
 import pandas as pd
 
-from .models import build_conv2d_model, build_cnn_lstm_model
+from .models import build_autoencoder, build_cnn_lstm_model
 from src.ml.ml_model_config import LearningModelBase, parse_report_file_to_model_parameters
 
 
-class ConvModelConfig(LearningModelBase):
+class AutoEncoderConfig(LearningModelBase):
 
     def __init__(self):
-        regressor = build_conv2d_model
+        regressor = build_autoencoder
 
         tunable_parameters = {
-            f"batch_size": [16],
+            f"batch_size": [8],
             f"learning_rate": [1e-4],
             f"epochs": [500],
-            f"n_filters": [64, 128],
+            f"n_filters": [128],
             f"n_layers": [2, 3],
             f"kernel_size": [(3, 3)],
             f"dropout": [0.5],
+            "win_size": [1],
+            "overlap": [0.0],
             f"n_units": [128],
         }
 
@@ -33,11 +35,11 @@ class CNNLSTMModelConfig(LearningModelBase):
 
         tunable_parameters = {
             "n_filters": [32],
-            "n_layers": [2],
+            "n_layers": [3],
             "kernel_size": [(3, 3)],
             "dropout": [0.5],
             "lstm_units": [64],
-            "batch_size": [16],
+            "batch_size": [8],
             "epochs": [500],
             "win_size": [150],
             "overlap": [0.95],
@@ -51,7 +53,7 @@ class CNNLSTMModelConfig(LearningModelBase):
 
 
 def instantiate_best_dl_model(result_df: pd.DataFrame, model_name: str, task: str):
-    models = {str(model): model for model in [CNNLSTMModelConfig(), ConvModelConfig()]}
+    models = {str(model): model for model in [CNNLSTMModelConfig(), AutoEncoderConfig()]}
 
     if task == "regression":
         column = "avg_mse"

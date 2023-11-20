@@ -1,0 +1,8 @@
+X_file: X_lstm.npz
+y_file: y_lstm.csv
+label: rpe
+encoder: True
+search: grid
+task: regression
+balance: False
+n_splits: 16

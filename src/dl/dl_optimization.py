@@ -27,7 +27,7 @@ class DLOptimization(MLOptimization):
             task: str,
             mode: str,
             ground_truth: Union[str, List[str]],
-            n_splits: int = None
+            n_splits: int = None,
     ):
         super().__init__(X, y, balance, ground_truth, task, mode, n_splits)
         self._subjects = self._y["subject"].unique()
@@ -39,7 +39,7 @@ class DLOptimization(MLOptimization):
             view_progress: int = 1,
             verbose: int = 1,
             patience: int = 3,
-            lstm: bool = True,
+            encoder: bool = True,
     ):
         es = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5, restore_best_weights=True)
         base_folder = join(log_path, str(model_config))
@@ -65,34 +65,30 @@ class DLOptimization(MLOptimization):
                 train_subjects = [s for s in subjects if s not in test_subjects]
 
                 X_val, y_val = self._X[self._y["subject"] == val_subject], self._y[self._y["subject"] == val_subject]
-                X_test, y_test = self._X[self._y["subject"].isin(test_subjects)], self._y[self._y["subject"].isin(test_subjects)]
-                X_train, y_train = self._X[self._y["subject"].isin(train_subjects)], self._y[self._y["subject"].isin(train_subjects)]
+                X_test, y_test = self._X[self._y["subject"].isin(test_subjects)], self._y[
+                    self._y["subject"].isin(test_subjects)]
+                X_train, y_train = self._X[self._y["subject"].isin(train_subjects)], self._y[
+                    self._y["subject"].isin(train_subjects)]
 
-                if lstm:
-                    win_size = combination["win_size"]
-                    overlap = combination["overlap"]
+                win_size = combination["win_size"]
+                overlap = combination["overlap"]
 
-                    train_dataset = WinDataGen(X_train, y_train, self._ground_truth, win_size, overlap, batch_size,
-                                               shuffle=True, balance=self._balance)
-                    train_view_dataset = WinDataGen(X_train, y_train, self._ground_truth, win_size, overlap, batch_size,
-                                                    shuffle=False, balance=self._balance)
-                    test_dataset = WinDataGen(X_test, y_test, self._ground_truth, win_size, overlap, batch_size,
-                                              shuffle=False, balance=self._balance)
-                    val_dataset = WinDataGen(X_val, y_val, self._ground_truth, win_size, overlap, batch_size,
-                                             shuffle=False, balance=self._balance, deliver_sets=False)
+                train_dataset = WinDataGen(
+                    X_train, y_train, self._ground_truth, win_size, overlap, batch_size, shuffle=True,
+                    balance=self._balance, encoder=encoder)
+                train_view_dataset = WinDataGen(
+                    X_train, y_train, self._ground_truth, win_size, overlap, batch_size,
+                    shuffle=False, balance=False, encoder=encoder)
+                test_dataset = WinDataGen(
+                    X_test, y_test, self._ground_truth, win_size, overlap, batch_size,
+                    shuffle=False, balance=False, encoder=encoder)
+                val_dataset = WinDataGen(
+                    X_val, y_val, self._ground_truth, win_size, overlap, batch_size,
+                    shuffle=False, balance=False, deliver_sets=False, encoder=encoder)
 
-                    combi = combination.copy()
-                    # combi.pop("win_size")
-                    combi.pop("overlap")
-                    model = model_config.model(**combi)
-                else:
-                    train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train[self._ground_truth].values))
-                    train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
-                    test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test[self._ground_truth].values)).batch(batch_size)
-                    train_view_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train[self._ground_truth].values)).batch(batch_size)
-                    val_dataset = tf.data.Dataset.from_tensor_slices((X_val, y_val[self._ground_truth].values)).batch(batch_size)
-                    model = model_config.model(**combination)
-
+                combi = combination.copy()
+                combi.pop("overlap")
+                model = model_config.model(**combi)
                 plot_cb = PerformancePlotCallback(train_view_dataset, test_dataset, val_dataset, join(cur_folder, val_subject))
 
                 with open(join(cur_folder, 'modelsummary.txt'), 'w') as f:
@@ -104,7 +100,7 @@ class DLOptimization(MLOptimization):
                     epochs=epochs,
                     validation_data=test_dataset,
                     batch_size=batch_size,
-                    callbacks=[es, plot_cb],
+                    callbacks=[es, plot_cb] if not encoder else [es],
                 )
 
                 predictions, ground_truth, sets = [], [], []
