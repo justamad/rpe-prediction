@@ -257,9 +257,9 @@ def prepare_segmented_data_for_ml(src_path: str, dst_path: str, mode: str, plot:
 
         # pos_df = calculate_linear_joint_positions(pos_df)
 
-        viewer = MoCapViewer()
-        viewer.add_skeleton(pos_df.iloc[:,:-1])
-        viewer.show_window()
+        # viewer = MoCapViewer()
+        # viewer.add_skeleton(pos_df.iloc[:,:-1])
+        # viewer.show_window()
 
         imu_features_df = extract_features(imu_df, column_id="Repetition", default_fc_parameters=settings)
         imu_features_df = impute(imu_features_df)  # Replace Nan and inf by with extreme values (min, max)
@@ -273,8 +273,8 @@ def prepare_segmented_data_for_ml(src_path: str, dst_path: str, mode: str, plot:
             [
                 pos_features_df.reset_index(drop=True).add_prefix(f"{mode.upper()}_KINECTPOS_"),
                 ori_features_df.reset_index(drop=True).add_prefix(f"{mode.upper()}_KINECTORI_"),
+                imu_features_df.reset_index(drop=True).add_prefix(f"{mode.upper()}_PHYSILOG_"),
                 flywheel_df.reset_index(drop=True).add_prefix("FLYWHEEL_"),
-                imu_features_df.reset_index(drop=True).add_prefix("PHYSILOG_"),
                 hrv_mean.reset_index(drop=True).add_prefix("HRV_"),
             ], axis=1,
         )
@@ -352,11 +352,11 @@ if __name__ == "__main__":
     os.makedirs(args.proc_path, exist_ok=True)
     os.makedirs(args.train_path, exist_ok=True)
 
-    process_all_raw_data(args.raw_path, args.proc_path, args.plot_path)
+    # process_all_raw_data(args.raw_path, args.proc_path, args.plot_path)
 
     # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="concentric", plot=args.show, plot_path=args.plot_path)
     # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="eccentric", plot=args.show, plot_path=args.plot_path)
     # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="full", plot=args.show, plot_path=args.plot_path)
 
     # prepare_segmented_data_for_dl(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
-    # prepare_data_dl_entire_trials(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
+    prepare_data_dl_entire_trials(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
