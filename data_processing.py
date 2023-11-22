@@ -314,19 +314,23 @@ def prepare_segmented_data_for_dl(src_path: str, dst_path: str, plot: bool, plot
 
 def prepare_data_dl_entire_trials(src_path: str, dst_path: str, plot: bool, plot_path: str):
     skeleton_images = []
+    imu_data = []
     labels = []
     for trial in iterate_segmented_data(src_path, mode="full", plot=plot, plot_path=plot_path):
         meta_dict, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
         skeleton_img = calculate_skeleton_images(pos_df, ori_df)
         skeleton_images.append(skeleton_img)
+        imu_data.append(imu_df.drop("Repetition", axis=1, inplace=False).values)
         hrv = hrv_df.mean().to_dict()
         labels.append({**meta_dict, **hrv})
 
     X = np.array(skeleton_images, dtype=object)
-    np.savez(join(dst_path, "X_lstm.npz"), X=X)
+    np.savez(join(dst_path, "X_kinect.npz"), X=X)
+    X = np.array(imu_data, dtype=object)
+    np.savez(join(dst_path, "X_imu.npz"), X=X)
 
     y = pd.DataFrame(labels)
-    y.to_csv(join(dst_path, "y_lstm.csv"))
+    y.to_csv(join(dst_path, "y.csv"))
 
 
 if __name__ == "__main__":

@@ -19,3 +19,4 @@ cycler
 pyarrow
 fastparquet
 tensorflow-addons
+keras-tuner

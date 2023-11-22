@@ -7,7 +7,7 @@ from imblearn.over_sampling import RandomOverSampler
 from typing import Union
 
 
-class WinDataGen(tf.keras.utils.Sequence):
+class SequenceGenerator(tf.keras.utils.Sequence):
 
     def __init__(
             self,
@@ -20,7 +20,6 @@ class WinDataGen(tf.keras.utils.Sequence):
             shuffle: bool = True,
             balance: bool = False,
             deliver_sets: bool = False,
-            encoder: bool = False,
     ):
         assert len(X) == len(y), "X and y must have the same length"
 
@@ -47,7 +46,6 @@ class WinDataGen(tf.keras.utils.Sequence):
 
         self._build_index()
         self._n_samples = len(self._index)
-        self._encoder = encoder
 
         print("Got samples: ", self._n_samples)
         print(f"Number of batches: {len(self)}")
@@ -79,11 +77,9 @@ class WinDataGen(tf.keras.utils.Sequence):
             X.append(self._X[file_c][win_idx:win_idx + self._win_size])
             y.append(label)
 
-        if self._encoder:
-            X_batch = np.array(X).reshape(self._batch_size, -1)
-            return X_batch, X_batch
-
-        return np.array(X), np.array(y)
+        X_batch = np.array(X)
+        y_batch = np.array(y)
+        return X_batch, y_batch
 
     def __len__(self):
         return self._n_samples // self._batch_size
@@ -93,7 +89,7 @@ if __name__ == '__main__':
     X = np.load("../../data/training/X_lstm.npz", allow_pickle=True)["X"]
     y = pd.read_csv("../../data/training/y_lstm.csv", index_col=0)
 
-    gen = WinDataGen(
+    gen = SequenceGenerator(
         X, y, label_col="Mean HR (1/min)", win_size=150, overlap=0.5, batch_size=4, shuffle=True, balance=False,
         deliver_sets=False
     )

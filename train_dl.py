@@ -13,7 +13,7 @@ from os import makedirs
 from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error, r2_score
 from scipy.stats import spearmanr
 from src.dataset import dl_normalize_data_3d_subject, aggregate_results
-from src.dl import AutoEncoderConfig, DLOptimization, CNNLSTMModelConfig
+from src.dl import DLOptimization
 
 from src.plot import (
     plot_sample_predictions,
@@ -32,13 +32,10 @@ def train_time_series_grid_search(
         balance: bool = True,
         task: str = "regression",
         search: str = "grid",
-        encoder: bool = False,
 ):
+    X = dl_normalize_data_3d_subject(X, y, method="std")
     opt = DLOptimization(X, y, balance=balance, task=task, mode=search, ground_truth=label)
-    if encoder:
-        opt.perform_grid_search_with_cv(AutoEncoderConfig(), log_path, encoder=encoder)
-    else:
-        opt.perform_grid_search_with_cv(CNNLSTMModelConfig(), log_path, encoder=encoder)
+    opt.perform_grid_search_with_cv(log_path, epochs=100, batch_size=8, win_size=150, overlap=0.97, patience=10)
 
 
 def evaluate_result_grid_search(src_path: str, dst_path: str, exp_name: str, aggregate: bool = False):
@@ -119,11 +116,10 @@ if __name__ == "__main__":
 
     X = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"]
     y = pd.read_csv(join(args.src_path, cfg["y_file"]), index_col=0)
-    X = dl_normalize_data_3d_subject(X, y, method="std")
 
     if args.train:
-        train_time_series_grid_search(X, y, cfg["label"], log_path, cfg["balance"], cfg["task"], cfg["search"],
-                                      cfg["encoder"], )
+        train_time_series_grid_search(X, y, cfg["label"], log_path, cfg["balance"], cfg["task"], cfg["search"])
+
     if args.eval:
         evaluate_result_grid_search(
             "data/dl_results/rpe/CNNLSTM", "data/dl_evaluation/rpe", exp_name="rpe", aggregate=True,

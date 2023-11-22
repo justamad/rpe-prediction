@@ -1,7 +1,7 @@
-X_file: X_lstm.npz
-y_file: y_lstm.csv
+X_file: X_kinect.npz
+y_file: y.csv
 label: rpe
-encoder: True
+encoder: False
 search: grid
 task: regression
 balance: False

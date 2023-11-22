@@ -12,15 +12,24 @@ from scipy.stats import spearmanr
 
 class PerformancePlotCallback(keras.callbacks.Callback):
 
-    def __init__(self, train_gen, test_gen, val_gen, log_path: str):
+    def __init__(self, train_gen, test_gen, val_gen, trial, log_path: str, gen_step: int = 5):
         super().__init__()
         self._train_gen = train_gen
         self._test_gen = test_gen
         self._val_gen = val_gen
         self._log_path = log_path
+        self._gen_step = gen_step
+        self._trial = trial
         os.makedirs(self._log_path, exist_ok=True)
 
     def on_epoch_end(self, epoch, logs=None):
+        if epoch % self._gen_step != 0:
+            return
+
+        # trial_dir = join(self._log_path, str(self._trial))
+
+        trial_dir = join(self._log_path, str(self._trial.number))
+
         logging.info(f"Plotting performance... for epoch {epoch}")
 
         train_pred, train_labels, train_title = self.evaluate_for_generator(self._train_gen, training=True)
