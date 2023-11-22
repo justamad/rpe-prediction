@@ -5,6 +5,7 @@ from .result_plots import (
     create_scatter_plot,
     create_bland_altman_plot,
     create_residual_plot,
+    create_model_performance_plot,
 )
 
 from .latex_tables import (

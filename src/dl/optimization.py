@@ -43,12 +43,13 @@ class DLOptimization(object):
             batch_size: int,
             win_size: int,
             overlap: float,
-            patience: int = 7,
+            patience: int,
+            verbose: int,
     ):
         es = tf.keras.callbacks.EarlyStopping(monitor="val_mse", patience=patience, restore_best_weights=True)
 
         for sub_idx, val_subject in enumerate(self._subjects):
-            logging.info(f"Start [{sub_idx}/{len(self._subjects) - 1}] - [{val_subject}]")
+            print(f"Start [{sub_idx}/{len(self._subjects) - 1}] - [{val_subject}]")
             cur_log_path = join(log_path, val_subject)
 
             subjects = list(self._subjects)
@@ -92,13 +93,13 @@ class DLOptimization(object):
             #     join(cur_log_path, val_subject)
             # )
 
-            tuner.search(train_dataset, epochs=epochs, validation_data=test_dataset, verbose=0, callbacks=[es])
+            tuner.search(train_dataset, epochs=epochs, validation_data=test_dataset, verbose=verbose, callbacks=[es])
             result_df = save_trials_to_dataframe(tuner)
             result_df.to_csv(join(cur_log_path, f"{val_subject}_tune_res.csv"))
 
             best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
             model = tuner.hypermodel.build(best_hps)
-            history = model.fit(train_dataset, epochs=epochs, validation_data=test_dataset, verbose=10, callbacks=[es])
+            history = model.fit(train_dataset, epochs=epochs, validation_data=test_dataset, verbose=verbose, callbacks=[es])
 
             plt.plot(history.history["loss"], label="train")
             plt.plot(history.history["val_loss"], label="test")

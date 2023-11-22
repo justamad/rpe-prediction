@@ -8,7 +8,7 @@ import matplotlib
 from typing import List, Union
 from datetime import datetime
 from argparse import ArgumentParser
-from os.path import join, exists
+from os.path import join, exists, basename
 from src.ml import MLOptimization, regression_models, instantiate_best_model, eliminate_features_rfecv
 
 from src.plot import (
@@ -20,6 +20,7 @@ from src.plot import (
     create_bland_altman_plot,
     create_scatter_plot,
     create_residual_plot,
+    create_model_performance_plot,
 )
 
 from src.dataset import (
@@ -122,6 +123,8 @@ def train_models_with_grid_search(
 def evaluate_entire_training_folder(src_path: str, aggregate: bool):
     for experiment in os.listdir(src_path):
         prediction_goal, experiment_name = experiment.split("_")
+
+        # Re-train models and perform all evaluations
         for root, _, files in os.walk(join(src_path, experiment)):
             if "config.yml" in files:
                 evaluate_experiment_path(
@@ -131,6 +134,11 @@ def evaluate_entire_training_folder(src_path: str, aggregate: bool):
                     files=files,
                     aggregate=aggregate,
                 )
+
+        # Collect all results and create a table
+        dst_path = join(src_path.replace("train", "test"), experiment)
+        result_df = collect_retrain_results(dst_path, "retrain_results.csv")
+        create_model_performance_plot(result_df, dst_path)
 
 
 def evaluate_experiment_path(
@@ -223,6 +231,19 @@ def retrain_model(result_path: str, model_file: str, dst_path: str) -> pd.DataFr
     res_df = opt.evaluate_model(model, config["normalization_labels"], config["label_mean"], config["label_std"])
     res_df.to_csv(result_filename)
     return res_df
+
+
+def collect_retrain_results(src_path: str, file_name: str) -> pd.DataFrame:
+    file_locations = []
+    for root, dirs, files in os.walk(src_path):
+        for file in files:
+            if file == file_name:
+                result_df = pd.read_csv(join(root, file), index_col=0)
+                temp_context = basename(root).split("_")[-1]
+                result_df["temporal_context"] = int(temp_context) if temp_context != "False" else 0
+                file_locations.append(result_df)
+
+    return pd.concat(file_locations, axis=0)
 
 
 if __name__ == "__main__":

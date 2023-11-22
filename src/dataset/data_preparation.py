@@ -1,10 +1,9 @@
-from typing import Tuple, Union, List
-from scipy import stats
-
 import numpy as np
 import pandas as pd
 import logging
 
+from typing import Tuple, Union, List
+from scipy import stats
 from sklearn.feature_selection import VarianceThreshold
 
 META_DATA = ["subject", "set_id", "rpe"]

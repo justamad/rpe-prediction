@@ -35,7 +35,9 @@ def train_time_series_grid_search(
 ):
     X = dl_normalize_data_3d_subject(X, y, method="std")
     opt = DLOptimization(X, y, balance=balance, task=task, mode=search, ground_truth=label)
-    opt.perform_grid_search_with_cv(log_path, epochs=100, batch_size=8, win_size=150, overlap=0.97, patience=10)
+    opt.perform_grid_search_with_cv(
+        log_path, epochs=100, batch_size=8, win_size=150, overlap=0.95, patience=10, verbose=10,
+    )
 
 
 def evaluate_result_grid_search(src_path: str, dst_path: str, exp_name: str, aggregate: bool = False):

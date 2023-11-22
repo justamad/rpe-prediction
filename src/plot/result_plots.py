@@ -293,3 +293,27 @@ def create_bland_altman_plot(
     plt.clf()
     plt.cla()
     plt.close()
+
+
+def create_model_performance_plot(result_df: pd.DataFrame, log_path: str, metric: str = "$R^{2}$"):
+    plt.figure(figsize=(text_width * cm * 0.5, text_width * cm * 0.5), dpi=dpi)
+
+    n_models = len(result_df["model"].unique())
+    spacing = 0.25
+    for idx, (model_name, model_df) in enumerate(result_df.groupby("model")):
+        model_df.sort_values(by="temporal_context", inplace=True)
+        x = model_df["temporal_context"].values
+        x_jittered = x + (idx * spacing - (n_models - 1) * spacing / 2)
+
+        y = model_df[f"{metric}_mean"].values
+        e = model_df[f"{metric}_std"].values
+        plt.errorbar(x_jittered, y, e, label=model_name, marker="o", capsize=3, markersize=2, alpha=1.0)
+
+    plt.xticks([0, 6, 9, 12])
+    plt.legend()
+    plt.ylabel("$R^{2}$")
+    plt.xlabel("Temporal Context")
+
+    plt.tight_layout()
+    plt.savefig(join(log_path, "model_performance.png"), dpi=dpi)
+    plt.close()
