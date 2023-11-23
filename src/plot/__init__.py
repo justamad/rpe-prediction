@@ -11,4 +11,5 @@ from .result_plots import (
 from .latex_tables import (
     create_train_table,
     create_retrain_table,
+    create_total_run_table,
 )

@@ -295,25 +295,31 @@ def create_bland_altman_plot(
     plt.close()
 
 
-def create_model_performance_plot(result_df: pd.DataFrame, log_path: str, metric: str = "$R^{2}$"):
-    plt.figure(figsize=(text_width * cm * 0.5, text_width * cm * 0.5), dpi=dpi)
+def create_model_performance_plot(df: pd.DataFrame, log_path: str, exp_name: str, metric: str, alt_name: str = None):
+    limits = {"MSE": (0, 16), "RMSE": (0, 4), "MAE": (0, 4), "MAPE": (0, 20), "$R^{2}$": (-5, 1),
+              "Spearman's $\\rho$": (0, 1)}
 
-    n_models = len(result_df["model"].unique())
+    plt.figure(figsize=(text_width * cm * 0.5, text_width * cm * 0.5), dpi=dpi)
+    n_models = len(df["model"].unique())
     spacing = 0.25
-    for idx, (model_name, model_df) in enumerate(result_df.groupby("model")):
+
+    for idx, (model_name, model_df) in enumerate(sorted(df.groupby("model"))):
         model_df.sort_values(by="temporal_context", inplace=True)
         x = model_df["temporal_context"].values
-        x_jittered = x + (idx * spacing - (n_models - 1) * spacing / 2)
+        x = x + (idx * spacing - (n_models - 1) * spacing / 2)
 
         y = model_df[f"{metric}_mean"].values
         e = model_df[f"{metric}_std"].values
-        plt.errorbar(x_jittered, y, e, label=model_name, marker="o", capsize=3, markersize=2, alpha=1.0)
+        plt.errorbar(x, y, e, label=model_name, marker="o", capsize=3, markersize=2, alpha=1.0)
 
     plt.xticks([0, 6, 9, 12])
+    plt.ylim(limits[metric])
     plt.legend()
-    plt.ylabel("$R^{2}$")
+    plt.ylabel(f"{metric}")
     plt.xlabel("Temporal Context")
+    best_score = df[f"{metric}_mean"].min()
+    plt.title("Top Score: {:.2f}".format(best_score))
 
     plt.tight_layout()
-    plt.savefig(join(log_path, "model_performance.png"), dpi=dpi)
+    plt.savefig(join(log_path, f"{exp_name}_{metric if alt_name is None else alt_name}.png"), dpi=dpi)
     plt.close()

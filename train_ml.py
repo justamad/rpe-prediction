@@ -21,6 +21,7 @@ from src.plot import (
     create_scatter_plot,
     create_residual_plot,
     create_model_performance_plot,
+    create_total_run_table,
 )
 
 from src.dataset import (
@@ -125,20 +126,24 @@ def evaluate_entire_training_folder(src_path: str, aggregate: bool):
         prediction_goal, experiment_name = experiment.split("_")
 
         # Re-train models and perform all evaluations
-        for root, _, files in os.walk(join(src_path, experiment)):
-            if "config.yml" in files:
-                evaluate_experiment_path(
-                    src_path=root,
-                    dst_path=root.replace("train", "test"),
-                    exp_name=prediction_goal,
-                    files=files,
-                    aggregate=aggregate,
-                )
+        # for root, _, files in os.walk(join(src_path, experiment)):
+        #     if "config.yml" in files:
+        #         evaluate_experiment_path(
+        #             src_path=root,
+        #             dst_path=root.replace("train", "test"),
+        #             exp_name=prediction_goal,
+        #             files=files,
+        #             aggregate=aggregate,
+        #         )
 
         # Collect all results and create a table
         dst_path = join(src_path.replace("train", "test"), experiment)
         result_df = collect_retrain_results(dst_path, "retrain_results.csv")
-        create_model_performance_plot(result_df, dst_path)
+        create_total_run_table(result_df, dst_path)
+
+        for metric in ["MSE", "RMSE", "MAE", "$R^{2}$", "MAPE"]:
+            create_model_performance_plot(result_df, dst_path, experiment_name, metric)
+        create_model_performance_plot(result_df, dst_path, experiment_name, "Spearman's $\\rho$", alt_name="Spearman")
 
 
 def evaluate_experiment_path(
@@ -305,17 +310,20 @@ if __name__ == "__main__":
                 train_models_with_grid_search(df, log_path, **config)
 
     if args.eval:
-        evaluate_entire_training_folder(args.exp_folder, aggregate=True)
+        # evaluate_entire_training_folder(args.exp_folder, aggregate=True)
 
-        # evaluate_entire_experiment_path("data/ml_results/poweravg", args.dst_path, "", aggregate=False)
-        #
-        # t_ml = pd.read_csv("data/ml_evaluation/rpe/retrain_results.csv", index_col=0)
-        # d_ml = pd.read_csv("data/dl_evaluation/rpe/retrain.csv", index_col=0)
-        # total_df = pd.concat([t_ml, d_ml], axis=1)
-        # total_df.to_latex("rpe.tex", column_format="l" + "r" * (len(total_df.columns)), escape=False)
-        #
-        # t_ml = pd.read_csv("data/ml_evaluation/poweravg/retrain_results.csv", index_col=0)
-        # d_ml = pd.read_csv("data/dl_evaluation/power/retrain.csv", index_col=0)
-        # p_ml = pd.read_csv("data/physics/results.csv", index_col=0)
-        # total_df = pd.concat([t_ml, d_ml, p_ml], axis=1)
-        # total_df.to_latex("power.tex", column_format="l" + "r" * (len(total_df.columns)), escape=False)
+        imu_df = pd.read_csv("results/ml/test/2023-11-16-16-45-14/rpe_imu/total_run_results.csv", index_col=0)
+        kinect_df = pd.read_csv("results/ml/test/2023-11-16-16-45-14/rpe_kinect/total_run_results.csv", index_col=0)
+
+        print(imu_df)
+        print(kinect_df)
+        models = ['IMU', 'Kinect']
+        metrics = imu_df.columns
+        list_tuples = [(a, b) for a in metrics for b in models]
+        print(list_tuples)
+
+        concatenated_df = pd.concat([imu_df, kinect_df], keys=models, axis=1)
+        print(concatenated_df)
+
+        concatenated_df.columns = pd.MultiIndex.from_tuples(list_tuples, names=["Metric", "Model"])
+        print(concatenated_df)

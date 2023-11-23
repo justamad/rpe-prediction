@@ -8,7 +8,7 @@ import random
 from .plot_callback import PerformancePlotCallback
 from .models import build_cnn_lstm_model
 from .seq_generator import SequenceGenerator
-from kerastuner.tuners import GridSearch
+from kerastuner.tuners import BayesianOptimization
 from typing import Union, List
 from os.path import join
 
@@ -45,6 +45,7 @@ class DLOptimization(object):
             overlap: float,
             patience: int,
             verbose: int,
+            max_iter: int,
     ):
         es = tf.keras.callbacks.EarlyStopping(monitor="val_mse", patience=patience, restore_best_weights=True)
 
@@ -66,10 +67,10 @@ class DLOptimization(object):
                 balance=self._balance,
             )
 
-            # train_view_dataset = WinDataGen(
-            #     X_train, y_train, self._ground_truth, win_size, overlap, batch_size,
-            #     shuffle=False, balance=False, encoder=encoder
-            # )
+            train_view_dataset = SequenceGenerator(
+                X_train, y_train, self._ground_truth, win_size, overlap, batch_size,
+                shuffle=False, balance=False,
+            )
 
             test_dataset = SequenceGenerator(
                 X_test, y_test, self._ground_truth, win_size, overlap, batch_size,
@@ -81,17 +82,17 @@ class DLOptimization(object):
                 shuffle=False, balance=False, deliver_sets=False,
             )
 
-            tuner = GridSearch(
-                build_cnn_lstm_model,
+            tuner = BayesianOptimization(
+                lambda hp: build_cnn_lstm_model(hp, win_size, n_features=51),
                 objective='val_mse',
+                max_trials=max_iter,
                 directory=cur_log_path,
                 project_name="CNN-LSTM",
             )
 
-            # plot_cb = PerformancePlotCallback(
-            #     train_view_dataset, test_dataset, val_dataset, oracle,
-            #     join(cur_log_path, val_subject)
-            # )
+            plot_cb = PerformancePlotCallback(
+                train_view_dataset, test_dataset, val_dataset, join(cur_log_path, val_subject), gen_step=1,
+            )
 
             tuner.search(train_dataset, epochs=epochs, validation_data=test_dataset, verbose=verbose, callbacks=[es])
             result_df = save_trials_to_dataframe(tuner)
@@ -99,7 +100,17 @@ class DLOptimization(object):
 
             best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
             model = tuner.hypermodel.build(best_hps)
-            history = model.fit(train_dataset, epochs=epochs, validation_data=test_dataset, verbose=verbose, callbacks=[es])
+            history = model.fit(
+                train_dataset,
+                epochs=epochs,
+                validation_data=test_dataset,
+                verbose=verbose,
+                callbacks=[es, plot_cb],
+            )
+
+            # Write model summary to file
+            with open(join(cur_log_path, f"{val_subject}_model_summary.txt"), "w") as f:
+                model.summary(print_fn=lambda x: f.write(x + "\n"))
 
             plt.plot(history.history["loss"], label="train")
             plt.plot(history.history["val_loss"], label="test")
@@ -111,7 +122,7 @@ class DLOptimization(object):
             plt.clf()
 
 
-def save_trials_to_dataframe(tuner: GridSearch) -> pd.DataFrame:
+def save_trials_to_dataframe(tuner: BayesianOptimization) -> pd.DataFrame:
     grid_search_df = pd.DataFrame()
     for trial in tuner.oracle.trials:
         trial_state = tuner.oracle.trials[trial].get_state()

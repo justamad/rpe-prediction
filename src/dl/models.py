@@ -12,10 +12,9 @@ from keras.layers import (
 )
 
 
-def build_cnn_lstm_model(hp):
-    # _, n_samples, n_features, n_channel = (None, win_size, 51, 1)
+def build_cnn_lstm_model(hp, win_size, n_features):
     model = keras.Sequential()
-    model.add(Input(shape=(150, 51)))
+    model.add(Input(shape=(win_size, n_features)))
 
     for i in range(hp.Choice('n_layers', values=[2, 3, 4])):
         model.add(Conv1D(
@@ -29,7 +28,7 @@ def build_cnn_lstm_model(hp):
         model.add(MaxPooling1D(pool_size=2))
 
     # model.add(Reshape((model.output_shape[1], model.output_shape[2]))) #  * model.output_shape[3])))
-    model.add(GRU(hp.Choice("gru_units", values=[8, 16, 32, 64, 128]), activation="tanh", return_sequences=False))
+    model.add(GRU(hp.Choice("gru_units", values=[8, 16, 32, 64, 128]), activation="relu", return_sequences=False))
     model.add(Dropout(0.5))
     model.add(Dense(1, activation="linear"))
 
