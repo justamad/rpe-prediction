@@ -24,19 +24,29 @@ from src.plot import (
 )
 
 
-def train_time_series_grid_search(
-        X: Union[np.ndarray, pd.DataFrame],
-        y: Union[np.ndarray, pd.DataFrame],
-        label: str,
-        log_path: str,
-        balance: bool = True,
-        task: str = "regression",
-        search: str = "grid",
-):
+def train_time_series_grid_search(src_path: str, log_path: str, **kwargs):
+    X = np.load(join(src_path, kwargs["X_file"]), allow_pickle=True)["X"]
+    y = pd.read_csv(join(src_path, kwargs["y_file"]), index_col=0)
+
     X = dl_normalize_data_3d_subject(X, y, method="std")
-    opt = DLOptimization(X, y, balance=balance, task=task, mode=search, ground_truth=label)
+
+    opt = DLOptimization(
+        X, y,
+        balance=kwargs["balance"],
+        task=kwargs["task"],
+        mode=kwargs["mode"],
+        ground_truth=kwargs["label"],
+    )
+
     opt.perform_grid_search_with_cv(
-        log_path, epochs=100, batch_size=8, win_size=150, overlap=0.95, patience=10, verbose=10, max_iter=100,
+        log_path,
+        epochs=kwargs["epochs"],
+        batch_size=kwargs["batch_size"],
+        win_size=kwargs["win_size"],
+        overlap=kwargs["overlap"],
+        patience=kwargs["patience"],
+        verbose=10,
+        max_iter=kwargs["max_iter"],
     )
 
 
@@ -100,7 +110,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_path", type=str, dest="log_path", default="results/dl/train")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/dl")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation_dl")
-    parser.add_argument("--exp_file", type=str, dest="exp_file", default="rpe.yaml")
+    parser.add_argument("--exp_file", type=str, dest="exp_file", default="rpe_imu.yaml")
     parser.add_argument("--train", type=bool, dest="train", default=True)
     parser.add_argument("--eval", type=bool, dest="eval", default=False)
     parser.add_argument("--use_gpu", type=bool, dest="use_gpu", default=True)
@@ -113,14 +123,11 @@ if __name__ == "__main__":
         os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
     cfg = yaml.load(open(join(args.exp_path, args.exp_file), "r"), Loader=yaml.FullLoader)
-    log_path = join(args.log_path, datetime.now().strftime("%Y%m%d-%H%M%S"))
-    os.makedirs(log_path, exist_ok=True)
-
-    X = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"]
-    y = pd.read_csv(join(args.src_path, cfg["y_file"]), index_col=0)
 
     if args.train:
-        train_time_series_grid_search(X, y, cfg["label"], log_path, cfg["balance"], cfg["task"], cfg["search"])
+        log_path = join(args.log_path, datetime.now().strftime("%Y%m%d-%H%M%S"))
+        os.makedirs(log_path, exist_ok=True)
+        train_time_series_grid_search(src_path=args.src_path, log_path=log_path, **cfg)
 
     if args.eval:
         evaluate_result_grid_search(

@@ -48,6 +48,7 @@ class DLOptimization(object):
             max_iter: int,
     ):
         es = tf.keras.callbacks.EarlyStopping(monitor="val_mse", patience=patience, restore_best_weights=True)
+        n_features = self._X[0].shape[-1]
 
         for sub_idx, val_subject in enumerate(self._subjects):
             print(f"Start [{sub_idx}/{len(self._subjects) - 1}] - [{val_subject}]")
@@ -83,7 +84,7 @@ class DLOptimization(object):
             )
 
             tuner = BayesianOptimization(
-                lambda hp: build_cnn_lstm_model(hp, win_size, n_features=51),
+                lambda hp: build_cnn_lstm_model(hp, win_size, n_features=n_features),
                 objective='val_mse',
                 max_trials=max_iter,
                 directory=cur_log_path,

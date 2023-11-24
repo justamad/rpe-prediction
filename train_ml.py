@@ -314,16 +314,10 @@ if __name__ == "__main__":
 
         imu_df = pd.read_csv("results/ml/test/2023-11-16-16-45-14/rpe_imu/total_run_results.csv", index_col=0)
         kinect_df = pd.read_csv("results/ml/test/2023-11-16-16-45-14/rpe_kinect/total_run_results.csv", index_col=0)
+        both_df = pd.read_csv("results/ml/test/2023-11-16-16-45-14/rpe_both/total_run_results.csv", index_col=0)
 
-        print(imu_df)
-        print(kinect_df)
-        models = ['IMU', 'Kinect']
-        metrics = imu_df.columns
-        list_tuples = [(a, b) for a in metrics for b in models]
-        print(list_tuples)
-
-        concatenated_df = pd.concat([imu_df, kinect_df], keys=models, axis=1)
-        print(concatenated_df)
-
-        concatenated_df.columns = pd.MultiIndex.from_tuples(list_tuples, names=["Metric", "Model"])
-        print(concatenated_df)
+        result_df = pd.concat([imu_df, kinect_df, both_df], axis=1, keys=["IMU", "Kinect", "Both"],
+                              names=["Metrics", None])
+        result_df = result_df.swaplevel(0, 1, axis=1)
+        result_df = result_df.sort_index(axis=1, level=0, ascending=False)
+        result_df.to_latex("results/ml/test/2023-11-16-16-45-14/total_run_results_latex.txt", escape=False)

@@ -1,8 +1,0 @@
-X_file: X_kinect.npz
-y_file: y.csv
-label: rpe
-encoder: False
-search: grid
-task: regression
-balance: False
-n_splits: 16
