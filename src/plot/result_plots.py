@@ -121,6 +121,7 @@ def create_residual_plot(
         differences = ground_truth - prediction
         plt.plot(ground_truth, differences, "o", color=hsv_colors[idx], markersize=2)
 
+    plt.ylim(-4.5, 4.5)
     plt.axhline(y=0, color="black", linestyle="--")
     plt.xlabel("Ground Truth")
     plt.ylabel("Residual (Ground Truth - Prediction)")
@@ -297,7 +298,10 @@ def create_bland_altman_plot(
 
 def create_model_performance_plot(df: pd.DataFrame, log_path: str, exp_name: str, metric: str, alt_name: str = None):
     limits = {"MSE": (0, 16), "RMSE": (0, 4), "MAE": (0, 4), "MAPE": (0, 20), "$R^{2}$": (-5, 1),
-              "Spearman's $\\rho$": (0, 1)}
+              "Spearman's $\\rho$": (-0.2, 1.05)}
+
+    min_max = {"MSE": "min", "RMSE": "min", "MAE": "min", "MAPE": "min", "$R^{2}$": "max", "Spearman's $\\rho$": "max"}
+    yticks = {"Spearman's $\\rho$": [-0.2, 0, 0.2, 0.4, 0.6, 0.8, 1.0]}
 
     plt.figure(figsize=(text_width * cm * 0.5, text_width * cm * 0.5), dpi=dpi)
     n_models = len(df["model"].unique())
@@ -313,11 +317,15 @@ def create_model_performance_plot(df: pd.DataFrame, log_path: str, exp_name: str
         plt.errorbar(x, y, e, label=model_name, marker="o", capsize=3, markersize=2, alpha=1.0)
 
     plt.xticks([0, 6, 9, 12])
+
+    if metric in yticks:
+        plt.yticks(yticks[metric])
+
     plt.ylim(limits[metric])
     plt.legend()
     plt.ylabel(f"{metric}")
     plt.xlabel("Temporal Context")
-    best_score = df[f"{metric}_mean"].min()
+    best_score = df[f"{metric}_mean"].min() if min_max[metric] == "min" else df[f"{metric}_mean"].max()
     plt.title("Top Score: {:.2f}".format(best_score))
 
     plt.tight_layout()

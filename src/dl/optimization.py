@@ -1,4 +1,3 @@
-import logging
 import pandas as pd
 import numpy as np
 import tensorflow as tf
@@ -48,6 +47,7 @@ class DLOptimization(object):
             max_iter: int,
     ):
         es = tf.keras.callbacks.EarlyStopping(monitor="val_mse", patience=patience, restore_best_weights=True)
+
         n_features = self._X[0].shape[-1]
 
         for sub_idx, val_subject in enumerate(self._subjects):
@@ -88,7 +88,7 @@ class DLOptimization(object):
                 objective='val_mse',
                 max_trials=max_iter,
                 directory=cur_log_path,
-                project_name="CNN-LSTM",
+                project_name="optimization",
             )
 
             plot_cb = PerformancePlotCallback(
@@ -97,7 +97,7 @@ class DLOptimization(object):
 
             tuner.search(train_dataset, epochs=epochs, validation_data=test_dataset, verbose=verbose, callbacks=[es])
             result_df = save_trials_to_dataframe(tuner)
-            result_df.to_csv(join(cur_log_path, f"{val_subject}_tune_res.csv"))
+            result_df.to_csv(join(cur_log_path, f"tune_results.csv"))
 
             best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
             model = tuner.hypermodel.build(best_hps)
@@ -109,8 +109,7 @@ class DLOptimization(object):
                 callbacks=[es, plot_cb],
             )
 
-            # Write model summary to file
-            with open(join(cur_log_path, f"{val_subject}_model_summary.txt"), "w") as f:
+            with open(join(cur_log_path, "model_summary.txt"), "w") as f:
                 model.summary(print_fn=lambda x: f.write(x + "\n"))
 
             plt.plot(history.history["loss"], label="train")
@@ -118,7 +117,7 @@ class DLOptimization(object):
             plt.title(f"Model Loss for {val_subject}")
             plt.legend()
             plt.tight_layout()
-            plt.savefig(join(cur_log_path, f"{val_subject}_loss.png"))
+            plt.savefig(join(cur_log_path, f"loss.png"))
             plt.close()
             plt.clf()
 

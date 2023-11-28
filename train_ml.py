@@ -126,15 +126,15 @@ def evaluate_entire_training_folder(src_path: str, aggregate: bool):
         prediction_goal, experiment_name = experiment.split("_")
 
         # Re-train models and perform all evaluations
-        # for root, _, files in os.walk(join(src_path, experiment)):
-        #     if "config.yml" in files:
-        #         evaluate_experiment_path(
-        #             src_path=root,
-        #             dst_path=root.replace("train", "test"),
-        #             exp_name=prediction_goal,
-        #             files=files,
-        #             aggregate=aggregate,
-        #         )
+        for root, _, files in os.walk(join(src_path, experiment)):
+            if "config.yml" in files:
+                evaluate_experiment_path(
+                    src_path=root,
+                    dst_path=root.replace("train", "test"),
+                    exp_name=prediction_goal,
+                    files=files,
+                    aggregate=aggregate,
+                )
 
         # Collect all results and create a table
         dst_path = join(src_path.replace("train", "test"), experiment)
@@ -310,14 +310,14 @@ if __name__ == "__main__":
                 train_models_with_grid_search(df, log_path, **config)
 
     if args.eval:
-        # evaluate_entire_training_folder(args.exp_folder, aggregate=True)
+        evaluate_entire_training_folder(args.exp_folder, aggregate=True)
 
-        imu_df = pd.read_csv("results/ml/test/2023-11-16-16-45-14/rpe_imu/total_run_results.csv", index_col=0)
-        kinect_df = pd.read_csv("results/ml/test/2023-11-16-16-45-14/rpe_kinect/total_run_results.csv", index_col=0)
-        both_df = pd.read_csv("results/ml/test/2023-11-16-16-45-14/rpe_both/total_run_results.csv", index_col=0)
-
-        result_df = pd.concat([imu_df, kinect_df, both_df], axis=1, keys=["IMU", "Kinect", "Both"],
-                              names=["Metrics", None])
-        result_df = result_df.swaplevel(0, 1, axis=1)
-        result_df = result_df.sort_index(axis=1, level=0, ascending=False)
-        result_df.to_latex("results/ml/test/2023-11-16-16-45-14/total_run_results_latex.txt", escape=False)
+        # imu_df = pd.read_csv("results/ml/test/2023-11-16-16-45-14/rpe_imu/total_run_results.csv", index_col=0)
+        # kinect_df = pd.read_csv("results/ml/test/2023-11-16-16-45-14/rpe_kinect/total_run_results.csv", index_col=0)
+        # both_df = pd.read_csv("results/ml/test/2023-11-16-16-45-14/rpe_both/total_run_results.csv", index_col=0)
+        #
+        # result_df = pd.concat([imu_df, kinect_df, both_df], axis=1, keys=["IMU", "Kinect", "Both"],
+        #                       names=["Metrics", None])
+        # result_df = result_df.swaplevel(0, 1, axis=1)
+        # result_df = result_df.sort_index(axis=1, level=0, ascending=False)
+        # result_df.to_latex("results/ml/test/2023-11-16-16-45-14/total_run_results_latex.txt", escape=False)

@@ -110,7 +110,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_path", type=str, dest="log_path", default="results/dl/train")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/dl")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation_dl")
-    parser.add_argument("--exp_file", type=str, dest="exp_file", default="rpe_imu.yaml")
+    parser.add_argument("--exp_file", type=str, dest="exp_file", default="rpe_kinect.yaml")
     parser.add_argument("--train", type=bool, dest="train", default=True)
     parser.add_argument("--eval", type=bool, dest="eval", default=False)
     parser.add_argument("--use_gpu", type=bool, dest="use_gpu", default=True)
@@ -131,20 +131,5 @@ if __name__ == "__main__":
 
     if args.eval:
         evaluate_result_grid_search(
-            "data/dl_results/rpe/CNNLSTM", "data/dl_evaluation/rpe", exp_name="rpe", aggregate=True,
+            "data/dl_results/rpe/CNNLSTM", "data/dl_evaluation/rpe", exp_name="rpe", aggregate=True
         )
-    # else:
-    #     X = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"]
-    #     y = pd.read_csv(join(args.src_path, cfg["y_file"]))
-    #
-    #     X = dl_normalize_data_3d_global(X, method="min_max")
-    #     X = zero_pad_dataset(X, 170)
-    #     X, y = filter_labels_outliers_per_subject(X, y, cfg["label"], sigma=3.0)
-    #
-    #     if args.train:
-    #         train_time_series_grid_search(X, y, cfg["label"], lstm=False)
-    #     if args.eval:
-    #         evaluate_result_grid_search(
-    #             "data/dl_results/power/CONV2D", "data/dl_evaluation/power", exp_name="poweravg",
-    #             aggregate=False,
-    #         )
