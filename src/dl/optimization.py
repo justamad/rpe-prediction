@@ -46,7 +46,9 @@ class DLOptimization(object):
             verbose: int,
             max_iter: int,
     ):
-        es = tf.keras.callbacks.EarlyStopping(monitor="val_mse", patience=patience, restore_best_weights=True)
+        es = tf.keras.callbacks.EarlyStopping(
+            monitor="val_mse", patience=patience, restore_best_weights=True, start_from_epoch=10
+        )
 
         n_features = self._X[0].shape[-1]
 

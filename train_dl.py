@@ -5,7 +5,6 @@ import yaml
 import os
 import matplotlib
 
-from typing import Union
 from datetime import datetime
 from argparse import ArgumentParser
 from os.path import join
@@ -110,7 +109,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_path", type=str, dest="log_path", default="results/dl/train")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/dl")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation_dl")
-    parser.add_argument("--exp_file", type=str, dest="exp_file", default="rpe_kinect.yaml")
+    parser.add_argument("--exp_file", type=str, dest="exp_file", default="rpe_imu.yaml")
     parser.add_argument("--train", type=bool, dest="train", default=True)
     parser.add_argument("--eval", type=bool, dest="eval", default=False)
     parser.add_argument("--use_gpu", type=bool, dest="use_gpu", default=True)
