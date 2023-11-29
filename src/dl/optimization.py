@@ -4,7 +4,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import random
 
-from .plot_callback import PerformancePlotCallback
+from .plot_callback import ProgressPlotCallback
 from .models import build_cnn_lstm_model
 from .seq_generator import SequenceGenerator
 from kerastuner.tuners import BayesianOptimization
@@ -49,7 +49,6 @@ class DLOptimization(object):
         es = tf.keras.callbacks.EarlyStopping(
             monitor="val_mse", patience=patience, restore_best_weights=True, start_from_epoch=10
         )
-
         n_features = self._X[0].shape[-1]
 
         for sub_idx, val_subject in enumerate(self._subjects):
@@ -82,7 +81,7 @@ class DLOptimization(object):
 
             val_dataset = SequenceGenerator(
                 X_val, y_val, self._ground_truth, win_size, overlap, batch_size,
-                shuffle=False, balance=False, deliver_sets=False,
+                shuffle=False, balance=False, deliver_sets=True,
             )
 
             tuner = BayesianOptimization(
@@ -93,8 +92,8 @@ class DLOptimization(object):
                 project_name="optimization",
             )
 
-            plot_cb = PerformancePlotCallback(
-                train_view_dataset, test_dataset, val_dataset, join(cur_log_path, val_subject), gen_step=1,
+            plot_cb = ProgressPlotCallback(
+                train_view_dataset, test_dataset, val_dataset, join(cur_log_path, "losses"), gen_step=1,
             )
 
             tuner.search(train_dataset, epochs=epochs, validation_data=test_dataset, verbose=verbose, callbacks=[es])
@@ -110,6 +109,19 @@ class DLOptimization(object):
                 verbose=verbose,
                 callbacks=[es, plot_cb],
             )
+
+            predictions = []
+            labels = []
+            for i in range(len(val_dataset)):
+                X_batch, y_batch = val_dataset[i]
+                pred = np.array(model(X_batch, training=False))
+                predictions.extend(list(pred.reshape(-1)))
+                labels.extend(list(y_batch))
+
+            labels = np.array(labels)
+            eval_dataset = pd.DataFrame({"predictions": predictions, "set_id": labels[:, 0], "rpe": labels[:, 1]})
+            eval_dataset["subject"] = val_subject
+            eval_dataset.to_csv(join(cur_log_path, "eval_dataset.csv"))
 
             with open(join(cur_log_path, "model_summary.txt"), "w") as f:
                 model.summary(print_fn=lambda x: f.write(x + "\n"))

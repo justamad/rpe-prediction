@@ -10,7 +10,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, m
 from scipy.stats import spearmanr
 
 
-class PerformancePlotCallback(keras.callbacks.Callback):
+class ProgressPlotCallback(keras.callbacks.Callback):
 
     def __init__(self, train_gen, test_gen, val_gen, log_path: str, gen_step: int = 5):
         super().__init__()
@@ -67,8 +67,8 @@ class PerformancePlotCallback(keras.callbacks.Callback):
         else:
             for i in range(len(generator)):
                 X_batch, y_batch = generator[i]
-                # if len(y_batch.shape) == 2:
-                #     y_batch = y_batch[:, 0]
+                if len(y_batch.shape) == 2:
+                    y_batch = y_batch[:, 0]
 
                 pred = np.array(self.model(X_batch, training=training))  # .reshape(-1)
                 predictions.extend(list(pred))

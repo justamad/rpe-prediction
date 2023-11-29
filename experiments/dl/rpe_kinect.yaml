@@ -5,8 +5,8 @@ mode: bayesian
 task: regression
 balance: True
 epochs: 100
-batch_size: 8
-win_size: 150
-overlap: 0.95
+batch_size: 16
+win_size: 90
+overlap: 0.90
 patience: 10
 max_iter: 50

@@ -3,8 +3,8 @@ import pandas as pd
 import tensorflow as tf
 import math
 
+from typing import Union, Tuple
 from imblearn.over_sampling import RandomOverSampler
-from typing import Union
 
 
 class SequenceGenerator(tf.keras.utils.Sequence):
@@ -46,9 +46,7 @@ class SequenceGenerator(tf.keras.utils.Sequence):
 
         self._build_index()
         self._n_samples = len(self._index)
-
-        print("Got samples: ", self._n_samples)
-        print(f"Number of batches: {len(self)}")
+        print(self)
 
     def on_epoch_end(self):
         self._build_index()
@@ -57,7 +55,8 @@ class SequenceGenerator(tf.keras.utils.Sequence):
         indices = []
         for file_counter, (input_arr, label) in enumerate(zip(self._X, self._y)):
             n_windows = math.floor((len(input_arr) - self._win_size) / self._stride) + 1
-            indices.extend([(file_counter, i, label) for i in range(0, n_windows, self._stride)])
+            indices.extend([(file_counter, i * self._stride, label) for i in range(n_windows)])
+            # print(n_windows, len(indices))
 
         self._index = np.array(indices)
 
@@ -84,18 +83,61 @@ class SequenceGenerator(tf.keras.utils.Sequence):
     def __len__(self):
         return self._n_samples // self._batch_size
 
+    def __repr__(self):
+        return f"SequenceGenerator: Got samples: {self._n_samples} in {len(self)} batches."
+
+
+class DualSequenceGenerator(object):
+
+    def __init__(
+            self,
+            X: Tuple[np.ndarray, np.ndarray],
+            y: Union[np.ndarray, pd.DataFrame],
+            sampling_frequencies: Tuple[int, int],
+            label_col: str,
+            win_size: int,  # in seconds
+            overlap: float,
+            batch_size: int,
+            shuffle: bool = True,
+            balance: bool = False,
+            deliver_sets: bool = False,
+    ):
+        super().__init__(X[0], y, label_col, win_size, overlap, batch_size, shuffle, balance, deliver_sets)
+        self._X2 = X[1]
+        self._index_factor = 30 / 128
+
+    def __getitem__(self, idx: int):
+        X1, X2, y = [], [], []
+        for file_c, win_idx, label in self._index[idx * self._batch_size:idx * self._batch_size + self._batch_size]:
+            file_c = int(file_c)
+            win_idx = int(win_idx)
+            X1.append(self._X[file_c][win_idx:win_idx + self._win_size])
+            y.append(label)
+
+        X1_batch = np.array(X1)
+        X2_batch = np.array(X2)
+        y_batch = np.array(y)
+        return X1_batch, X2_batch, y_batch
+
 
 if __name__ == '__main__':
-    X = np.load("../../data/training/X_lstm.npz", allow_pickle=True)["X"]
-    y = pd.read_csv("../../data/training/y_lstm.csv", index_col=0)
+    X_imu = np.load("../../data/training/X_imu.npz", allow_pickle=True)["X"]
+    X_kinect = np.load("../../data/training/X_kinect.npz", allow_pickle=True)["X"]
+    y = pd.read_csv("../../data/training/y.csv", index_col=0)
 
+    print(len(X_kinect))
     gen = SequenceGenerator(
-        X, y, label_col="Mean HR (1/min)", win_size=150, overlap=0.5, batch_size=4, shuffle=True, balance=False,
-        deliver_sets=False
+        X_imu, y, label_col="rpe", win_size=384, overlap=0.9, batch_size=16,
+        shuffle=True, balance=False, deliver_sets=False,
     )
 
-    for batch_idx in range(len(gen)):
-        x, y = gen[batch_idx]
-        if len(y.shape) == 2:
-            print(y[:, 0])
-        print(x.shape, y.shape)
+    gen = SequenceGenerator(
+        X_kinect, y, label_col="rpe", win_size=90, overlap=0.9, batch_size=16,
+        shuffle=True, balance=False, deliver_sets=False,
+    )
+
+    # for batch_idx in range(len(gen)):
+    #     x, y = gen[batch_idx]
+    #     if len(y.shape) == 2:
+    #         print(y[:, 0])
+    #     print(x.shape, y.shape)
