@@ -108,7 +108,7 @@ if __name__ == "__main__":
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
     parser.add_argument("--log_path", type=str, dest="log_path", default="results/dl/train")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/dl")
-    parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation_dl")
+    parser.add_argument("--restore_path", type=str, dest="restore_path", default="20231130-112843")
     parser.add_argument("--exp_file", type=str, dest="exp_file", default="rpe_imu.yaml")
     parser.add_argument("--train", type=bool, dest="train", default=True)
     parser.add_argument("--eval", type=bool, dest="eval", default=False)
@@ -124,8 +124,12 @@ if __name__ == "__main__":
     cfg = yaml.load(open(join(args.exp_path, args.exp_file), "r"), Loader=yaml.FullLoader)
 
     if args.train:
-        log_path = join(args.log_path, datetime.now().strftime("%Y%m%d-%H%M%S"))
-        os.makedirs(log_path, exist_ok=True)
+        if args.restore_path:
+            log_path = join(args.log_path, args.restore_path)
+        else:
+            log_path = join(args.log_path, datetime.now().strftime("%Y%m%d-%H%M%S"))
+            os.makedirs(log_path, exist_ok=True)
+
         train_time_series_grid_search(src_path=args.src_path, log_path=log_path, **cfg)
 
     if args.eval:

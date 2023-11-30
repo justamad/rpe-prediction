@@ -53,12 +53,16 @@ class SequenceGenerator(tf.keras.utils.Sequence):
 
     def _build_index(self):
         indices = []
+        labels = []
         for file_counter, (input_arr, label) in enumerate(zip(self._X, self._y)):
             n_windows = math.floor((len(input_arr) - self._win_size) / self._stride) + 1
-            indices.extend([(file_counter, i * self._stride, label) for i in range(n_windows)])
+            indices.extend([(file_counter, i * self._stride) for i in range(n_windows)])
+            labels.extend([label] * n_windows)
             # print(n_windows, len(indices))
 
-        self._index = np.array(indices)
+        indices = np.array(indices)
+        labels = np.array(labels).reshape(len(indices), -1)
+        self._index = np.hstack((np.array(indices), np.array(labels)))
 
         if self._balance:
             indices, labels = self._index[:, :-1], self._index[:, -1]
@@ -70,9 +74,14 @@ class SequenceGenerator(tf.keras.utils.Sequence):
 
     def __getitem__(self, idx: int):
         X, y = [], []
-        for file_c, win_idx, label in self._index[idx * self._batch_size:idx * self._batch_size + self._batch_size]:
-            file_c = int(file_c)
-            win_idx = int(win_idx)
+        for ele in self._index[idx * self._batch_size:idx * self._batch_size + self._batch_size]:
+            if len(ele) == 3:
+                file_c, win_idx, label = int(ele[0]), int(ele[1]), ele[2]
+            elif len(ele) == 4:
+                file_c, win_idx, label = int(ele[0]), int(ele[1]), ele[2:]
+            else:
+                raise ValueError(f"Invalid index element: {ele}")
+
             X.append(self._X[file_c][win_idx:win_idx + self._win_size])
             y.append(label)
 
@@ -128,13 +137,14 @@ if __name__ == '__main__':
     print(len(X_kinect))
     gen = SequenceGenerator(
         X_imu, y, label_col="rpe", win_size=384, overlap=0.9, batch_size=16,
-        shuffle=True, balance=False, deliver_sets=False,
+        shuffle=True, balance=False, deliver_sets=True,
     )
+    print(gen[0])
 
-    gen = SequenceGenerator(
-        X_kinect, y, label_col="rpe", win_size=90, overlap=0.9, batch_size=16,
-        shuffle=True, balance=False, deliver_sets=False,
-    )
+    # gen = SequenceGenerator(
+    #     X_kinect, y, label_col="rpe", win_size=90, overlap=0.9, batch_size=16,
+    #     shuffle=True, balance=False, deliver_sets=False,
+    # )
 
     # for batch_idx in range(len(gen)):
     #     x, y = gen[batch_idx]

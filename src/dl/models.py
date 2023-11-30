@@ -6,6 +6,7 @@ from keras.layers import (
     BatchNormalization,
     GRU,
     Dropout,
+    Activation,
     Dense,
     Conv1D,
     MaxPooling1D,
@@ -45,14 +46,15 @@ def build_cnn_lstm_model(hp, win_size, n_features):
 
     for i in range(hp.Choice('n_layers', values=[2, 3])):
         model.add(Conv1D(
-            filters=hp.Choice('filters_1', values=[32, 64]) * (2 ** i),
-            kernel_size=hp.Choice('kernel_size_1', values=[3, 7, 11]),
+            filters=hp.Choice(f"filters_{i+1}", values=[32, 64]) * (2 ** i),
+            kernel_size=hp.Choice(f"kernel_size_{i+1}", values=[3, 7, 11]),
             padding="valid",
-            activation="relu",
+            activation=None,
             kernel_regularizer=l2(0.01),
         ))
         model.add(BatchNormalization())
         model.add(MaxPooling1D(pool_size=2))
+        model.add(Activation("relu"))
 
     # model.add(Reshape((model.output_shape[1], model.output_shape[2]))) #  * model.output_shape[3])))
     model.add(GRU(hp.Choice("gru_units", values=[8, 16, 32, 64, 128]), activation="tanh", return_sequences=False))
