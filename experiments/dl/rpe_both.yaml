@@ -1,0 +1,12 @@
+X_file: [X_kinect.npz, X_imu.npz]
+y_file: y.csv
+label: rpe
+mode: bayesian
+task: regression
+balance: True
+epochs: 100
+batch_size: 16
+win_size: 90
+overlap: 0.90
+patience: 10
+max_iter: 50
