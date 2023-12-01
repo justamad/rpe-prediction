@@ -46,8 +46,8 @@ def build_cnn_lstm_model(hp, win_size, n_features):
 
     for i in range(hp.Choice('n_layers', values=[2, 3])):
         model.add(Conv1D(
-            filters=hp.Choice(f"filters_{i+1}", values=[32, 64]) * (2 ** i),
-            kernel_size=hp.Choice(f"kernel_size_{i+1}", values=[3, 7, 11]),
+            filters=hp.Choice(f"n_filters", values=[32, 64]) * (2 ** i),
+            kernel_size=hp.Choice(f"kernel_size", values=[3, 7, 11]),
             padding="valid",
             activation=None,
             kernel_regularizer=l2(0.01),

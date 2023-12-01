@@ -5,6 +5,7 @@ import yaml
 import os
 import matplotlib
 
+from typing import Dict
 from datetime import datetime
 from argparse import ArgumentParser
 from os.path import join
@@ -23,30 +24,14 @@ from src.plot import (
 )
 
 
-def train_time_series_grid_search(src_path: str, log_path: str, **kwargs):
-    X = np.load(join(src_path, kwargs["X_file"]), allow_pickle=True)["X"]
-    y = pd.read_csv(join(src_path, kwargs["y_file"]), index_col=0)
+def train_time_series_grid_search(src_path: str, log_path: str, cfg: Dict[str, str]):
+    X = np.load(join(src_path, cfg.pop("X_file")), allow_pickle=True)["X"]
+    y = pd.read_csv(join(src_path, cfg.pop("y_file")), index_col=0)
 
     X = dl_normalize_data_3d_subject(X, y, method="std")
 
-    opt = DLOptimization(
-        X, y,
-        balance=kwargs["balance"],
-        task=kwargs["task"],
-        mode=kwargs["mode"],
-        ground_truth=kwargs["label"],
-    )
-
-    opt.perform_grid_search_with_cv(
-        log_path,
-        epochs=kwargs["epochs"],
-        batch_size=kwargs["batch_size"],
-        win_size=kwargs["win_size"],
-        overlap=kwargs["overlap"],
-        patience=kwargs["patience"],
-        verbose=10,
-        max_iter=kwargs["max_iter"],
-    )
+    opt = DLOptimization(X=X, y=y, **cfg)
+    opt.perform_grid_search_with_cv(log_path)
 
 
 def evaluate_result_grid_search(src_path: str, dst_path: str, exp_name: str, aggregate: bool = False):
@@ -108,7 +93,7 @@ if __name__ == "__main__":
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
     parser.add_argument("--log_path", type=str, dest="log_path", default="results/dl/train")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/dl")
-    parser.add_argument("--restore_path", type=str, dest="restore_path", default="20231130-112843")
+    parser.add_argument("--restore_path", type=str, dest="restore_path", default="")
     parser.add_argument("--exp_file", type=str, dest="exp_file", default="rpe_imu.yaml")
     parser.add_argument("--train", type=bool, dest="train", default=True)
     parser.add_argument("--eval", type=bool, dest="eval", default=False)
@@ -130,7 +115,7 @@ if __name__ == "__main__":
             log_path = join(args.log_path, datetime.now().strftime("%Y%m%d-%H%M%S"))
             os.makedirs(log_path, exist_ok=True)
 
-        train_time_series_grid_search(src_path=args.src_path, log_path=log_path, **cfg)
+        train_time_series_grid_search(src_path=args.src_path, log_path=log_path, cfg=cfg)
 
     if args.eval:
         evaluate_result_grid_search(

@@ -19,19 +19,19 @@ class SequenceGenerator(tf.keras.utils.Sequence):
             batch_size: int,
             shuffle: bool = True,
             balance: bool = False,
-            deliver_sets: bool = False,
+            meta_data: bool = False,
     ):
         assert len(X) == len(y), "X and y must have the same length"
 
         if label_col not in y.columns:
-            raise ValueError(f"Label column {label_col} not in y")
+            raise ValueError(f"Label column {label_col} not in y.")
 
-        if deliver_sets and "set_id" not in y.columns:
-            raise ValueError("If deliver_sets is True, y must have a column named set")
+        if meta_data and not any([c in y.columns for c in ["set_id", "subject"]]):
+            raise ValueError("Meta data is not in y.")
 
         self._X = X
-        if deliver_sets:
-            self._y = y[[label_col, "set_id"]].values
+        if meta_data:
+            self._y = y[[label_col, "set_id", "subject"]].values
         else:
             self._y = y[label_col].values
 
@@ -77,7 +77,7 @@ class SequenceGenerator(tf.keras.utils.Sequence):
         for ele in self._index[idx * self._batch_size:idx * self._batch_size + self._batch_size]:
             if len(ele) == 3:
                 file_c, win_idx, label = int(ele[0]), int(ele[1]), ele[2]
-            elif len(ele) == 4:
+            elif len(ele) > 4:
                 file_c, win_idx, label = int(ele[0]), int(ele[1]), ele[2:]
             else:
                 raise ValueError(f"Invalid index element: {ele}")
@@ -136,8 +136,8 @@ if __name__ == '__main__':
 
     print(len(X_kinect))
     gen = SequenceGenerator(
-        X_imu, y, label_col="rpe", win_size=384, overlap=0.9, batch_size=16,
-        shuffle=True, balance=False, deliver_sets=True,
+        X_imu, y, label_col="rpe", win_size=384, overlap=0.9, batch_size=16, shuffle=True, balance=False,
+        meta_data=False,
     )
     print(gen[0])
 
