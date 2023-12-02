@@ -10,7 +10,7 @@ from .seq_generator import SequenceGenerator
 from typing import Union
 from keras.callbacks import EarlyStopping
 from kerastuner.tuners import BayesianOptimization
-from os.path import join
+from os.path import join, exists
 
 
 class DLOptimization(object):
@@ -47,6 +47,10 @@ class DLOptimization(object):
         for fold_id in range(n_folds):
             print(f"Start fold: [{fold_id + 1}/{n_folds}]")
             cur_log_path = join(log_path, f"Fold_{fold_id:02d}")
+
+            if exists(join(cur_log_path, "eval_dataset.csv")):
+                print(f"Fold {fold_id} already exists. Skipping...")
+                continue
 
             cur_idx = fold_id * self._val_subjects
             validation_subjects = self._subjects[cur_idx:cur_idx + self._val_subjects]
@@ -116,8 +120,8 @@ class DLOptimization(object):
             labels = np.array(labels)
             eval_dataset = pd.DataFrame({
                 "predictions": predictions,
-                "set_id": labels[:, 0],
-                "rpe": labels[:, 1],
+                "ground_truth": labels[:, 0],
+                "set_id": labels[:, 1],
                 "subject": labels[:, 2],
             })
             eval_dataset.to_csv(join(cur_log_path, "eval_dataset.csv"))
