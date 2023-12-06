@@ -7,7 +7,7 @@ balance: True
 epochs: 100
 batch_size: 16
 win_size: 384
-overlap: 0.90
+overlap: 0.75
 patience: 10
 max_iter: 50
 verbose: 10

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import random
 
 from .plot_callback import ProgressPlotCallback
-from .models import build_cnn_lstm_model
+from .models import build_cnn_lstm_model, build_cnn_gru_model, build_cnn_fc_model
 from .seq_generator import SequenceGenerator
 from typing import Union
 from keras.callbacks import EarlyStopping
@@ -36,6 +36,12 @@ class DLOptimization(object):
         self._val_subjects = kwargs["val_subjects"]
 
     def perform_grid_search_with_cv(self, log_path: str):
+        models = {"CNN-FC": build_cnn_fc_model, "CNN-GRU": build_cnn_gru_model, "CNN-LSTM": build_cnn_lstm_model}
+        for model in models:
+            print(f"Start grid search for model: {model}")
+            self.train_model(models[model], join(log_path, model))
+
+    def train_model(self, build_fn, log_path: str):
         es = EarlyStopping(monitor="val_mse", patience=self._patience, restore_best_weights=True, start_from_epoch=10)
         n_features = self._X[0].shape[-1]
 
@@ -77,7 +83,7 @@ class DLOptimization(object):
             )
 
             tuner = BayesianOptimization(
-                lambda hp: build_cnn_lstm_model(hp, self._win_size, n_features=n_features),
+                lambda hp: build_fn(hp, self._win_size, n_features=n_features),
                 objective='val_mse',
                 max_trials=self._max_iter,
                 directory=cur_log_path,
@@ -119,7 +125,7 @@ class DLOptimization(object):
 
             labels = np.array(labels)
             eval_dataset = pd.DataFrame({
-                "predictions": predictions,
+                "prediction": predictions,
                 "ground_truth": labels[:, 0],
                 "set_id": labels[:, 1],
                 "subject": labels[:, 2],
