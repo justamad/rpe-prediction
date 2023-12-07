@@ -21,6 +21,7 @@ from src.processing import (
     apply_butterworth_filter,
     calculate_acceleration,
     calculate_cross_correlation_with_datetime,
+    resample_data,
 )
 
 
@@ -312,22 +313,35 @@ def prepare_segmented_data_for_dl(src_path: str, dst_path: str, plot: bool, plot
     final_df.to_csv(join(dst_path, f"y_seg.csv"), index=False)
 
 
-def prepare_data_dl_entire_trials(src_path: str, dst_path: str, plot: bool, plot_path: str):
+def prepare_data_dl_entire_trials(src_path: str, dst_path: str, plot: bool, plot_path: str, fuse: bool = False):
     skeleton_images = []
     imu_data = []
     labels = []
     for trial in iterate_segmented_data(src_path, mode="full", plot=plot, plot_path=plot_path):
         meta_dict, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
+
+        if fuse:
+            pos_df = resample_data(pos_df, 30, 128)
+            min_length = min(len(pos_df), len(imu_df))
+            pos_df = pos_df.iloc[:min_length]
+            imu_df = imu_df.iloc[:min_length]
+
         skeleton_img = calculate_skeleton_images(pos_df, ori_df)
         skeleton_images.append(skeleton_img)
         imu_data.append(imu_df.drop("Repetition", axis=1, inplace=False).values)
         hrv = hrv_df.mean().to_dict()
         labels.append({**meta_dict, **hrv})
+        # break
 
-    X = np.array(skeleton_images, dtype=object)
-    np.savez(join(dst_path, "X_kinect.npz"), X=X)
-    X = np.array(imu_data, dtype=object)
-    np.savez(join(dst_path, "X_imu.npz"), X=X)
+    if fuse:
+        fused_images = [np.concatenate([skeleton, imu], axis=1) for skeleton, imu in zip(skeleton_images, imu_data)]
+        fused_images = np.array(fused_images, dtype=object)
+        np.savez(join(dst_path, f"X_fused.npz"), X=fused_images)
+    else:
+        X = np.array(skeleton_images, dtype=object)
+        np.savez(join(dst_path, f"X_kinect.npz"), X=X)
+        X = np.array(imu_data, dtype=object)
+        np.savez(join(dst_path, "X_imu.npz"), X=X)
 
     y = pd.DataFrame(labels)
     y.to_csv(join(dst_path, "y.csv"))
@@ -363,4 +377,4 @@ if __name__ == "__main__":
     # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="full", plot=args.show, plot_path=args.plot_path)
 
     # prepare_segmented_data_for_dl(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
-    prepare_data_dl_entire_trials(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
+    prepare_data_dl_entire_trials(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path, fuse=True)

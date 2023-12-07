@@ -64,9 +64,9 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
     parser.add_argument("--eval_path", type=str, dest="eval_path", default="20231206-082601_kinect")
-    parser.add_argument("--log_path", type=str, dest="log_path", default="results/dl/train")
+    parser.add_argument("--dst_path", type=str, dest="dst_path", default="results/dl/train")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/dl")
-    parser.add_argument("--restore_path", type=str, dest="restore_path", default="20231206-141151_kinect")
+    parser.add_argument("--restore_path", type=str, dest="restore_path", default=None)
     parser.add_argument("--exp_file", type=str, dest="exp_file", default="rpe_kinect.yaml")
     parser.add_argument("--train", type=bool, dest="train", default=True)
     parser.add_argument("--eval", type=bool, dest="eval", default=True)
@@ -79,28 +79,29 @@ if __name__ == "__main__":
     if not args.use_gpu:
         os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-    log_path = join(args.log_path, args.eval_path)
+    dst_path = join(args.dst_path, args.eval_path)
 
     if args.train:
-        if args.restore_path:
-            log_path = join(args.log_path, args.restore_path)
-            cfg = yaml.load(open(join(log_path, "config.yml"), "r"), Loader=yaml.FullLoader)
-            X = np.load(join(log_path, "X.npy"), allow_pickle=True)
-            y = pd.read_csv(join(log_path, "y.csv"), index_col=0)
+        if args.restore_path and exists(join(args.dst_path, args.restore_path)):
+            dst_path = join(args.dst_path, args.restore_path)
+            cfg = yaml.load(open(join(dst_path, "config.yml"), "r"), Loader=yaml.FullLoader)
+            X = np.load(join(dst_path, "X.npy"), allow_pickle=True)
+            y = pd.read_csv(join(dst_path, "y.csv"), index_col=0)
         else:
             cfg = yaml.load(open(join(args.exp_path, args.exp_file), "r"), Loader=yaml.FullLoader)
             target = args.exp_file.split("_")[1].replace(".yaml", "")
-            log_path = join(args.log_path, f"{datetime.now().strftime('%Y%m%d-%H%M%S')}_{target}")
-            os.makedirs(log_path, exist_ok=True)
+            exp_name = f"{datetime.now().strftime('%Y%m%d-%H%M%S')}_{target}"
+            dst_path = join(args.dst_path, args.restore_path if args.restore_path else exp_name)
+            os.makedirs(dst_path, exist_ok=True)
 
             X = np.load(join(args.src_path, cfg.pop("X_file")), allow_pickle=True)["X"]
             y = pd.read_csv(join(args.src_path, cfg.pop("y_file")), index_col=0)
             X = dl_normalize_data_3d_subject(X, y, method="std")
 
-            np.save(join(log_path, "X.npy"), X)
-            y.to_csv(join(log_path, "y.csv"))
+            np.save(join(dst_path, "X.npy"), X)
+            y.to_csv(join(dst_path, "y.csv"))
 
-        train_time_series_grid_search(X=X, y=y, dst_path=log_path, config=cfg)
+        train_time_series_grid_search(X=X, y=y, dst_path=dst_path, config=cfg)
 
     if args.eval:
-        evaluate_result_grid_search(join(args.log_path, args.eval_path), aggregate=True)
+        evaluate_result_grid_search(join(args.dst_path, args.eval_path), aggregate=True)
