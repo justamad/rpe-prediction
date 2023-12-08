@@ -1,6 +1,6 @@
-X_file: X_fused.npy
+X_file: X_fused.npz
 y_file: y.csv
-label: rpe
+ground_truth: rpe
 mode: bayesian
 task: regression
 balance: True
@@ -10,3 +10,6 @@ win_size: 384
 overlap: 0.75
 patience: 10
 max_iter: 50
+verbose: 10
+test_subjects: 4
+val_subjects: 4
