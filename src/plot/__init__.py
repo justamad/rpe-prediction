@@ -6,6 +6,7 @@ from .result_plots import (
     create_bland_altman_plot,
     create_residual_plot,
     create_model_performance_plot,
+    create_correlation_heatmap,
 )
 
 from .latex_tables import (

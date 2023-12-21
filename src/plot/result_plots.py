@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import seaborn as sns
 
 from .plot_settings import text_width, cm, dpi, line_width, blob_size
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error
@@ -121,7 +122,7 @@ def create_residual_plot(
         differences = ground_truth - prediction
         plt.plot(ground_truth, differences, "o", color=hsv_colors[idx], markersize=2)
 
-    plt.ylim(-4.5, 4.5)
+    plt.ylim(-7.5, 7.5)
     plt.axhline(y=0, color="black", linestyle="--")
     plt.xlabel("Ground Truth")
     plt.ylabel("Residual (Ground Truth - Prediction)")
@@ -330,4 +331,16 @@ def create_model_performance_plot(df: pd.DataFrame, log_path: str, exp_name: str
 
     plt.tight_layout()
     plt.savefig(join(log_path, f"{exp_name}_{metric if alt_name is None else alt_name}.png"), dpi=dpi)
+    plt.close()
+
+
+def create_correlation_heatmap(df: pd.DataFrame, file_name: str):
+    plt.figure(figsize=(text_width * cm, text_width * 0.8 * cm), dpi=dpi)
+    cbar_kws = {"label": "Pearson's Correlation Coefficient", }  # "ticks_position": "right"
+    sns.heatmap(df, fmt=".2f", vmin=-1, vmax=1, linewidth=0.5, annot=True, cbar_kws=cbar_kws)
+    plt.yticks(rotation=0)
+    plt.xticks(rotation=45, ha='right')
+    plt.ylabel("Subject")
+    plt.tight_layout()
+    plt.savefig(file_name)
     plt.close()

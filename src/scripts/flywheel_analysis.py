@@ -7,8 +7,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from os.path import join
-from scipy.stats import spearmanr, linregress
+from scipy.stats import spearmanr
 from src.plot import plot_settings as ps
+from src.plot import create_correlation_heatmap
 from string import ascii_uppercase
 from argparse import ArgumentParser
 
@@ -66,18 +67,6 @@ def plot_correlation_per_subject(df: pd.DataFrame, feature: str, subject_name: s
     plt.title(f"Spearmans $\\rho$={spearman:.2f}")
     plt.tight_layout()
     plt.savefig(join(src_path, f"{subject_name}.png"))
-    plt.close()
-
-
-def create_correlation_heatmap(df: pd.DataFrame):
-    plt.figure(figsize=(ps.text_width * ps.cm, ps.text_width * 0.8 * ps.cm), dpi=ps.dpi)
-    cbar_kws = {"label": "Pearson's Correlation Coefficient", }  # "ticks_position": "right"
-    sns.heatmap(df, fmt=".2f", vmin=-1, vmax=1, linewidth=0.5, annot=True, cbar_kws=cbar_kws)
-    plt.yticks(rotation=0)
-    plt.xticks(rotation=45, ha='right')
-    plt.ylabel("Subject")
-    plt.tight_layout()
-    plt.savefig("correlations.pdf")
     plt.close()
 
 
@@ -158,4 +147,4 @@ if __name__ == "__main__":
     correlation_df = pd.DataFrame(values).T
     mean_corr = correlation_df.mean(axis=0)  # .abs()
     print(mean_corr)
-    create_correlation_heatmap(correlation_df)
+    create_correlation_heatmap(correlation_df, "flywheel_correlation.pdf")
