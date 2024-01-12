@@ -26,6 +26,8 @@ def plot_sample_predictions(
         pred_col: str = "prediction",
         label_col: str = "ground_truth"
 ):
+    makedirs(dst_path, exist_ok=True)
+
     if exp_name not in y_labels or exp_name not in y_limits:
         raise ValueError(f"Unknown experiment '{exp_name}' for plotting predictions.")
 
@@ -47,10 +49,6 @@ def plot_sample_predictions(
         plt.ylabel(y_labels[exp_name])
         plt.legend()
         plt.tight_layout()
-
-        if not exists(dst_path):
-            makedirs(dst_path)
-
         plt.savefig(join(dst_path, f"{subject_name}.pdf"))
         plt.clf()
         plt.close()

@@ -18,9 +18,9 @@ from keras.layers import (
 def build_cnn_fc_model(hp, win_size, n_features):
     model = build_cnn_backbone(hp, win_size, n_features)
     model.add(Flatten())
-    model.add(Dense(hp.Choice("fc_units_1", values=[32, 64, 128]), activation="relu"))
+    model.add(Dense(hp.Choice("fc_units_1", values=[32, 64]), activation="relu"))
     model.add(Dropout(hp.Float("dropout", min_value=0.0, max_value=0.5)))
-    model.add(Dense(hp.Choice("fc_units_2", values=[32, 64, 128]), activation="relu"))
+    model.add(Dense(hp.Choice("fc_units_2", values=[32, 64]), activation="relu"))
     model.add(Dropout(hp.Float("dropout", min_value=0.0, max_value=0.5)))
     model.add(Dense(1, activation="linear"))
 
@@ -28,6 +28,7 @@ def build_cnn_fc_model(hp, win_size, n_features):
         optimizer=keras.optimizers.Adam(learning_rate=hp.Float("learning_rate", min_value=1e-4, max_value=1e-2)),
         loss="mse", metrics=["mse", "mae", "mape", RSquare()]
     )
+    model.summary()
     return model
 
 
@@ -66,6 +67,7 @@ def build_cnn_backbone(hp, win_size, n_features):
             padding="valid",
             activation=None,
             kernel_regularizer=l2(0.01),
+            strides=2,
         ))
         model.add(BatchNormalization())
         model.add(MaxPooling1D(pool_size=2))

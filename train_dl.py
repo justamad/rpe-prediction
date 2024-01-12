@@ -32,6 +32,7 @@ def train_time_series_grid_search(X: np.ndarray, y: pd.DataFrame, dst_path: str,
 def evaluate_result_grid_search(src_path: str, aggregate: bool = False):
     dst_path = src_path.replace("train", "test")
     results_df = collect_trials(src_path)
+    final_results_df = pd.DataFrame()
 
     for model in results_df["model"].unique():
         model_df = results_df[results_df["model"] == model]
@@ -43,11 +44,13 @@ def evaluate_result_grid_search(src_path: str, aggregate: bool = False):
         if aggregate:
             model_df = aggregate_results(model_df)
 
-        create_bland_altman_plot(model_df, join(cur_path), "CNN", "rpe")
-        create_scatter_plot(model_df, cur_path, "CNN", "rpe")
-        create_residual_plot(model_df, cur_path, "CNN")
+        create_bland_altman_plot(model_df, join(cur_path), "rpe")
+        create_scatter_plot(model_df, cur_path, model, "rpe")
+        create_residual_plot(model_df, cur_path, model)
         train_df = create_retrain_table(model_df, cur_path)
-        train_df.to_csv(join(cur_path, "retrain.csv"))
+        final_results_df = pd.concat([final_results_df, train_df], axis=0)
+
+    final_results_df.to_csv(join(dst_path, "retrain.csv"), index=False)
 
 
 def collect_trials(src_path: str) -> pd.DataFrame:
@@ -71,7 +74,7 @@ def collect_trials(src_path: str) -> pd.DataFrame:
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
-    parser.add_argument("--eval_path", type=str, dest="eval_path", default="Kinect")
+    parser.add_argument("--eval_path", type=str, dest="eval_path", default="Fusion")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="results/dl/train")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/dl")
     parser.add_argument("--restore_path", type=str, dest="restore_path", default=None)
@@ -112,4 +115,26 @@ if __name__ == "__main__":
         train_time_series_grid_search(X=X, y=y, dst_path=dst_path, config=cfg)
 
     if args.eval:
-        evaluate_result_grid_search(join(args.dst_path, args.eval_path), aggregate=True)
+        for eva in ["Kinect", "IMU", "Fusion"]:
+            evaluate_result_grid_search(join(args.dst_path, eva), aggregate=True)
+
+        # evaluate_result_grid_search(join(args.dst_path, args.eval_path), aggregate=True)
+
+        # def read_df(path):
+        #     df = pd.read_csv(path, index_col=0)[["MSE_mean", "RMSE_mean", "MAPE_mean"]]
+        #     df = df.rename(columns={"MSE_mean": "MSE", "RMSE_mean": "RMSE", "MAPE_mean": "MAPE"})
+        #     return df
+        #
+        # fusion_df = read_df("results/dl/test/Fusion/retrain.csv")
+        # imu_df = read_df("results/dl/test/IMU/retrain.csv")
+        # kinect_df = read_df("results/dl/test/Kinect/retrain.csv")
+        # print(fusion_df)
+        # print(imu_df)
+        # print(kinect_df)
+        #
+        # result_df = pd.concat([imu_df, kinect_df, fusion_df], axis=1, keys=["IMU", "Kinect", "Both"],
+        #                       names=["Metrics", None])
+        # result_df = result_df.swaplevel(0, 1, axis=1)
+        # result_df = result_df.sort_index(axis=1, level=0, ascending=False)
+        # result_df.to_latex("results/dl/test/final_results.txt", escape=False, float_format="%.2f")
+        #

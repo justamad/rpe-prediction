@@ -141,9 +141,9 @@ def evaluate_entire_training_folder(src_path: str, aggregate: bool):
         result_df = collect_retrain_results(dst_path, "retrain_results.csv")
         create_total_run_table(result_df, dst_path)
 
-        for metric in ["MSE", "RMSE", "MAE", "$R^{2}$", "MAPE"]:
-            create_model_performance_plot(result_df, dst_path, experiment_name, metric)
-        create_model_performance_plot(result_df, dst_path, experiment_name, "Spearman's $\\rho$", alt_name="Spearman")
+        # for metric in ["MSE", "RMSE", "MAE", "$R^{2}$", "MAPE"]:
+        #     create_model_performance_plot(result_df, dst_path, experiment_name, metric)
+        # create_model_performance_plot(result_df, dst_path, experiment_name, "Spearman's $\\rho$", alt_name="Spearman")
 
 
 def evaluate_experiment_path(
@@ -244,8 +244,8 @@ def collect_retrain_results(src_path: str, file_name: str) -> pd.DataFrame:
         for file in files:
             if file == file_name:
                 result_df = pd.read_csv(join(root, file), index_col=0)
-                temp_context = basename(root).split("_")[-1]
-                result_df["temporal_context"] = int(temp_context) if temp_context != "False" else 0
+                # temp_context = basename(root).split("_")[-1]
+                # result_df["temporal_context"] = int(temp_context) if temp_context != "False" else 0
                 file_locations.append(result_df)
 
     return pd.concat(file_locations, axis=0)
@@ -257,7 +257,7 @@ if __name__ == "__main__":
     parser.add_argument("--result_path", type=str, dest="result_path", default="results/ml/train")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/ml")
     parser.add_argument("--dst_path", type=str, dest="dst_path", default="results/ml/test")
-    parser.add_argument("--exp_folder", type=str, dest="exp_folder", default="results/ml/train/2023-11-16-16-45-14")
+    parser.add_argument("--exp_folder", type=str, dest="exp_folder", default="results/ml/train/2023-12-22-11-05-43")
     parser.add_argument("--train", type=bool, dest="train", default=False)
     parser.add_argument("--eval", type=bool, dest="eval", default=True)
     args = parser.parse_args()
@@ -310,7 +310,7 @@ if __name__ == "__main__":
                 train_models_with_grid_search(df, log_path, **config)
 
     if args.eval:
-        evaluate_entire_training_folder(args.exp_folder, aggregate=True)
+        # evaluate_entire_training_folder(args.exp_folder, aggregate=True)
 
         # imu_df = pd.read_csv("results/ml/test/2023-11-16-16-45-14/rpe_imu/total_run_results.csv", index_col=0)
         # kinect_df = pd.read_csv("results/ml/test/2023-11-16-16-45-14/rpe_kinect/total_run_results.csv", index_col=0)
@@ -321,3 +321,13 @@ if __name__ == "__main__":
         # result_df = result_df.swaplevel(0, 1, axis=1)
         # result_df = result_df.sort_index(axis=1, level=0, ascending=False)
         # result_df.to_latex("results/ml/test/2023-11-16-16-45-14/total_run_results_latex.txt", escape=False)
+
+        hrv_df = pd.read_csv("results/ml/test/2023-12-22-11-05-43/rpe_hrv/total_run_results.csv", index_col=0)
+        flywheel_df = pd.read_csv("results/ml/test/2023-12-23-11-51-48/rpe_flywheel/total_run_results.csv", index_col=0)
+        both_df = pd.read_csv("results/ml/test/2023-12-23-11-51-48/rpe_fusionbase/total_run_results.csv", index_col=0)
+
+        result_df = pd.concat([hrv_df, flywheel_df, both_df], axis=1, keys=["HRV", "Flywheel", "Both"],
+                              names=["Metrics", None])
+        result_df = result_df.swaplevel(0, 1, axis=1)
+        result_df = result_df.sort_index(axis=1, level=0, ascending=False)
+        result_df.to_latex("total_run_results_latex.txt", escape=False, float_format="%.2f")

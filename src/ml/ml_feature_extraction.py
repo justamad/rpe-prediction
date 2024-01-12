@@ -6,6 +6,7 @@ from xgboost import XGBRegressor
 from sklearn.feature_selection import RFECV, RFE
 from sklearn.model_selection import GroupKFold
 from os.path import join
+from sklearn.linear_model import LinearRegression
 
 
 def eliminate_features_rfecv(
@@ -62,7 +63,8 @@ def eliminate_features_with_rfe(
         n_features: int = 100,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     selector = RFE(
-        estimator=XGBRegressor(),
+        # estimator=XGBRegressor(),
+        estimator=LinearRegression(),
         n_features_to_select=n_features,
         step=step,
         verbose=10,

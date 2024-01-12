@@ -1,60 +1,65 @@
-from string import ascii_uppercase
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-from src.dataset import extract_dataset_input_output, normalize_data_by_subject
-from src.plot import create_correlation_heatmap
+from string import ascii_uppercase
+
+import scipy.stats
+
+from src.dataset import extract_dataset_input_output, normalize_data_by_subject, get_highest_correlation_features
+from src.plot import create_correlation_heatmap, plot_sample_predictions
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
-from src.ml import eliminate_features_with_rfe
-from sklearn.svm import SVR
-from sklearn.feature_selection import RFE
 
 
 def train_linear_regression(X: pd.DataFrame, y: pd.DataFrame):
     X = normalize_data_by_subject(X, y)
     X.fillna(0, inplace=True)
+    X = get_highest_correlation_features(X, y["rpe"], 10)
 
-    y = y["rpe"]
-    _, rfe_df = eliminate_features_with_rfe(X, y, 1, 1)
-    print(rfe_df)
+    result_df = pd.DataFrame()
+    for subject in y["subject"].unique():
+        mask = y["subject"] == subject
+        X_train, y_train, X_test, y_test = X.loc[~mask], y.loc[~mask], X.loc[mask], y.loc[mask]
+        model = LinearRegression()
+        model.fit(X_train, y_train["rpe"])
+        y_pred = model.predict(X_test)
+        print("MSE: {}".format(mean_squared_error(y_test["rpe"], y_pred)))
+        y_test["prediction"] = y_pred
+        result_df = pd.concat([result_df, y_test], axis=0)
 
-    # model = SVR(kernel='linear')
-    model = LinearRegression()
-    model.fit(X, y)
+        # Visualize individual features along with predictions
+        X_test = X_test.values
+        y_test = y_test["rpe"]
+        for feature_index in range(X.shape[1]):
+            plt.figure(figsize=(8, 6))
+            # Scatter plot of the original feature values
+            plt.scatter(X_test[:, feature_index], y_test, label='Actual', color='blue', alpha=0.7)
 
-    y_pred = model.predict(X)
-    print("MSE: {}".format(mean_squared_error(y, y_pred)))
+            # Line plot of the predicted values
+            sorted_indices = np.argsort(X_test[:, feature_index])
+            plt.plot(X_test[:, feature_index][sorted_indices], y_pred[sorted_indices], label='Predicted', color='red',
+                     linewidth=2)
 
-    print("Feature Coefficients:", model.coef_)
-    print("length: ", len(model.coef_))
-
-    coefficients = model.coef_
-    # coefficients = model.support_
-
-    # Display feature importance graphically
-    plt.bar(range(len(coefficients)), coefficients)
-    plt.xticks(range(len(coefficients)), X.columns, rotation=90)
-    plt.xlabel('Feature')
-    plt.ylabel('Coefficient Magnitude')
-    plt.title('Feature Importance in Linear Regression')
-    plt.tight_layout()
-    plt.savefig("feature_importance.pdf")
-    plt.close()
-
-    plt.plot(y, label="true")
-    plt.plot(y_pred, label="pred")
-    plt.legend()
-    plt.savefig("predictions.pdf")
+            plt.title(f'Feature {feature_index + 1} vs. Predictions')
+            plt.xlabel(f'Feature {feature_index + 1}')
+            plt.ylabel('Target Variable (y)')
+            plt.legend()
+            plt.show()
 
 
-def correlation_map(df: pd.DataFrame):
+    plot_sample_predictions(result_df, exp_name="rpe", dst_path=".", label_col="rpe")
+
+
+def create_hrv_correlation_map(df: pd.DataFrame):
     values = {}
     for pseudonym, (subject_name, sub_df) in zip(ascii_uppercase, df.groupby("subject")):
+        sub_df.drop(columns=["subject"], inplace=True)
+        sub_df = sub_df.groupby("set_id").mean()
         rpe = sub_df["rpe"]
-        sub_df.drop(columns=["subject", "rpe", "set_id"], inplace=True)
+        for feature in sub_df.columns:
+            print(scipy.stats.pearsonr(sub_df[feature], rpe))
+
         corr_df = sub_df.corrwith(rpe)
         values[pseudonym] = corr_df
 
@@ -69,14 +74,12 @@ def correlation_map(df: pd.DataFrame):
 
 if __name__ == "__main__":
     df = pd.read_csv("data/training/full_stat.csv", index_col=0)
-
     drop_columns = []
     for prefix in ["FLYWHEEL", "PHYSILOG", "KINECT"]:
         drop_columns += [col for col in df.columns if prefix in col]
-
     df.drop(columns=drop_columns, inplace=True, errors="ignore")
-    correlation_map(df)
 
-    # X, y = extract_dataset_input_output(df=df, labels="rpe")
-    # print(X.shape)
+    create_hrv_correlation_map(df)
+    X, y = extract_dataset_input_output(df=df, labels="rpe")
+    print(X.shape)
     # train_linear_regression(X, y)

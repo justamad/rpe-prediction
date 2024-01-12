@@ -22,6 +22,5 @@ run_script_with_retry() {
     done
 }
 
-run_script_with_retry rpe_kinect.yaml Kinect
-run_script_with_retry rpe_imu.yaml IMU
 run_script_with_retry rpe_both.yaml Fusion
+run_script_with_retry rpe_imu.yaml IMU
