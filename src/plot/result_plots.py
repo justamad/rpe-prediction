@@ -1,10 +1,11 @@
 import pandas as pd
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import seaborn as sns
 
-from .plot_settings import text_width, cm, dpi, line_width, blob_size
+from .plot_settings import TEXT_WIDTH_INCH, DPI, LINE_WIDTH, BLOB_SIZE, HALF_PLOT_SIZE, CUT_OFF, get_colors
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error
 from scipy.stats import spearmanr, linregress
 from os.path import join, exists
@@ -14,9 +15,6 @@ from matplotlib.ticker import MaxNLocator, AutoLocator
 y_labels = {"rpe": "RPE [Borg Scale]", "poweravg": "Power [Watts]", }
 y_limits = {"rpe": (10, 21), "poweravg": (0, 300), }
 max_limits = {"poweravg": 800}  # Used to equally scale physical model and ML models
-
-primary_color = "#d62728"
-secondary_color = "#1f77b4"
 
 
 def plot_sample_predictions(
@@ -31,6 +29,7 @@ def plot_sample_predictions(
     if exp_name not in y_labels or exp_name not in y_limits:
         raise ValueError(f"Unknown experiment '{exp_name}' for plotting predictions.")
 
+    color1, color2 = get_colors(2)
     for subject_name in value_df["subject"].unique():
         subject_df = value_df[value_df["subject"] == subject_name]
         ground_truth = subject_df[label_col].values
@@ -40,22 +39,22 @@ def plot_sample_predictions(
         mape = mean_absolute_percentage_error(predictions, ground_truth)
         sp, _ = spearmanr(ground_truth, predictions)
 
-        plt.figure(figsize=(text_width * cm * 0.5, text_width * cm * 0.5), dpi=dpi)
-        plt.plot(ground_truth, label="Ground Truth", color=primary_color)
-        plt.plot(predictions, label="Prediction", color=secondary_color)
+        plt.figure(figsize=(HALF_PLOT_SIZE, HALF_PLOT_SIZE), dpi=DPI)
+        plt.plot(ground_truth, label="Ground Truth", color=color1)
+        plt.plot(predictions, label="Prediction", color=color2)
         plt.ylim(y_limits[exp_name])
         plt.title(f"$R^2$={r2:.2f}, MAPE={mape:.2f}, $\\rho$={sp:.2f}")
         plt.xlabel("Repetition")
         plt.ylabel(y_labels[exp_name])
         plt.legend()
         plt.tight_layout()
-        plt.savefig(join(dst_path, f"{subject_name}.pdf"))
+        plt.savefig(join(dst_path, f"{subject_name}.pdf"), bbox_inches='tight', pad_inches=CUT_OFF, dpi=DPI)
         plt.clf()
         plt.close()
 
 
 def plot_feature_elimination(feature_df: pd.DataFrame, dst_path: str):
-    plt.figure(figsize=(text_width * cm * 0.5, text_width * cm * 0.45), dpi=dpi)
+    plt.figure(figsize=(HALF_PLOT_SIZE, HALF_PLOT_SIZE), dpi=DPI)
     feature_df["mean_test_score"] *= -1  # Invert scores to maximize
     plt.plot(feature_df.index, feature_df["mean_test_score"], marker='o', color='b', markersize=2)
     plt.fill_between(
@@ -74,7 +73,7 @@ def plot_feature_elimination(feature_df: pd.DataFrame, dst_path: str):
     plt.ylim([0, 15])
 
     plt.tight_layout()
-    plt.savefig(join(dst_path, "feature_analysis.png"), dpi=dpi)
+    plt.savefig(join(dst_path, "feature_analysis.png"), dpi=DPI)
     plt.clf()
     plt.close()
 
@@ -87,8 +86,9 @@ def plot_subject_correlations(df: pd.DataFrame, dst_path: str):
         metric, p_value = spearmanr(sub_df["ground_truth"], sub_df["prediction"])
         metrics.append(metric)
 
-    fig, axs = plt.subplots(1, 1, figsize=(text_width * cm, text_width * cm * 0.5), dpi=dpi)
-    axs.bar([f"{i + 1:2d}" for i in range(len(subjects))], metrics, color=primary_color)
+    color = get_colors(1)
+    fig, axs = plt.subplots(1, 1, figsize=(TEXT_WIDTH_CM, HALF_PLOT_SIZE), dpi=DPI)
+    axs.bar([f"{i + 1:2d}" for i in range(len(subjects))], metrics, color=color[0])
     plt.ylim([0, 1])
     plt.title("Spearman's $\\rho$ Mean: {:.2f} Std: {:.2f}".format(np.mean(metrics), np.std(metrics)))
     plt.xlabel("Subjects")
@@ -108,24 +108,21 @@ def create_residual_plot(
         log_path: str,
         file_name: str,
 ):
-    fig = plt.figure(figsize=(text_width * cm * 0.5, text_width * cm * 0.5), dpi=dpi)
-    ax = fig.add_subplot(111)
-
+    plt.figure(figsize=(HALF_PLOT_SIZE, HALF_PLOT_SIZE), dpi=DPI)
     subjects = df["subject"].unique()
-    hsv_colors = [mcolors.hsv_to_rgb((i / len(subjects), 1, 1)) for i in range(len(subjects))]
-    for idx, subject in enumerate(subjects):
+    for idx, (subject, color) in enumerate(zip(subjects, get_colors(len(subjects)))):
         sub_df = df[df["subject"] == subject]
         ground_truth = sub_df.loc[:, "ground_truth"]
         prediction = sub_df.loc[:, "prediction"]
         differences = ground_truth - prediction
-        plt.plot(ground_truth, differences, "o", color=hsv_colors[idx], markersize=2)
+        plt.plot(ground_truth, differences, "o", color=color, markersize=2)
 
     plt.ylim(-7.5, 7.5)
     plt.axhline(y=0, color="black", linestyle="--")
     plt.xlabel("Ground Truth")
     plt.ylabel("Residual (Ground Truth - Prediction)")
     plt.tight_layout()
-    plt.savefig(join(log_path, f"{file_name}_residual.png"))
+    plt.savefig(join(log_path, f"{file_name}_residual.png"), bbox_inches='tight', pad_inches=CUT_OFF, dpi=DPI)
 
 
 def create_scatter_plot(
@@ -136,6 +133,7 @@ def create_scatter_plot(
 ):
     ground_truth = df.loc[:, "ground_truth"]
     prediction = df.loc[:, "prediction"]
+    color = get_colors(1)[0]
 
     slope, intercept, r_value, p_value_1, std_error_1 = linregress(ground_truth, prediction)
     rmse2 = np.sqrt(mean_squared_error(ground_truth, prediction))
@@ -154,16 +152,16 @@ def create_scatter_plot(
     x_values = np.arange(int(min_value * 100), int(max_value * 100 + 50)) / 100
     y_values = intercept + slope * x_values
 
-    fig = plt.figure(figsize=(text_width * cm * 0.5, text_width * cm * 0.5), dpi=dpi)
+    fig = plt.figure(figsize=(HALF_PLOT_SIZE, HALF_PLOT_SIZE), dpi=DPI)
     ax = fig.add_subplot(111)
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-    ax.spines["bottom"].set_linewidth(line_width)
-    ax.spines["left"].set_linewidth(line_width)
+    ax.spines["bottom"].set_linewidth(LINE_WIDTH)
+    ax.spines["left"].set_linewidth(LINE_WIDTH)
 
-    plt.plot(x_values, x_values, '-', color="gray", linewidth=line_width)
-    plt.plot(x_values, y_values, '--', color=primary_color, linewidth=line_width)
+    plt.plot(x_values, x_values, '-', color="gray", linewidth=LINE_WIDTH)
+    plt.plot(x_values, y_values, '--', color=color, linewidth=LINE_WIDTH)
 
     sign = "+" if intercept > 0 else ""
     margin = (max_value - min_value) * 0.95
@@ -178,9 +176,9 @@ def create_scatter_plot(
     # Create custom HSV color map
     subjects = df["subject"].unique()
     hsv_colors = [mcolors.hsv_to_rgb((i / len(subjects), 1, 1)) for i in range(len(subjects))]
-    for idx, subject in enumerate(subjects):
+    for idx, (subject, color) in enumerate(zip(subjects, get_colors(len(subjects)))):
         sub_df = df[df["subject"] == subject]
-        plt.scatter(sub_df["ground_truth"], sub_df["prediction"], s=blob_size, color=hsv_colors[idx])
+        plt.scatter(sub_df["ground_truth"], sub_df["prediction"], s=BLOB_SIZE, color=color)
 
     plt.xlim(([min_value, max_value]))
     plt.ylim(([min_value, max_value]))
@@ -196,7 +194,7 @@ def create_scatter_plot(
     if not exists(log_path):
         makedirs(log_path)
 
-    plt.savefig(join(log_path, f"{file_name}_scatter.png"))
+    plt.savefig(join(log_path, f"{file_name}_scatter.png"), bbox_inches='tight', pad_inches=CUT_OFF, dpi=DPI)
     plt.clf()
     plt.cla()
     plt.close()
@@ -216,7 +214,7 @@ def create_bland_altman_plot(
     m1 = df.loc[:, "prediction"]
     m2 = df.loc[:, "ground_truth"]
 
-    fig = plt.figure(figsize=(text_width * cm * 0.5, text_width * cm * 0.5), dpi=dpi)
+    fig = plt.figure(figsize=(HALF_PLOT_SIZE, HALF_PLOT_SIZE), dpi=DPI)
     ax = fig.add_subplot(111)
 
     means = np.mean([m1, m2], axis=0)
@@ -228,10 +226,11 @@ def create_bland_altman_plot(
     hsv_colors = [mcolors.hsv_to_rgb((i / len(subjects), 1, 1)) for i in range(len(subjects))]
     for idx, subject in enumerate(subjects):
         subject_mask = df["subject"] == subject
-        ax.scatter(means[subject_mask], diffs[subject_mask], s=blob_size, color=hsv_colors[idx])
+        ax.scatter(means[subject_mask], diffs[subject_mask], s=BLOB_SIZE, color=hsv_colors[idx])
 
+    color = get_colors(1)[0]
     # ax.scatter(means, diffs, s=blob_size, c=primary_color)  # , alpha=0.5)
-    ax.axhline(mean_diff, **{"color": primary_color, "linewidth": 1, "linestyle": "--"})
+    ax.axhline(mean_diff, **{"color": color, "linewidth": 1, "linestyle": "--"})
 
     if x_min is not None and x_max is not None:
         plt.xlim(([x_min, x_max]))
@@ -302,7 +301,7 @@ def create_model_performance_plot(df: pd.DataFrame, log_path: str, exp_name: str
     min_max = {"MSE": "min", "RMSE": "min", "MAE": "min", "MAPE": "min", "$R^{2}$": "max", "Spearman's $\\rho$": "max"}
     yticks = {"Spearman's $\\rho$": [-0.2, 0, 0.2, 0.4, 0.6, 0.8, 1.0]}
 
-    plt.figure(figsize=(text_width * cm * 0.5, text_width * cm * 0.5), dpi=dpi)
+    plt.figure(figsize=(HALF_PLOT_SIZE, HALF_PLOT_SIZE), dpi=DPI)
     n_models = len(df["model"].unique())
     spacing = 0.25
 
@@ -328,17 +327,19 @@ def create_model_performance_plot(df: pd.DataFrame, log_path: str, exp_name: str
     plt.title("Top Score: {:.2f}".format(best_score))
 
     plt.tight_layout()
-    plt.savefig(join(log_path, f"{exp_name}_{metric if alt_name is None else alt_name}.png"), dpi=dpi)
+    plt.savefig(join(log_path, f"{exp_name}_{metric if alt_name is None else alt_name}.png"), dpi=DPI)
     plt.close()
 
 
 def create_correlation_heatmap(df: pd.DataFrame, file_name: str):
-    plt.figure(figsize=(text_width * cm, text_width * 0.8 * cm), dpi=dpi)
-    cbar_kws = {"label": "Pearson's Correlation Coefficient", }  # "ticks_position": "right"
-    sns.heatmap(df, fmt=".2f", vmin=-1, vmax=1, linewidth=0.5, annot=True, cbar_kws=cbar_kws)
+    plt.figure(figsize=(TEXT_WIDTH_INCH, TEXT_WIDTH_INCH * 0.8), dpi=DPI)
+    cbar_kws = {"label": "Pearson's Correlation Coefficient", }
+
+    cmap = mpl.colormaps.get_cmap('brg_r')
+    sns.heatmap(df, fmt=".2f", vmin=-1, vmax=1, cmap=cmap, linewidth=0.5, annot=True, cbar_kws=cbar_kws)
     plt.yticks(rotation=0)
     plt.xticks(rotation=45, ha='right')
     plt.ylabel("Subject")
     plt.tight_layout()
-    plt.savefig(file_name)
+    plt.savefig(file_name, bbox_inches="tight", pad_inches=CUT_OFF, dpi=DPI)
     plt.close()

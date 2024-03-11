@@ -1,15 +1,15 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
-from string import ascii_uppercase
-
 import scipy.stats
 
+from string import ascii_uppercase
 from src.dataset import extract_dataset_input_output, normalize_data_by_subject, get_highest_correlation_features
 from src.plot import create_correlation_heatmap, plot_sample_predictions
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
+from argparse import ArgumentParser
+from os.path import join
 
 
 def train_linear_regression(X: pd.DataFrame, y: pd.DataFrame):
@@ -47,39 +47,40 @@ def train_linear_regression(X: pd.DataFrame, y: pd.DataFrame):
             plt.legend()
             plt.show()
 
-
     plot_sample_predictions(result_df, exp_name="rpe", dst_path=".", label_col="rpe")
 
 
-def create_hrv_correlation_map(df: pd.DataFrame):
+def create_hrv_correlation_map(df: pd.DataFrame, file_name: str):
     values = {}
     for pseudonym, (subject_name, sub_df) in zip(ascii_uppercase, df.groupby("subject")):
         sub_df.drop(columns=["subject"], inplace=True)
         sub_df = sub_df.groupby("set_id").mean()
         rpe = sub_df["rpe"]
-        for feature in sub_df.columns:
-            print(scipy.stats.pearsonr(sub_df[feature], rpe))
-
+        # for feature in sub_df.columns:
+        #     print(scipy.stats.pearsonr(sub_df[feature], rpe))
         corr_df = sub_df.corrwith(rpe)
         values[pseudonym] = corr_df
 
     corr_df = pd.DataFrame(values).T
+    corr_df.drop(["rpe"], inplace=True, axis=1)
     mean_corr = corr_df.abs().mean(axis=0)
     columns = mean_corr.sort_values(ascending=False).index[:10]
     corr_df = corr_df[columns]
 
     corr_df.columns = [col.replace("HRV_", "").replace("s^2", "$s^2$").replace("%", "\%") for col in corr_df.columns]
-    create_correlation_heatmap(corr_df, "hrv_correlation.pdf")
+    create_correlation_heatmap(corr_df, file_name)
 
 
 if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument("--src_path", type=str, dest="src_path", default="plots")
+    args = parser.parse_args()
+
     df = pd.read_csv("data/training/full_stat.csv", index_col=0)
     drop_columns = []
     for prefix in ["FLYWHEEL", "PHYSILOG", "KINECT"]:
         drop_columns += [col for col in df.columns if prefix in col]
     df.drop(columns=drop_columns, inplace=True, errors="ignore")
 
-    create_hrv_correlation_map(df)
+    create_hrv_correlation_map(df, join(args.src_path, "hrv_correlations.pdf"))
     X, y = extract_dataset_input_output(df=df, labels="rpe")
-    print(X.shape)
-    # train_linear_regression(X, y)
