@@ -1,9 +1,9 @@
+import pandas as pd
+import numpy as np
+
 from os.path import join
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 from scipy import stats
-
-import pandas as pd
-import numpy as np
 
 
 def create_train_table(df: pd.DataFrame, dst_path: str):
@@ -37,7 +37,7 @@ def create_retrain_table(results: pd.DataFrame, dst_path: str) -> pd.DataFrame:
         "MAE": mean_absolute_error,
         "MAPE": lambda x, y: mean_absolute_percentage_error(x, y) * 100,
         "$R^{2}$": r2_score,
-        "Spearman": lambda x, y: stats.spearmanr(x, y)[0]
+        "Spearman's $\\rho$": lambda x, y: stats.spearmanr(x, y)[0],
     }
 
     data_entries = []
@@ -52,9 +52,33 @@ def create_retrain_table(results: pd.DataFrame, dst_path: str) -> pd.DataFrame:
             for metric, func in metrics.items():
                 test_subjects[metric].append(func(subject_df["ground_truth"], subject_df["prediction"]))
 
-        res = {metric: f"${np.mean(values):.2f} \\pm {np.std(values):.2f}$" for metric, values in test_subjects.items()}
-        data_entries.append(res)
+        data_entries.append(
+            {"model": model.upper()} |
+            {
+                f"{metric}_mean": np.mean(values) for metric, values in test_subjects.items()
+            } | {
+                f"{metric}_std": np.std(values) for metric, values in test_subjects.items()
+            }
+        )
 
-    final_df = pd.DataFrame.from_records(data_entries, index=list(map(lambda x: x.upper(), models))).T
+    final_df = pd.DataFrame.from_records(data_entries)
     final_df.to_latex(join(dst_path, "retrain_results_latex.txt"), escape=False)
     return final_df
+
+
+def create_total_run_table(result_df: pd.DataFrame, src_path: str):
+    metrics = ["MSE", "RMSE", "MAPE"]
+    main_metric = "MSE"
+    rows = []
+    for model in sorted(result_df["model"].unique()):
+        model_df = result_df[result_df["model"] == model]
+        best_row = model_df[model_df["MSE_mean"] == model_df["MSE_mean"].min()].iloc[0]
+
+        dict_row = {m: f"{best_row[f'{m}_mean']:.2f}" for m in metrics}
+        dict_row["model"] = model.upper()
+        rows.append(dict_row)
+
+    df = pd.DataFrame.from_records(rows)
+    df = df.set_index("model")
+    df.to_csv(join(src_path, "total_run_results.csv"))
+    df.to_latex(join(src_path, "total_run_results_latex.txt"), escape=False)

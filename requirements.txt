@@ -7,10 +7,8 @@ tensorflow
 keras
 scikit-learn
 scikeras
-sklearn
 tsfresh
 imblearn
-PyPDF2
 xgboost
 seaborn
 PyMoCapViewer
@@ -21,3 +19,4 @@ cycler
 pyarrow
 fastparquet
 tensorflow-addons
+keras-tuner

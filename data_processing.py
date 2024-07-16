@@ -14,12 +14,14 @@ from tsfresh.utilities.dataframe_functions import impute
 from cycler import cycler
 from src.dataset import SubjectDataIterator, impute_dataframe, mask_repetitions
 from src.features import CustomFeatures, calculate_linear_joint_positions, calculate_skeleton_images
+from PyMoCapViewer import MoCapViewer
 
 from src.processing import (
     segment_kinect_signal,
     apply_butterworth_filter,
     calculate_acceleration,
     calculate_cross_correlation_with_datetime,
+    resample_data,
 )
 
 
@@ -80,7 +82,7 @@ def process_all_raw_data(src_path: str, dst_path: str, plot_path: str):
             ref_sync_axis="CHEST_ACCELERATION_Z",
             target_df=azure_acc_df,
             target_sync_axis="SPINE_CHEST (y)",
-            show=False,
+            show=True,
         )
         azure_acc_df.index += shift_dt
         pos_df.index += shift_dt
@@ -254,7 +256,11 @@ def prepare_segmented_data_for_ml(src_path: str, dst_path: str, mode: str, plot:
             logging.warning(f"Different nr of reps: {subject}, set {set_id}: {c_f} vs. {c_p} vs. {c_i}")
             continue
 
-        pos_df = calculate_linear_joint_positions(pos_df)
+        # pos_df = calculate_linear_joint_positions(pos_df)
+
+        # viewer = MoCapViewer()
+        # viewer.add_skeleton(pos_df.iloc[:,:-1])
+        # viewer.show_window()
 
         imu_features_df = extract_features(imu_df, column_id="Repetition", default_fc_parameters=settings)
         imu_features_df = impute(imu_features_df)  # Replace Nan and inf by with extreme values (min, max)
@@ -268,8 +274,8 @@ def prepare_segmented_data_for_ml(src_path: str, dst_path: str, mode: str, plot:
             [
                 pos_features_df.reset_index(drop=True).add_prefix(f"{mode.upper()}_KINECTPOS_"),
                 ori_features_df.reset_index(drop=True).add_prefix(f"{mode.upper()}_KINECTORI_"),
+                imu_features_df.reset_index(drop=True).add_prefix(f"{mode.upper()}_PHYSILOG_"),
                 flywheel_df.reset_index(drop=True).add_prefix("FLYWHEEL_"),
-                imu_features_df.reset_index(drop=True).add_prefix("PHYSILOG_"),
                 hrv_mean.reset_index(drop=True).add_prefix("HRV_"),
             ], axis=1,
         )
@@ -307,21 +313,38 @@ def prepare_segmented_data_for_dl(src_path: str, dst_path: str, plot: bool, plot
     final_df.to_csv(join(dst_path, f"y_seg.csv"), index=False)
 
 
-def prepare_data_dl_entire_trials(src_path: str, dst_path: str, plot: bool, plot_path: str):
+def prepare_data_dl_entire_trials(src_path: str, dst_path: str, plot: bool, plot_path: str, fuse: bool = False):
     skeleton_images = []
+    imu_data = []
     labels = []
     for trial in iterate_segmented_data(src_path, mode="full", plot=plot, plot_path=plot_path):
         meta_dict, imu_df, pos_df, ori_df, hrv_df, flywheel_df = trial.values()
+
+        if fuse:
+            pos_df = resample_data(pos_df, 30, 128)
+            min_length = min(len(pos_df), len(imu_df))
+            pos_df = pos_df.iloc[:min_length]
+            imu_df = imu_df.iloc[:min_length]
+
         skeleton_img = calculate_skeleton_images(pos_df, ori_df)
         skeleton_images.append(skeleton_img)
+        imu_data.append(imu_df.drop("Repetition", axis=1, inplace=False).values)
         hrv = hrv_df.mean().to_dict()
         labels.append({**meta_dict, **hrv})
+        # break
 
-    X = np.array(skeleton_images, dtype=object)
-    np.savez(join(dst_path, "X_lstm.npz"), X=X)
+    if fuse:
+        fused_images = [np.concatenate([skeleton, imu], axis=1) for skeleton, imu in zip(skeleton_images, imu_data)]
+        fused_images = np.array(fused_images, dtype=object)
+        np.savez(join(dst_path, f"X_fused.npz"), X=fused_images)
+    else:
+        X = np.array(skeleton_images, dtype=object)
+        np.savez(join(dst_path, f"X_kinect.npz"), X=X)
+        X = np.array(imu_data, dtype=object)
+        np.savez(join(dst_path, "X_imu.npz"), X=X)
 
     y = pd.DataFrame(labels)
-    y.to_csv(join(dst_path, "y_lstm.csv"))
+    y.to_csv(join(dst_path, "y.csv"))
 
 
 if __name__ == "__main__":
@@ -344,11 +367,8 @@ if __name__ == "__main__":
     default_cycler = (cycler(color=['#FF007F', '#D62598']))
     plt.rc('axes', prop_cycle=default_cycler)
 
-    if not exists(args.proc_path):
-        os.makedirs(args.proc_path)
-
-    if not exists(args.train_path):
-        os.makedirs(args.train_path)
+    os.makedirs(args.proc_path, exist_ok=True)
+    os.makedirs(args.train_path, exist_ok=True)
 
     # process_all_raw_data(args.raw_path, args.proc_path, args.plot_path)
 
@@ -357,4 +377,4 @@ if __name__ == "__main__":
     # prepare_segmented_data_for_ml(args.proc_path, args.train_path, mode="full", plot=args.show, plot_path=args.plot_path)
 
     # prepare_segmented_data_for_dl(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
-    prepare_data_dl_entire_trials(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path)
+    prepare_data_dl_entire_trials(args.proc_path, dst_path=args.train_path, plot=args.show, plot_path=args.plot_path, fuse=True)

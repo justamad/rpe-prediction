@@ -1,0 +1,15 @@
+X_file: X_imu.npz
+y_file: y.csv
+ground_truth: rpe
+mode: bayesian
+task: regression
+balance: True
+epochs: 100
+batch_size: 16
+win_size: 384
+overlap: 0.75
+patience: 10
+max_iter: 50
+verbose: 10
+test_subjects: 4
+val_subjects: 4
