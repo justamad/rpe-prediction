@@ -2,7 +2,7 @@
 #SBATCH --job-name=default
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=justin.albert@hpi.de
-#SBATCH --partition=hpcpu,vcpu # -p
+#SBATCH --partition=cpu # -p
 #SBATCH --cpus-per-task=64 # -c
 #SBATCH --mem=200gb
 #SBATCH --time=72:00:00
@@ -18,6 +18,4 @@ conda activate rpe-prediction
 # DATASETS=(aumc hirid eicu miiv)
 
 echo "This is a SLURM job named" $SLURM_JOB_NAME
-htop
-
-python3 train_ml.py
+python3 train_ml.py --train True

@@ -77,10 +77,10 @@ class MLPModelConfig(LearningModelBase):
         tuned_parameters = {
             f'{str(self)}__hidden_layer_sizes': [(100,), (100, 50), (100, 150)],
             f'{str(self)}__activation': ["logistic", "relu", "tanh"],
-            f'{str(self)}__solver': ["sgd", "adam"],
-            f'{str(self)}__learning_rate_init': [1e-2, 1e-3, 1e-4],
+            f'{str(self)}__solver': ["adam"],
+            f'{str(self)}__learning_rate_init': [1e-3, 1e-4],
             f'{str(self)}__max_iter': [5000],
-            f'{str(self)}__early_stopping': [True, False],
+            f'{str(self)}__early_stopping': [True],
         }
 
         model = MLPRegressor(batch_size=32)

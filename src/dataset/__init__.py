@@ -9,12 +9,14 @@ from .data_preparation import (
     normalize_labels_min_max,
     normalize_data_global,
     filter_labels_outliers_per_subject,
-    drop_highly_correlated_features,
+    drop_correlated_features,
     calculate_trend_labels,
     add_rolling_statistics,
     dl_split_data,
     dl_normalize_data_3d_subject,
     dl_normalize_data_3d_global,
+    remove_low_variance_features,
+    get_highest_correlation_features,
 )
 
 from .data_loaders import (

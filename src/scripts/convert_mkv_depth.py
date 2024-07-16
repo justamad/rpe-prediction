@@ -105,4 +105,5 @@ if __name__ == "__main__":
  #    for file_name in tqdm(all_files):
  #        process_video(str(file_name))
  #
-    process_video("C:\\Users\\Justin\\Desktop\\4-7_kmh_02.mkv")
+    # process_video("C:\\Users\\Justin\\Desktop\\4-7_kmh_02.mkv")
+    process_video("test.mkv")

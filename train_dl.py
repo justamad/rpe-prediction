@@ -5,101 +5,80 @@ import yaml
 import os
 import matplotlib
 
-from typing import Union
+from typing import Dict
+from src.dataset import dl_normalize_data_3d_subject, aggregate_results
+from src.dl import DLOptimization
 from datetime import datetime
 from argparse import ArgumentParser
-from os.path import join
-from os import makedirs
-from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error, r2_score
-from scipy.stats import spearmanr
-from src.dl import ConvModelConfig, DLOptimization, CNNLSTMModelConfig
-from src.plot import plot_sample_predictions, create_retrain_table
+from os.path import join, exists, isfile
 
-from src.dataset import (
-    filter_labels_outliers_per_subject,
-    zero_pad_dataset,
-    dl_normalize_data_3d_subject,
-    aggregate_results,
-    dl_normalize_data_3d_global,
+from src.plot import (
+    plot_sample_predictions,
+    create_retrain_table,
+    create_residual_plot,
+    create_scatter_plot,
+    create_bland_altman_plot,
 )
 
 
-def train_time_series_grid_search(
-        X: Union[np.ndarray, pd.DataFrame],
-        y: Union[np.ndarray, pd.DataFrame],
-        label: str,
-        balance: bool = True,
-        task: str = "regression",
-        search: str = "grid",
-        lstm: bool = False,
-):
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    log_path = join("data/dl_results", timestamp)
-    opt = DLOptimization(X, y, balance=balance, task=task, mode=search, ground_truth=label)
-    if lstm:
-        opt.perform_grid_search_with_cv(CNNLSTMModelConfig(), log_path, lstm=lstm)
-    else:
-        opt.perform_grid_search_with_cv(ConvModelConfig(), log_path, lstm=lstm)
+def train_time_series_grid_search(X: np.ndarray, y: pd.DataFrame, dst_path: str, config: Dict[str, str]):
+    with open(join(dst_path, "config.yml"), "w") as f:
+        yaml.dump(config, f)
+
+    opt = DLOptimization(X=X, y=y, **config)
+    opt.perform_grid_search_with_cv(dst_path)
 
 
-def evaluate_result_grid_search(src_path: str, dst_path: str, exp_name: str, aggregate: bool = False):
+def evaluate_result_grid_search(src_path: str, aggregate: bool = False):
+    dst_path = src_path.replace("train", "test")
     results_df = collect_trials(src_path)
+    final_results_df = pd.DataFrame()
 
-    if not os.path.exists(dst_path):
-        makedirs(dst_path)
+    for model in results_df["model"].unique():
+        model_df = results_df[results_df["model"] == model]
+        cur_path = join(dst_path, model)
+        os.makedirs(cur_path, exist_ok=True)
 
-    data_df = pd.read_csv(results_df.iloc[0]["file"], index_col=0)
-    data_df["model"] = "CNN-LSTM"
-    if aggregate:
-        data_df = aggregate_results(data_df)
+        plot_sample_predictions(model_df, "rpe", join(cur_path, "plots"))
 
-    plot_sample_predictions(data_df, exp_name, dst_path)
-    train_df = create_retrain_table(data_df, dst_path)
-    train_df.to_csv(join(dst_path, "retrain.csv"))
+        if aggregate:
+            model_df = aggregate_results(model_df)
+
+        create_bland_altman_plot(model_df, join(cur_path), "rpe")
+        create_scatter_plot(model_df, cur_path, model, "rpe")
+        create_residual_plot(model_df, cur_path, model)
+        train_df = create_retrain_table(model_df, cur_path)
+        final_results_df = pd.concat([final_results_df, train_df], axis=0)
+
+    final_results_df.to_csv(join(dst_path, "retrain.csv"), index=False)
 
 
-def collect_trials(dst_path: str) -> pd.DataFrame:
-    data_dicts = []
-    for folder in os.listdir(dst_path):
-        result_file = join(dst_path, folder, "results.csv")
-        if not os.path.exists(result_file):
+def collect_trials(src_path: str) -> pd.DataFrame:
+    result_df = pd.DataFrame()
+    for model_folder in os.listdir(src_path):
+        if isfile(join(src_path, model_folder)):
             continue
 
-        df = pd.read_csv(result_file, index_col=0)
-        if "y_pred" in df.columns:
-            df.rename(columns={"y_pred": "prediction", "y_true": "ground_truth"}, inplace=True)
-        metrics = {
-            "RMSE": lambda x, y: mean_squared_error(x, y, squared=False),
-            "MAE": mean_absolute_error,
-            "R2": r2_score,
-            "MAPE": mean_absolute_percentage_error,
-            "Spearman": lambda x, y: spearmanr(x, y)[0],
-        }
-        errors = {k: [] for k in metrics.keys()}
-        for subject in df["subject"].unique():
-            subject_df = df[df["subject"] == subject]
+        for folds in os.listdir(join(src_path, model_folder)):
+            result_file = join(src_path, model_folder, folds, "eval_dataset.csv")
+            if not exists(result_file):
+                continue
 
-            for metric, func in metrics.items():
-                errors[metric].append(func(subject_df["prediction"], subject_df["ground_truth"]))
+            df = pd.read_csv(result_file, index_col=0)
+            df["model"] = model_folder
+            result_df = pd.concat([result_df, df])
 
-        errors = {k: np.mean(v) for k, v in errors.items()}
-        errors["file"] = result_file
-
-        params_dict = yaml.load(open(join(dst_path, folder, "params.yaml")), Loader=yaml.FullLoader)
-        data_dicts.append({**params_dict, **errors})
-
-    result_df = pd.DataFrame(data_dicts)
-    result_df.sort_values(by="RMSE", inplace=True)
     return result_df
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--src_path", type=str, dest="src_path", default="data/training")
-    parser.add_argument("--log_path", type=str, dest="log_path", default="results_dl")
-    parser.add_argument("--exp_path", type=str, dest="exp_path", default="data/dl_experiments")
-    parser.add_argument("--dst_path", type=str, dest="dst_path", default="evaluation_dl")
-    parser.add_argument("--exp_file", type=str, dest="exp_file", default="power.yaml")
+    parser.add_argument("--eval_path", type=str, dest="eval_path", default="Fusion")
+    parser.add_argument("--dst_path", type=str, dest="dst_path", default="results/dl/train")
+    parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/dl")
+    parser.add_argument("--restore_path", type=str, dest="restore_path", default=None)
+    parser.add_argument("--exp_file", type=str, dest="exp_file", default="rpe_both.yaml")
     parser.add_argument("--train", type=bool, dest="train", default=False)
     parser.add_argument("--eval", type=bool, dest="eval", default=True)
     parser.add_argument("--use_gpu", type=bool, dest="use_gpu", default=True)
@@ -111,31 +90,51 @@ if __name__ == "__main__":
     if not args.use_gpu:
         os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-    cfg = yaml.load(open(join(args.exp_path, args.exp_file), "r"), Loader=yaml.FullLoader)
+    dst_path = join(args.dst_path, args.eval_path)
 
-    if cfg["lstm"]:
-        X = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"]
-        y = pd.read_csv(join(args.src_path, cfg["y_file"]), index_col=0)
-        X = dl_normalize_data_3d_subject(X, y, method="min_max")
+    if args.train:
+        if args.restore_path and exists(join(args.dst_path, args.restore_path)):
+            dst_path = join(args.dst_path, args.restore_path)
+            cfg = yaml.load(open(join(dst_path, "config.yml"), "r"), Loader=yaml.FullLoader)
+            X = np.load(join(dst_path, "X.npy"), allow_pickle=True)
+            y = pd.read_csv(join(dst_path, "y.csv"), index_col=0)
+        else:
+            cfg = yaml.load(open(join(args.exp_path, args.exp_file), "r"), Loader=yaml.FullLoader)
+            target = args.exp_file.split("_")[1].replace(".yaml", "")
+            exp_name = f"{datetime.now().strftime('%Y%m%d-%H%M%S')}_{target}"
+            dst_path = join(args.dst_path, args.restore_path if args.restore_path else exp_name)
+            os.makedirs(dst_path, exist_ok=True)
 
-        if args.train:
-            train_time_series_grid_search(X, y, cfg["label"], cfg["balance"], cfg["task"], cfg["search"], cfg["lstm"])
-        if args.eval:
-            evaluate_result_grid_search(
-                "data/dl_results/rpe/CNNLSTM", "data/dl_evaluation/rpe", exp_name="rpe", aggregate=True,
-            )
-    else:
-        X = np.load(join(args.src_path, cfg["X_file"]), allow_pickle=True)["X"]
-        y = pd.read_csv(join(args.src_path, cfg["y_file"]))
+            X = np.load(join(args.src_path, cfg.pop("X_file")), allow_pickle=True)["X"]
+            y = pd.read_csv(join(args.src_path, cfg.pop("y_file")), index_col=0)
+            X = dl_normalize_data_3d_subject(X, y, method="std")
 
-        X = dl_normalize_data_3d_global(X, method="min_max")
-        X = zero_pad_dataset(X, 170)
-        X, y = filter_labels_outliers_per_subject(X, y, cfg["label"], sigma=3.0)
+            np.save(join(dst_path, "X.npy"), X)
+            y.to_csv(join(dst_path, "y.csv"))
 
-        if args.train:
-            train_time_series_grid_search(X, y, cfg["label"], lstm=False)
-        if args.eval:
-            evaluate_result_grid_search(
-                "data/dl_results/power/CONV2D", "data/dl_evaluation/power", exp_name="poweravg",
-                aggregate=False,
-            )
+        train_time_series_grid_search(X=X, y=y, dst_path=dst_path, config=cfg)
+
+    if args.eval:
+        for eva in ["Kinect", "IMU", "Fusion"]:
+            evaluate_result_grid_search(join(args.dst_path, eva), aggregate=True)
+
+        # evaluate_result_grid_search(join(args.dst_path, args.eval_path), aggregate=True)
+
+        # def read_df(path):
+        #     df = pd.read_csv(path, index_col=0)[["MSE_mean", "RMSE_mean", "MAPE_mean"]]
+        #     df = df.rename(columns={"MSE_mean": "MSE", "RMSE_mean": "RMSE", "MAPE_mean": "MAPE"})
+        #     return df
+        #
+        # fusion_df = read_df("results/dl/test/Fusion/retrain.csv")
+        # imu_df = read_df("results/dl/test/IMU/retrain.csv")
+        # kinect_df = read_df("results/dl/test/Kinect/retrain.csv")
+        # print(fusion_df)
+        # print(imu_df)
+        # print(kinect_df)
+        #
+        # result_df = pd.concat([imu_df, kinect_df, fusion_df], axis=1, keys=["IMU", "Kinect", "Both"],
+        #                       names=["Metrics", None])
+        # result_df = result_df.swaplevel(0, 1, axis=1)
+        # result_df = result_df.sort_index(axis=1, level=0, ascending=False)
+        # result_df.to_latex("results/dl/test/final_results.txt", escape=False, float_format="%.2f")
+        #

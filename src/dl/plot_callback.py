@@ -7,19 +7,24 @@ import tensorflow as tf
 from tensorflow import keras
 from os.path import join
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, mean_absolute_percentage_error
+from scipy.stats import spearmanr
 
 
-class PerformancePlotCallback(keras.callbacks.Callback):
+class ProgressPlotCallback(keras.callbacks.Callback):
 
-    def __init__(self, train_gen, test_gen, val_gen, log_path: str):
+    def __init__(self, train_gen, test_gen, val_gen, log_path: str, gen_step: int = 5):
         super().__init__()
         self._train_gen = train_gen
         self._test_gen = test_gen
         self._val_gen = val_gen
         self._log_path = log_path
+        self._gen_step = gen_step
         os.makedirs(self._log_path, exist_ok=True)
 
     def on_epoch_end(self, epoch, logs=None):
+        if epoch % self._gen_step != 0:
+            return
+
         logging.info(f"Plotting performance... for epoch {epoch}")
 
         train_pred, train_labels, train_title = self.evaluate_for_generator(self._train_gen, training=True)
@@ -44,6 +49,9 @@ class PerformancePlotCallback(keras.callbacks.Callback):
         axs[3].plot(val_pred, label="Predicted")
         axs[3].plot(val_labels, label="True")
 
+        for i in range(4):
+            axs[i].set_ylim([0, 21])
+
         plt.tight_layout()
         plt.savefig(join(self._log_path, f"{epoch:03d}.png"))
         plt.close()
@@ -62,9 +70,9 @@ class PerformancePlotCallback(keras.callbacks.Callback):
                 if len(y_batch.shape) == 2:
                     y_batch = y_batch[:, 0]
 
-                pred = np.array(self.model(X_batch, training=training)).reshape(-1)
+                pred = np.array(self.model(X_batch, training=training))  # .reshape(-1)
                 predictions.extend(list(pred))
-                labels.extend(list(y_batch.reshape(-1)))
+                labels.extend(list(y_batch))  # .reshape(-1)))
 
         metrics = {
             "mse": lambda x, y: mean_squared_error(x, y, squared=True),
@@ -72,6 +80,7 @@ class PerformancePlotCallback(keras.callbacks.Callback):
             "mae": mean_absolute_error,
             "mape": mean_absolute_percentage_error,
             "r2": r2_score,
+            "Rho": lambda x, y: spearmanr(x, y)[0],
         }
 
         results = [f"{metric.upper()}: {metrics[metric](labels, predictions):.2f}" for metric in metrics.keys()]

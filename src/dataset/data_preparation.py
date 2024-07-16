@@ -1,9 +1,10 @@
-from typing import Tuple, Union, List
-from scipy import stats
-
 import numpy as np
 import pandas as pd
 import logging
+
+from typing import Tuple, Union, List
+from scipy import stats
+from sklearn.feature_selection import VarianceThreshold
 
 META_DATA = ["subject", "set_id", "rpe"]
 
@@ -120,7 +121,7 @@ def filter_labels_outliers_per_subject(
     return X, y
 
 
-def drop_highly_correlated_features(X: pd.DataFrame, threshold: float = 0.95) -> pd.DataFrame:
+def drop_correlated_features(X: pd.DataFrame, threshold: float = 0.95) -> pd.DataFrame:
     corr_matrix = X.corr().abs()
     upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
     to_drop = [column for column in upper.columns if any(upper[column] > threshold)]
@@ -128,25 +129,29 @@ def drop_highly_correlated_features(X: pd.DataFrame, threshold: float = 0.95) ->
     return X
 
 
-def add_rolling_statistics(X: pd.DataFrame, y: pd.DataFrame, win: int = 5, normalize: bool = True) -> pd.DataFrame:
+def add_rolling_statistics(X: pd.DataFrame, y: pd.DataFrame, win: List[int]) -> pd.DataFrame:
     if "subject" not in y.columns:
         raise ValueError("Subject column not in dataframe.")
 
-    for feature in X.columns:
-        for subject in y["subject"].unique():
-            mask = y["subject"] == subject
-            rolling_mean = X.loc[mask, feature].rolling(window=win).mean()
-            rolling_std = X.loc[mask, feature].rolling(window=win).std()
+    subjects = []
+    for subject in y["subject"].unique():
+        sub_df = X.loc[y["subject"] == subject, :]
+        data_frames = []
+        for window_size in win:
+            mean_df = sub_df.rolling(window=window_size).mean()
+            mean_df.rename(columns={c: f"{c}_TM({window_size})" for c in mean_df.columns}, inplace=True)
+            std_df = sub_df.rolling(window=window_size).std()
+            std_df.rename(columns={c: f"{c}_TS({window_size})" for c in std_df.columns}, inplace=True)
+            data_frames.append(mean_df)
+            data_frames.append(std_df)
 
-            if normalize:
-                rolling_mean = (rolling_mean - rolling_mean.mean()) / rolling_mean.std()
-                rolling_std = (rolling_std - rolling_std.mean()) / rolling_std.std()
+        subject_df = pd.concat(data_frames, axis=1)
+        subjects.append(subject_df)
 
-            X.loc[mask, f"{feature}_mean"] = rolling_mean
-            X.loc[mask, f"{feature}_std"] = rolling_std
-
-    X.fillna(0, inplace=True)
-    return X
+    temp_context_df = pd.concat(subjects, axis=0)
+    temp_context_df.fillna(0, inplace=True)
+    temp_context_df = normalize_data_by_subject(temp_context_df, y)
+    return temp_context_df
 
 
 def dl_split_data(
@@ -224,3 +229,16 @@ def dl_normalize_data_3d_global(X: np.ndarray, method="min_max"):
             X[skeleton] = (X[skeleton] - mean) / std
 
     return X
+
+
+def remove_low_variance_features(X: pd.DataFrame, threshold: float = 0.01):
+    variance_selector = VarianceThreshold(threshold=threshold)
+    variance_selector.fit_transform(X)
+    return X.loc[:, variance_selector.get_support()]
+
+
+def get_highest_correlation_features(X: pd.DataFrame, y: np.ndarray, k=300):
+    correlations = np.abs(X.corrwith(y))
+    selected_features_mask = correlations.nlargest(k).index
+    X_selected = X[selected_features_mask]
+    return X_selected

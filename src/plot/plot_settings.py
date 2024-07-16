@@ -1,19 +1,32 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 plt.rcParams.update({
     "text.usetex": True,
     "font.family": "serif",
-    # "text.latex.preamble": r"\usepackage{libertine}",
-    # "font.serif": ["Palatino"],
-    # "font.serif": ["Libertine"],
-    "font.serif": ["cmr12"],
-    "font.size": 9,
+    "font.serif": ["Computer Modern"],
+    "font.size": 11,
 })
 
-cm = 1/2.54  # Convert centimeters to inches
-# text_width = 17.7917
-text_width = 13.70499
-column_width = 8.47415
-dpi = 300
-line_width = 1.0
-blob_size = 8.0
+TEXT_WIDTH_CM = 15.2286
+TEXT_WIDTH_INCH = TEXT_WIDTH_CM * 0.3937007874  # convert cm to inch
+HALF_PLOT_SIZE = TEXT_WIDTH_INCH * 0.49  # Value in inches, divided by subfigure size (two images in one line)
+CUT_OFF = 0.02  # Padding around tight layout
+
+DPI = 300  # Value in dpi
+LINE_WIDTH = 1.0  # Strength of drawn objects
+BLOB_SIZE = 2.0
+
+COLOR_MAP = 'brg'
+
+
+def get_colors(num_colors: int, palette: str = None):
+    if num_colors <= 0:
+        raise ValueError("Number of colors must be greater than 0")
+
+    if palette is None:
+        palette = COLOR_MAP
+
+    cmap = plt.get_cmap(palette)
+    indices = np.linspace(0, 1, num_colors)
+    return [cmap(idx) for idx in indices]
