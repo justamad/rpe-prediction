@@ -256,10 +256,10 @@ if __name__ == "__main__":
     parser.add_argument("--data_path", type=str, dest="data_path", default="data/training")
     parser.add_argument("--result_path", type=str, dest="result_path", default="results/ml/train")
     parser.add_argument("--exp_path", type=str, dest="exp_path", default="experiments/ml")
-    parser.add_argument("--dst_path", type=str, dest="dst_path", default="results/ml/test")
-    parser.add_argument("--exp_folder", type=str, dest="exp_folder", default="results/ml/train/2023-12-22-11-05-43")
-    parser.add_argument("--train", type=bool, dest="train", default=False)
-    parser.add_argument("--eval", type=bool, dest="eval", default=True)
+    # parser.add_argument("--dst_path", type=str, dest="dst_path", default="results/ml/test")
+    parser.add_argument("--exp_folder", type=str, dest="exp_folder", default="results/ml/train/2024-07-18-13-00-54")
+    parser.add_argument("--train", type=bool, dest="train", default=True)
+    parser.add_argument("--eval", type=bool, dest="eval", default=False)
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -272,7 +272,6 @@ if __name__ == "__main__":
     console.setLevel(logging.INFO)
     logging.getLogger("matplotlib").setLevel(logging.WARNING)
     logging.getLogger("my_logger").addHandler(console)
-    matplotlib.use("WebAgg")
 
     if args.train:
         experiment_time = f"{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
@@ -310,24 +309,4 @@ if __name__ == "__main__":
                 train_models_with_grid_search(df, log_path, **config)
 
     if args.eval:
-        # evaluate_entire_training_folder(args.exp_folder, aggregate=True)
-
-        # imu_df = pd.read_csv("results/ml/test/2023-11-16-16-45-14/rpe_imu/total_run_results.csv", index_col=0)
-        # kinect_df = pd.read_csv("results/ml/test/2023-11-16-16-45-14/rpe_kinect/total_run_results.csv", index_col=0)
-        # both_df = pd.read_csv("results/ml/test/2023-11-16-16-45-14/rpe_both/total_run_results.csv", index_col=0)
-        #
-        # result_df = pd.concat([imu_df, kinect_df, both_df], axis=1, keys=["IMU", "Kinect", "Both"],
-        #                       names=["Metrics", None])
-        # result_df = result_df.swaplevel(0, 1, axis=1)
-        # result_df = result_df.sort_index(axis=1, level=0, ascending=False)
-        # result_df.to_latex("results/ml/test/2023-11-16-16-45-14/total_run_results_latex.txt", escape=False)
-
-        hrv_df = pd.read_csv("results/ml/test/2023-12-22-11-05-43/rpe_hrv/total_run_results.csv", index_col=0)
-        flywheel_df = pd.read_csv("results/ml/test/2023-12-23-11-51-48/rpe_flywheel/total_run_results.csv", index_col=0)
-        both_df = pd.read_csv("results/ml/test/2023-12-23-11-51-48/rpe_fusionbase/total_run_results.csv", index_col=0)
-
-        result_df = pd.concat([hrv_df, flywheel_df, both_df], axis=1, keys=["HRV", "Flywheel", "Both"],
-                              names=["Metrics", None])
-        result_df = result_df.swaplevel(0, 1, axis=1)
-        result_df = result_df.sort_index(axis=1, level=0, ascending=False)
-        result_df.to_latex("total_run_results_latex.txt", escape=False, float_format="%.2f")
+        evaluate_entire_training_folder(args.exp_folder, aggregate=True)

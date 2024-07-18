@@ -87,7 +87,7 @@ def plot_subject_correlations(df: pd.DataFrame, dst_path: str):
         metrics.append(metric)
 
     color = get_colors(1)
-    fig, axs = plt.subplots(1, 1, figsize=(TEXT_WIDTH_CM, HALF_PLOT_SIZE), dpi=DPI)
+    fig, axs = plt.subplots(1, 1, figsize=(TEXT_WIDTH_INCH, HALF_PLOT_SIZE), dpi=DPI)
     axs.bar([f"{i + 1:2d}" for i in range(len(subjects))], metrics, color=color[0])
     plt.ylim([0, 1])
     plt.title("Spearman's $\\rho$ Mean: {:.2f} Std: {:.2f}".format(np.mean(metrics), np.std(metrics)))

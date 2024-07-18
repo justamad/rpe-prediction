@@ -21,7 +21,7 @@ def segment_kinect_signal(
         raise ValueError(f"Mode must be either 'all', 'ecc' or 'con'. Given '{mode}'.")
 
     signal_norm = (input_signal.to_numpy() - np.mean(input_signal)) / np.std(input_signal)
-    signal_norm = apply_butterworth_1d_signal(signal_norm, cutoff=6, order=4, sampling_rate=30)
+    signal_norm = apply_butterworth_1d_signal(signal_norm, cutoff=6, order=4, sampling_rate=128)
 
     peaks, _ = signal.find_peaks(signal_norm, prominence=prominence)
     peaks = np.insert(peaks, 0, 0)

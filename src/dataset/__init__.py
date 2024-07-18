@@ -21,7 +21,6 @@ from .data_preparation import (
 
 from .data_loaders import (
     BaseSubjectLoader,
-    AzureSubjectLoader,
     RPESubjectLoader,
     IMUSubjectLoader,
 )

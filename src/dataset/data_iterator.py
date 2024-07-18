@@ -4,11 +4,9 @@ from typing import List
 
 from src.dataset.data_loaders import (
     LoadingException,
-    AzureSubjectLoader,
     RPESubjectLoader,
     IMUSubjectLoader,
     HRVSubjectLoader,
-    FlyWheelSubjectLoader,
 )
 
 import os
@@ -25,11 +23,9 @@ class SubjectDataIterator(object):
     FLYWHEEL = "flywheel"
 
     loader_names = {
-        AZURE: AzureSubjectLoader,
         RPE: RPESubjectLoader,
         IMU: IMUSubjectLoader,
         HRV: HRVSubjectLoader,
-        FLYWHEEL: FlyWheelSubjectLoader,
     }
 
     def __init__(
@@ -51,7 +47,7 @@ class SubjectDataIterator(object):
                 yield trial
 
     def _load_and_yield_subject_data_collectors(self, subject_list: List[str]):
-        subjects = os.listdir(self._base_path)
+        subjects = sorted(os.listdir(self._base_path))
         if subject_list:
             subjects = list(filter(lambda s: s in subject_list, subjects))
 

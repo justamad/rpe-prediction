@@ -58,10 +58,10 @@ class GBRModelConfig(LearningModelBase):
 
     def __init__(self):
         tuned_parameters = {
-            f"{str(self)}__n_estimators": [50, 150, 500],
+            f"{str(self)}__n_estimators": [150, 500],
             f"{str(self)}__learning_rate": [0.05, 0.1, 0.2],
             f"{str(self)}__loss": ["squared_error"],  # , "absolute_error", "huber"],
-            f"{str(self)}__n_iter_no_change": [None, 5, 50, 100]
+            f"{str(self)}__n_iter_no_change": [None, 5, 50]
         }
 
         model = GradientBoostingRegressor()

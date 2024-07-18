@@ -27,7 +27,7 @@ class IMUSubjectLoader(BaseSubjectLoader):
 
         self._trials = []
         for sensor_location in sensor_locations:
-            df = pd.read_csv(join(root_path, f"{sensor_location}.csv"), index_col='sensorTimestamp')
+            df = pd.read_csv(join(root_path, "physilog", f"{sensor_location}.csv"), index_col='sensorTimestamp')
             df.index = pd.to_datetime(df.index)
             df = df.drop(columns=['Acceleration Magnitude'])
             df = df.add_prefix(sensor_location + "_")
