@@ -1,12 +1,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "serif",
-    "font.serif": ["Computer Modern"],
-    "font.size": 11,
-})
+# plt.rcParams.update({
+#     "text.usetex": True,
+#     "font.family": "serif",
+#     "font.serif": ["Computer Modern"],
+#     "font.size": 11,
+# })
 
 TEXT_WIDTH_CM = 15.2286
 TEXT_WIDTH_INCH = TEXT_WIDTH_CM * 0.3937007874  # convert cm to inch

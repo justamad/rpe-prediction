@@ -13,7 +13,7 @@ class HRVSubjectLoader(BaseSubjectLoader):
     def __init__(self, root_path: str, subject_name: str):
         super().__init__(subject_name)
 
-        hrv_file = join(root_path, f"ecg_hrv_30-1.txt")
+        hrv_file = join(root_path, "faros", f"ecg_hrv_30-1.txt")
         if not exists(hrv_file):
             raise LoadingException(f"Given file {hrv_file} does not exist.")
 
