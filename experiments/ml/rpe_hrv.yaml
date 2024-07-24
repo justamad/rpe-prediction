@@ -9,5 +9,5 @@
   "rolling_statistics": false,
   "balancing": true,
   "normalization_labels": false,
-  "n_splits": 16
+  "n_splits": 12
 }
